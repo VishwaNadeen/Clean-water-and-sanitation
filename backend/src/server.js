@@ -5,7 +5,7 @@ import { connectDb } from "./config/db.js";
 import exampleRoutes from "./routes/exampleRoute.js";
 
 const app = express();
-const PORT = 5001;
+const PORT = process.env.PORT || 5001;
 
 dotenv.config();
 
