@@ -1,10 +1,27 @@
 import Issue from "../models/issueModel.js";
+import IssueCategory from "../models/issueCategoryModel.js";
+import Province from "../models/provinceModel.js";
+import District from "../models/districtModel.js";
+import City from "../models/cityModel.js";
+import User from "../models/userModel.js";          // Placeholder - will be replaced by team member
+import Restroom from "../models/restroomModel.js";  // Placeholder - will be replaced by team member
 import { uploadToCloudinary } from "../config/cloudinary.js";
 
 // CREATE ISSUE
 export const createIssue = async (req, res) => {
     try {
-        const { title, description, issueType, restroomId, priority } = req.body;
+        const { 
+            title, 
+            description, 
+            categoryId, 
+            subCategoryId, 
+            subCategoryName,
+            provinceId,
+            districtId,
+            cityId,
+            restroomId, 
+            priority 
+        } = req.body;
         const reportedBy = req.body.reportedBy || "60d5ecb54b24d630f4b0c123";
 
         // VALIDATION
@@ -22,11 +39,56 @@ export const createIssue = async (req, res) => {
             });
         }
 
-        const validIssueTypes = ['WATER', 'CLEANLINESS', 'PLUMBING', 'LIGHTING', 'SUPPLIES', 'MAINTENANCE', 'OTHER'];
-        if (!issueType || !validIssueTypes.includes(issueType)) {
+        // Validate Category and Subcategory
+        if (!categoryId) {
             return res.status(400).json({
                 success: false,
-                message: "Valid issue type is required. Valid types: " + validIssueTypes.join(', ')
+                message: "Category is required"
+            });
+        }
+
+        const category = await IssueCategory.findById(categoryId);
+        if (!category || !category.isActive) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid or inactive category"
+            });
+        }
+
+        if (!subCategoryId || !subCategoryName) {
+            return res.status(400).json({
+                success: false,
+                message: "Subcategory is required"
+            });
+        }
+
+        // Validate subcategory exists in the category
+        const subCategory = category.subCategories.id(subCategoryId);
+        if (!subCategory || !subCategory.isActive) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid or inactive subcategory"
+            });
+        }
+
+        // Validate Location
+        if (!provinceId || !districtId || !cityId) {
+            return res.status(400).json({
+                success: false,
+                message: "Province, District, and City are required"
+            });
+        }
+
+        const [province, district, city] = await Promise.all([
+            Province.findById(provinceId),
+            District.findById(districtId),
+            City.findById(cityId)
+        ]);
+
+        if (!province || !district || !city) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid location information"
             });
         }
 
@@ -83,7 +145,12 @@ export const createIssue = async (req, res) => {
         const newIssue = new Issue({
             title: title.trim(),
             description: description.trim(),
-            issueType,
+            categoryId,
+            subCategoryId,
+            subCategoryName,
+            provinceId,
+            districtId,
+            cityId,
             restroomId,
             priority: priority || 'MEDIUM',
             reportedBy,

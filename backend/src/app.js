@@ -3,6 +3,7 @@ import cors from "cors";
 
 import exampleRoutes from "./routes/exampleRoute.js";
 import issueRoutes from "./routes/issueRoutes.js";
+import issueCategoryRoutes from "./routes/issueCategoryRoutes.js";
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use("/api/example", exampleRoutes);
 app.use("/api/issues", issueRoutes);
+app.use("/api/categories", issueCategoryRoutes);
 
 // Health check route
 app.get("/", (req, res) => {
