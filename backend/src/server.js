@@ -1,21 +1,17 @@
-import express from "express";
 import dotenv from "dotenv";
+import app from "./app.js";
 import { connectDb } from "./config/db.js";
 
-import exampleRoutes from "./routes/exampleRoute.js";
-
-const app = express();
-const PORT = process.env.PORT || 5001;
-
+// Load environment variables
 dotenv.config();
 
+const PORT = process.env.PORT || 5001;
+
+// Connect to database
 connectDb();
 
-app.use(express.json());
-
-//routes
-app.use("/api/example", exampleRoutes);
-
+// Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });
