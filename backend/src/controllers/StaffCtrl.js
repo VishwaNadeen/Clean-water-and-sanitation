@@ -130,7 +130,19 @@ export async function getStaffById(req, res) {
     return res.status(500).json({ message: "Server error" });
   }
 }
+export const getAllStaff = async (req, res) => {
+  try {
+    const { role } = req.query;
 
+    const filter = {};
+    if (role) filter.role = role; // Cleaner / Technician
+
+    const staff = await Staff.find(filter).sort({ fullName: 1 });
+    res.json(staff);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+}
 /* ===================== UPDATE STAFF ===================== */
 export async function updateStaff(req, res) {
   const { id } = req.params;

@@ -4,8 +4,10 @@ import {
   createStaff,
   listStaff,
   getStaffById,
+  getAllStaff,
   updateStaff,
   deleteStaff,
+
 } from "../controllers/StaffCtrl.js";
 
 //import { requireAuth } from "../middlewares/auth.js"; // your existing auth middleware
@@ -23,6 +25,7 @@ router.get("/", listStaff);
 
 // Get one staff
 router.get("/:id", getStaffById);
+router.get("/", getAllStaff);
 
 // Update staff
 router.put("/:id", updateStaff);
