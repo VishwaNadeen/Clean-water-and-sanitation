@@ -53,8 +53,7 @@ const issueCategorySchema = new mongoose.Schema(
     }
 );
 
-// Indexes
-issueCategorySchema.index({ name: 1 });
+// Indexes (name index is automatically created by unique: true)
 issueCategorySchema.index({ isActive: 1 });
 issueCategorySchema.index({ 'subCategories.name': 1 });
 

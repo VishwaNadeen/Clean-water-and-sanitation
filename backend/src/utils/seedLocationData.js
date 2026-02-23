@@ -9,16 +9,16 @@ dotenv.config();
 const runSeeder = async () => {
     try {
         await connectDb();
-        console.log('🌱 Starting location data seeding...\n');
+        console.log(' Starting location data seeding...\n');
         
         const result = await seedLocationData();
         
-        console.log('\n🎉 Seeding completed successfully!');
+        console.log('\n Seeding completed successfully!');
         console.log('You can now use the province, district, and city collections in your application.');
         
         process.exit(0);
     } catch (error) {
-        console.error('❌ Seeding failed:', error);
+        console.error(' Seeding failed:', error);
         process.exit(1);
     }
 };

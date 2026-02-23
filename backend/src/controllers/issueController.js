@@ -10,19 +10,18 @@ import { uploadToCloudinary } from "../config/cloudinary.js";
 // CREATE ISSUE
 export const createIssue = async (req, res) => {
     try {
-        const { 
-            title, 
-            description, 
-            categoryId, 
-            subCategoryId, 
-            subCategoryName,
+        const {
+            title,
+            description,
+            categoryId,
+            subCategoryId,
             provinceId,
             districtId,
             cityId,
             restroomId, 
             priority 
         } = req.body;
-        const reportedBy = req.body.reportedBy || "60d5ecb54b24d630f4b0c123";
+        const reportedBy = req.body.reportedBy || "699b293cabd88401534705a"; // Use a valid ObjectId
 
         // VALIDATION
         if (!title || title.trim().length === 0) {
@@ -55,10 +54,10 @@ export const createIssue = async (req, res) => {
             });
         }
 
-        if (!subCategoryId || !subCategoryName) {
+        if (!subCategoryId) {
             return res.status(400).json({
                 success: false,
-                message: "Subcategory is required"
+                message: "Subcategory ID is required"
             });
         }
 
@@ -147,7 +146,6 @@ export const createIssue = async (req, res) => {
             description: description.trim(),
             categoryId,
             subCategoryId,
-            subCategoryName,
             provinceId,
             districtId,
             cityId,
@@ -158,10 +156,37 @@ export const createIssue = async (req, res) => {
         });
 
         const savedIssue = await newIssue.save();
+        
+        // Structure response with proper field ordering
+        const issueObj = savedIssue.toObject();
+        const responseData = {
+            _id: issueObj._id,
+            issueNumber: issueObj.issueNumber,
+            categoryId: issueObj.categoryId,
+            subCategoryId: issueObj.subCategoryId,
+            provinceId: issueObj.provinceId,
+            districtId: issueObj.districtId,
+            cityId: issueObj.cityId,
+            title: issueObj.title,
+            description: issueObj.description,
+            restroomId: issueObj.restroomId,
+            status: issueObj.status,
+            priority: issueObj.priority,
+            reportedBy: issueObj.reportedBy,
+            images: issueObj.images,
+            resolvedAt: issueObj.resolvedAt,
+            resolutionNote: issueObj.resolutionNote,
+            resolutionImages: issueObj.resolutionImages,
+            adminNotes: issueObj.adminNotes,
+            createdAt: issueObj.createdAt,
+            updatedAt: issueObj.updatedAt,
+            __v: issueObj.__v
+        };
+        
         res.status(201).json({
             success: true,
             message: "Issue created successfully!",
-            data: savedIssue
+            data: responseData
         });
 
     } catch (error) {
@@ -177,7 +202,7 @@ export const createIssue = async (req, res) => {
 // GET ALL ISSUES
 export const getAllIssues = async (req, res) => {
     try {
-        const { status, page = 1, limit = 10 } = req.query;
+        const { status, page = 1, limit = 10, issueNumber } = req.query;
         
         // VALIDATION  
         if (page && (isNaN(page) || page < 1)) {
@@ -204,18 +229,65 @@ export const getAllIssues = async (req, res) => {
 
         const filter = {};
         if (status) filter.status = status;
+        if (issueNumber) filter.issueNumber = { $regex: issueNumber, $options: 'i' };
 
         const skip = (page - 1) * limit;
         const issues = await Issue.find(filter)
+            .populate('categoryId', 'name subCategories')
+            .populate('provinceId', 'name')
+            .populate('districtId', 'name')
+            .populate('cityId', 'name')
+            .populate('reportedBy', 'name email')
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(parseInt(limit));
 
         const total = await Issue.countDocuments(filter);
 
+        // Filter issues to show only selected subcategory
+        const issuesWithSubcategoryNames = issues.map(issue => {
+            const issueObj = issue.toObject();
+            
+            // Get the selected subcategory name
+            let subCategoryName = 'Unknown Subcategory';
+            if (issue.categoryId && issue.categoryId.subCategories) {
+                const subCategory = issue.categoryId.subCategories.id(issue.subCategoryId);
+                subCategoryName = subCategory ? subCategory.name : 'Unknown Subcategory';
+            }
+            
+            // Restructure response with proper field ordering
+            return {
+                _id: issueObj._id,
+                issueNumber: issueObj.issueNumber,
+                categoryId: {
+                    _id: issue.categoryId._id,
+                    name: issue.categoryId.name
+                },
+                subCategoryId: issueObj.subCategoryId,
+                subCategoryName: subCategoryName,
+                provinceId: issueObj.provinceId,
+                districtId: issueObj.districtId,
+                cityId: issueObj.cityId,
+                title: issueObj.title,
+                description: issueObj.description,
+                restroomId: issueObj.restroomId,
+                status: issueObj.status,
+                priority: issueObj.priority,
+                reportedBy: issueObj.reportedBy,
+                images: issueObj.images,
+                resolvedAt: issueObj.resolvedAt,
+                resolutionNote: issueObj.resolutionNote,
+                resolutionImages: issueObj.resolutionImages,
+                adminNotes: issueObj.adminNotes,
+                createdAt: issueObj.createdAt,
+                updatedAt: issueObj.updatedAt,
+                __v: issueObj.__v
+            };
+        });
+
         res.status(200).json({
             success: true,
-            data: issues,
+            data: issuesWithSubcategoryNames,
             pagination: {
                 currentPage: parseInt(page),
                 totalPages: Math.ceil(total / limit),
@@ -247,7 +319,12 @@ export const getIssueById = async (req, res) => {
             });
         }
 
-        const issue = await Issue.findById(id);
+        const issue = await Issue.findById(id)
+            .populate('categoryId', 'name subCategories')
+            .populate('provinceId', 'name')
+            .populate('districtId', 'name') 
+            .populate('cityId', 'name')
+            .populate('reportedBy', 'name email');
 
         if (!issue) {
             return res.status(404).json({
@@ -256,9 +333,47 @@ export const getIssueById = async (req, res) => {
             });
         }
 
+        // Add subcategory name and clean response
+        let subCategoryName = 'Unknown Subcategory';
+        if (issue.categoryId && issue.categoryId.subCategories) {
+            const subCategory = issue.categoryId.subCategories.id(issue.subCategoryId);
+            subCategoryName = subCategory ? subCategory.name : 'Unknown Subcategory';
+        }
+        
+        const issueObj = issue.toObject();
+        
+        // Structure response with proper field ordering
+        const responseData = {
+            _id: issueObj._id,
+            issueNumber: issueObj.issueNumber,
+            categoryId: {
+                _id: issue.categoryId._id,
+                name: issue.categoryId.name
+            },
+            subCategoryId: issueObj.subCategoryId,
+            subCategoryName: subCategoryName,
+            provinceId: issueObj.provinceId,
+            districtId: issueObj.districtId,
+            cityId: issueObj.cityId,
+            title: issueObj.title,
+            description: issueObj.description,
+            restroomId: issueObj.restroomId,
+            status: issueObj.status,
+            priority: issueObj.priority,
+            reportedBy: issueObj.reportedBy,
+            images: issueObj.images,
+            resolvedAt: issueObj.resolvedAt,
+            resolutionNote: issueObj.resolutionNote,
+            resolutionImages: issueObj.resolutionImages,
+            adminNotes: issueObj.adminNotes,
+            createdAt: issueObj.createdAt,
+            updatedAt: issueObj.updatedAt,
+            __v: issueObj.__v
+        };
+
         res.status(200).json({
             success: true,
-            data: issue
+            data: responseData
         });
 
     } catch (error) {
@@ -266,59 +381,6 @@ export const getIssueById = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Error fetching issue",
-            error: error.message
-        });
-    }
-};
-
-// ASSIGN ISSUE TO STAFF
-export const assignIssue = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { assignedTo } = req.body;
-        
-        // VALIDATION
-        if (!id || id.length !== 24) {
-            return res.status(400).json({
-                success: false,
-                message: "Valid issue ID is required (24 characters)"
-            });
-        }
-
-        if (!assignedTo || assignedTo.length !== 24) {
-            return res.status(400).json({
-                success: false,
-                message: "Valid staff ID is required for assignment (24 characters)"
-            });
-        }
-        
-        const issue = await Issue.findByIdAndUpdate(
-            id,
-            { 
-                assignedTo,
-                status: 'IN_PROGRESS'
-            },
-            { new: true }
-        );
-
-        if (!issue) {
-            return res.status(404).json({
-                success: false,
-                message: "Issue not found"
-            });
-        }
-
-        res.status(200).json({
-            success: true,
-            message: "Issue assigned successfully!",
-            data: issue
-        });
-
-    } catch (error) {
-        console.error('Assign issue error:', error);
-        res.status(500).json({
-            success: false,
-            message: "Error assigning issue",
             error: error.message
         });
     }

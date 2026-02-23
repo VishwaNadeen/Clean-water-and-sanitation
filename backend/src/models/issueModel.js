@@ -2,6 +2,12 @@ import mongoose from "mongoose";
 
 const issueSchema = new mongoose.Schema(
     {
+        issueNumber: {
+            type: String,
+            unique: true,
+            required: false
+        },
+        
         // Category Information
         categoryId: {
             type: mongoose.Schema.Types.ObjectId,
@@ -12,12 +18,6 @@ const issueSchema = new mongoose.Schema(
         subCategoryId: {
             type: mongoose.Schema.Types.ObjectId,
             required: true
-        },
-        
-        subCategoryName: {
-            type: String,
-            required: true,
-            trim: true
         },
 
         // Location Information
@@ -78,12 +78,6 @@ const issueSchema = new mongoose.Schema(
             required: true
         },
         
-        assignedTo: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'User',
-            default: null
-        },
-        
         // Image Upload
         images: [{
             url: {
@@ -138,9 +132,37 @@ const issueSchema = new mongoose.Schema(
 // Index for better query performance
 issueSchema.index({ status: 1, createdAt: -1 });
 issueSchema.index({ restroomId: 1, status: 1 });
-issueSchema.index({ assignedTo: 1, status: 1 });
 issueSchema.index({ provinceId: 1, districtId: 1, cityId: 1 });
 issueSchema.index({ categoryId: 1, subCategoryId: 1 });
+issueSchema.index({ issueNumber: 1 }); // For human-readable ID search
+
+// Auto-generate issue number before saving
+issueSchema.pre('save', async function() {
+    if (this.isNew && !this.issueNumber) {
+        let issueNumber;
+        let attempts = 0;
+        const maxAttempts = 5;
+        
+        // Retry logic to handle potential race conditions
+        while (attempts < maxAttempts) {
+            // Get the count of existing issues and add 10000000 for 8-digit number
+            const count = await mongoose.models.Issue.countDocuments();
+            issueNumber = (10000000 + count + 1).toString();
+            
+            // Check if this number already exists
+            const existingIssue = await mongoose.models.Issue.findOne({ issueNumber });
+            if (!existingIssue) {
+                this.issueNumber = issueNumber;
+                break;
+            }
+            attempts++;
+        }
+        
+        if (!this.issueNumber) {
+            throw new Error('Unable to generate unique issue number');
+        }
+    }
+});
 
 const Issue = mongoose.model("Issue", issueSchema);
 
