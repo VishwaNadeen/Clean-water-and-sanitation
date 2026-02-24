@@ -1,5 +1,32 @@
 import User from "../models/userModel.js";
-import Login from "../models/logInModel.js"; // make sure file name matches exactly (loginModel.js / logInModel.js)
+import Login from "../models/logInModel.js";
+import bcrypt from "bcryptjs";
+import nodemailer from "nodemailer";
+
+/**
+ * Helper function to send OTP email
+ */
+const sendOtpEmail = async (email, otp) => {
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+
+  await transporter.sendMail({
+    from: `"Clean Water & Sanitation" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: "Verify Your Email - OTP",
+    html: `
+      <h3>Email Verification</h3>
+      <p>Your OTP code is:</p>
+      <h2>${otp}</h2>
+      <p>This OTP is valid for 10 minutes.</p>
+    `,
+  });
+};
 
 /**
  * CREATE user profile (Register)
@@ -31,6 +58,10 @@ export const createUserProfile = async (req, res, next) => {
       throw new Error("Email already exists.");
     }
 
+    // 🔥 Generate 6-digit OTP
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    const otpHash = await bcrypt.hash(otp, 10);
+
     // 1️⃣ Create User (password will be hashed by User model hook)
     const user = await User.create({
       firstName: firstName.trim(),
@@ -42,21 +73,26 @@ export const createUserProfile = async (req, res, next) => {
       password,
       status: "ACTIVE",
       isEmailVerified: false,
+      emailOtpHash: otpHash,
+      emailOtpExpires: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
     });
 
     // 2️⃣ Create Login record (role must always be USER)
-    // NOTE: user.password is already hashed
     await Login.create({
       userId: user._id,
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
       password: user.password,
-      role: "USER", // ✅ force default role
+      role: "USER",
     });
 
+    // 3️⃣ Send OTP email
+    await sendOtpEmail(user.email, otp);
+
     res.status(201).json({
-      message: "User profile created successfully.",
+      message:
+        "User profile created successfully. OTP sent to email for verification.",
       user: {
         id: user._id,
         firstName: user.firstName,
@@ -112,10 +148,6 @@ export const viewMyProfile = async (req, res, next) => {
 /**
  * EDIT profile details + optional PASSWORD CHANGE
  * Private route (token required)
- * Rules:
- *  - Email cannot be changed
- *  - Role cannot be changed (not in User, and not in Login)
- *  - Password change requires currentPassword + newPassword
  */
 export const editMyProfile = async (req, res, next) => {
   try {
@@ -125,8 +157,8 @@ export const editMyProfile = async (req, res, next) => {
       countryCode,
       phone,
       gender,
-      email, // ignored
-      role, // ignored (prevent any attempt)
+      email,
+      role,
       currentPassword,
       newPassword,
     } = req.body;
@@ -142,26 +174,22 @@ export const editMyProfile = async (req, res, next) => {
       throw new Error("User not found.");
     }
 
-    // ❌ Email cannot change
     if (email && email !== user.email) {
       res.status(400);
       throw new Error("Email cannot be changed.");
     }
 
-    // ❌ Role cannot change (ignore silently or throw error)
     if (role) {
       res.status(400);
       throw new Error("Role cannot be changed.");
     }
 
-    // ✅ Update basic fields
     if (firstName) user.firstName = firstName.trim();
     if (lastName) user.lastName = lastName.trim();
     if (countryCode) user.countryCode = countryCode.trim();
     if (phone) user.phone = phone.trim();
     if (gender) user.gender = gender;
 
-    // ✅ Password change
     if (needPassword) {
       if (!currentPassword || !newPassword) {
         res.status(400);
@@ -176,21 +204,18 @@ export const editMyProfile = async (req, res, next) => {
         throw new Error("Current password is incorrect.");
       }
 
-      user.password = newPassword; // will hash on save
+      user.password = newPassword;
     }
 
     await user.save();
 
-    // ✅ Sync Login table (name changes + password hash if changed)
     const updateLoginData = {
       firstName: user.firstName,
       lastName: user.lastName,
-      // email not changed
-      // role not changed
     };
 
     if (needPassword) {
-      updateLoginData.password = user.password; // hashed after save ✅
+      updateLoginData.password = user.password;
     }
 
     await Login.updateOne({ userId: user._id }, { $set: updateLoginData });
@@ -220,8 +245,7 @@ export const editMyProfile = async (req, res, next) => {
 };
 
 /**
- * DELETE own profile (password required)
- * Private route (token required)
+ * DELETE own profile
  */
 export const deleteMyProfile = async (req, res, next) => {
   try {
