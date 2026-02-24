@@ -56,7 +56,7 @@ import mongoose from "mongoose";
 
     },
 
-    {timestamp: true}
+    {timestamps: true}
  );
 
  //needed for $near / $geoNear queries

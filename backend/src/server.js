@@ -3,8 +3,8 @@ import dotenv from "dotenv";
 //import cors from "cors";
 import { connectDb } from "./config/db.js";
 
-import { devAdmin } from "./middleware/devAdmin.js";
-import exampleRoutes from "./routes/exampleRoute.js";
+//import { devAdmin } from "./middleware/devAdmin.js";
+//import exampleRoutes from "./routes/exampleRoute.js";
 import restroomRoutes from "./routes/restroomRoutes.js";
 
 dotenv.config();
@@ -19,7 +19,7 @@ app.use(express.json());
 connectDb();
 
 // routes
-app.use("/api/example", exampleRoutes);       
+//app.use("/api/example", exampleRoutes);       
 app.use("/api/restrooms", restroomRoutes);    
 
 // 404
