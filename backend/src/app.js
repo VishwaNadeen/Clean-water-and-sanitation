@@ -8,6 +8,7 @@ const app = express();
 
 // Body Parser
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use("/api/users", userRoutes);
