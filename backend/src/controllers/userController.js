@@ -1,9 +1,9 @@
 import User from "../models/userModel.js";
+import Login from "../models/logInModel.js"; // make sure file name matches exactly (loginModel.js / logInModel.js)
 
 /**
  * CREATE user profile (Register)
  * Public route (no token needed)
- * Body: firstName, lastName, email, countryCode, phone, gender, password
  */
 export const createUserProfile = async (req, res, next) => {
   try {
@@ -23,25 +23,38 @@ export const createUserProfile = async (req, res, next) => {
       throw new Error("All required fields must be provided.");
     }
 
-    const existing = await User.findOne({ email: email.toLowerCase().trim() });
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const existing = await User.findOne({ email: normalizedEmail });
     if (existing) {
       res.status(409);
       throw new Error("Email already exists.");
     }
 
+    // 1️⃣ Create User (password will be hashed by User model hook)
     const user = await User.create({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-      email: email.toLowerCase().trim(),
+      email: normalizedEmail,
       countryCode: countryCode.trim(),
       phone: phone.trim(),
       gender,
-      password, // will be hashed by pre-save hook
+      password,
       status: "ACTIVE",
       isEmailVerified: false,
     });
 
-    // Never return password
+    // 2️⃣ Create Login record (role must always be USER)
+    // NOTE: user.password is already hashed
+    await Login.create({
+      userId: user._id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      password: user.password,
+      role: "USER", // ✅ force default role
+    });
+
     res.status(201).json({
       message: "User profile created successfully.",
       user: {
@@ -69,7 +82,7 @@ export const createUserProfile = async (req, res, next) => {
  */
 export const viewMyProfile = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user._id); // password not selected by default
+    const user = await User.findById(req.user._id);
     if (!user) {
       res.status(404);
       throw new Error("User not found.");
@@ -101,9 +114,8 @@ export const viewMyProfile = async (req, res, next) => {
  * Private route (token required)
  * Rules:
  *  - Email cannot be changed
+ *  - Role cannot be changed (not in User, and not in Login)
  *  - Password change requires currentPassword + newPassword
- * Body can include: firstName, lastName, countryCode, phone, gender
- * Optional: currentPassword, newPassword
  */
 export const editMyProfile = async (req, res, next) => {
   try {
@@ -113,12 +125,12 @@ export const editMyProfile = async (req, res, next) => {
       countryCode,
       phone,
       gender,
-      email, // should be ignored
+      email, // ignored
+      role, // ignored (prevent any attempt)
       currentPassword,
       newPassword,
     } = req.body;
 
-    // Need password field only if we are changing password
     const needPassword = Boolean(currentPassword || newPassword);
 
     const user = needPassword
@@ -130,20 +142,26 @@ export const editMyProfile = async (req, res, next) => {
       throw new Error("User not found.");
     }
 
-    // ❌ Do not allow email change
+    // ❌ Email cannot change
     if (email && email !== user.email) {
       res.status(400);
       throw new Error("Email cannot be changed.");
     }
 
-    // ✅ Update basic fields (if provided)
+    // ❌ Role cannot change (ignore silently or throw error)
+    if (role) {
+      res.status(400);
+      throw new Error("Role cannot be changed.");
+    }
+
+    // ✅ Update basic fields
     if (firstName) user.firstName = firstName.trim();
     if (lastName) user.lastName = lastName.trim();
     if (countryCode) user.countryCode = countryCode.trim();
     if (phone) user.phone = phone.trim();
     if (gender) user.gender = gender;
 
-    // ✅ Password change (optional)
+    // ✅ Password change
     if (needPassword) {
       if (!currentPassword || !newPassword) {
         res.status(400);
@@ -158,12 +176,25 @@ export const editMyProfile = async (req, res, next) => {
         throw new Error("Current password is incorrect.");
       }
 
-      user.password = newPassword; // will be hashed by pre-save hook
+      user.password = newPassword; // will hash on save
     }
 
     await user.save();
 
-    // Return safe fields
+    // ✅ Sync Login table (name changes + password hash if changed)
+    const updateLoginData = {
+      firstName: user.firstName,
+      lastName: user.lastName,
+      // email not changed
+      // role not changed
+    };
+
+    if (needPassword) {
+      updateLoginData.password = user.password; // hashed after save ✅
+    }
+
+    await Login.updateOne({ userId: user._id }, { $set: updateLoginData });
+
     const safeUser = await User.findById(req.user._id);
 
     res.json({
@@ -172,7 +203,7 @@ export const editMyProfile = async (req, res, next) => {
         id: safeUser._id,
         firstName: safeUser.firstName,
         lastName: safeUser.lastName,
-        email: safeUser.email, // unchanged
+        email: safeUser.email,
         countryCode: safeUser.countryCode,
         phone: safeUser.phone,
         gender: safeUser.gender,
@@ -191,7 +222,6 @@ export const editMyProfile = async (req, res, next) => {
 /**
  * DELETE own profile (password required)
  * Private route (token required)
- * Body: password
  */
 export const deleteMyProfile = async (req, res, next) => {
   try {
@@ -214,6 +244,7 @@ export const deleteMyProfile = async (req, res, next) => {
       throw new Error("Password is incorrect.");
     }
 
+    await Login.deleteOne({ userId: user._id });
     await user.deleteOne();
 
     res.json({ message: "Profile deleted successfully." });
