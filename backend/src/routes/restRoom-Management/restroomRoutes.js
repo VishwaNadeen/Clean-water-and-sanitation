@@ -1,5 +1,5 @@
 import express from "express";
-import { devAdmin } from "../middleware/devAdmin.js";
+import { devAdmin } from "../../middleware/devAdmin.js";
 import {
     createRestroom,
     deleteRestroom,
@@ -7,7 +7,7 @@ import {
     getRestroomById,
     getRestrooms,
     updateRestroom,
-} from "../controllers/restroomController.js";
+} from "../../controllers/restRoom-Management/restroomController.js";
 
 const router = express.Router();
 

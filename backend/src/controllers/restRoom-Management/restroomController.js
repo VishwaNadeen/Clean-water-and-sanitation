@@ -1,4 +1,4 @@
-import Restroom from "../models/Restroom.js";
+import Restroom from "../../models/restRoom-Management/Restroom.js";
 
 // post api/restroom Admin - dev
 

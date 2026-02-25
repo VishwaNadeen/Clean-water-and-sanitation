@@ -5,9 +5,10 @@ import { connectDb } from "./config/db.js";
 
 //import { devAdmin } from "./middleware/devAdmin.js";
 //import exampleRoutes from "./routes/exampleRoute.js";
-import restroomRoutes from "./routes/restroomRoutes.js";
+import restroomRoutes from "./routes/restRoom-Management/restroomRoutes.js";
 
 dotenv.config();
+console.log("Loaded MONGO_URI:", process.env.MONGO_URI);
 
 const app = express();
 
