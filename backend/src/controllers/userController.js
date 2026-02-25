@@ -1,9 +1,36 @@
 import User from "../models/userModel.js";
+import Login from "../models/logInModel.js";
+import bcrypt from "bcryptjs";
+import nodemailer from "nodemailer";
+
+/**
+ * Helper function to send OTP email
+ */
+const sendOtpEmail = async (email, otp) => {
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+
+  await transporter.sendMail({
+    from: `"Clean Water & Sanitation" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: "Verify Your Email - OTP",
+    html: `
+      <h3>Email Verification</h3>
+      <p>Your OTP code is:</p>
+      <h2>${otp}</h2>
+      <p>This OTP is valid for 10 minutes.</p>
+    `,
+  });
+};
 
 /**
  * CREATE user profile (Register)
  * Public route (no token needed)
- * Body: firstName, lastName, email, countryCode, phone, gender, password
  */
 export const createUserProfile = async (req, res, next) => {
   try {
@@ -23,27 +50,49 @@ export const createUserProfile = async (req, res, next) => {
       throw new Error("All required fields must be provided.");
     }
 
-    const existing = await User.findOne({ email: email.toLowerCase().trim() });
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const existing = await User.findOne({ email: normalizedEmail });
     if (existing) {
       res.status(409);
       throw new Error("Email already exists.");
     }
 
+    // 🔥 Generate 6-digit OTP
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    const otpHash = await bcrypt.hash(otp, 10);
+
+    // 1️⃣ Create User (password will be hashed by User model hook)
     const user = await User.create({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-      email: email.toLowerCase().trim(),
+      email: normalizedEmail,
       countryCode: countryCode.trim(),
       phone: phone.trim(),
       gender,
-      password, // will be hashed by pre-save hook
+      password,
       status: "ACTIVE",
       isEmailVerified: false,
+      emailOtpHash: otpHash,
+      emailOtpExpires: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
     });
 
-    // Never return password
+    // 2️⃣ Create Login record (role must always be USER)
+    await Login.create({
+      userId: user._id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      password: user.password,
+      role: "USER",
+    });
+
+    // 3️⃣ Send OTP email
+    await sendOtpEmail(user.email, otp);
+
     res.status(201).json({
-      message: "User profile created successfully.",
+      message:
+        "User profile created successfully. OTP sent to email for verification.",
       user: {
         id: user._id,
         firstName: user.firstName,
@@ -69,7 +118,7 @@ export const createUserProfile = async (req, res, next) => {
  */
 export const viewMyProfile = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user._id); // password not selected by default
+    const user = await User.findById(req.user._id);
     if (!user) {
       res.status(404);
       throw new Error("User not found.");
@@ -99,11 +148,6 @@ export const viewMyProfile = async (req, res, next) => {
 /**
  * EDIT profile details + optional PASSWORD CHANGE
  * Private route (token required)
- * Rules:
- *  - Email cannot be changed
- *  - Password change requires currentPassword + newPassword
- * Body can include: firstName, lastName, countryCode, phone, gender
- * Optional: currentPassword, newPassword
  */
 export const editMyProfile = async (req, res, next) => {
   try {
@@ -113,12 +157,12 @@ export const editMyProfile = async (req, res, next) => {
       countryCode,
       phone,
       gender,
-      email, // should be ignored
+      email,
+      role,
       currentPassword,
       newPassword,
     } = req.body;
 
-    // Need password field only if we are changing password
     const needPassword = Boolean(currentPassword || newPassword);
 
     const user = needPassword
@@ -130,20 +174,22 @@ export const editMyProfile = async (req, res, next) => {
       throw new Error("User not found.");
     }
 
-    // ❌ Do not allow email change
     if (email && email !== user.email) {
       res.status(400);
       throw new Error("Email cannot be changed.");
     }
 
-    // ✅ Update basic fields (if provided)
+    if (role) {
+      res.status(400);
+      throw new Error("Role cannot be changed.");
+    }
+
     if (firstName) user.firstName = firstName.trim();
     if (lastName) user.lastName = lastName.trim();
     if (countryCode) user.countryCode = countryCode.trim();
     if (phone) user.phone = phone.trim();
     if (gender) user.gender = gender;
 
-    // ✅ Password change (optional)
     if (needPassword) {
       if (!currentPassword || !newPassword) {
         res.status(400);
@@ -158,12 +204,22 @@ export const editMyProfile = async (req, res, next) => {
         throw new Error("Current password is incorrect.");
       }
 
-      user.password = newPassword; // will be hashed by pre-save hook
+      user.password = newPassword;
     }
 
     await user.save();
 
-    // Return safe fields
+    const updateLoginData = {
+      firstName: user.firstName,
+      lastName: user.lastName,
+    };
+
+    if (needPassword) {
+      updateLoginData.password = user.password;
+    }
+
+    await Login.updateOne({ userId: user._id }, { $set: updateLoginData });
+
     const safeUser = await User.findById(req.user._id);
 
     res.json({
@@ -172,7 +228,7 @@ export const editMyProfile = async (req, res, next) => {
         id: safeUser._id,
         firstName: safeUser.firstName,
         lastName: safeUser.lastName,
-        email: safeUser.email, // unchanged
+        email: safeUser.email,
         countryCode: safeUser.countryCode,
         phone: safeUser.phone,
         gender: safeUser.gender,
@@ -189,9 +245,7 @@ export const editMyProfile = async (req, res, next) => {
 };
 
 /**
- * DELETE own profile (password required)
- * Private route (token required)
- * Body: password
+ * DELETE own profile
  */
 export const deleteMyProfile = async (req, res, next) => {
   try {
@@ -214,9 +268,40 @@ export const deleteMyProfile = async (req, res, next) => {
       throw new Error("Password is incorrect.");
     }
 
+    await Login.deleteOne({ userId: user._id });
     await user.deleteOne();
 
     res.json({ message: "Profile deleted successfully." });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * GET all users (ADMIN only)
+ * Private route
+ */
+export const getAllUsers = async (req, res, next) => {
+  try {
+    // Only ADMIN can access this route
+    if (req.user.role !== "ADMIN") {
+      res.status(403);
+      throw new Error("Access denied. Admin only.");
+    }
+
+    // 1️⃣ Get all login records where role = USER
+    const userLogins = await Login.find({ role: "USER" }).select("userId");
+
+    const userIds = userLogins.map((login) => login.userId);
+
+    // 2️⃣ Get only those users
+    const users = await User.find({ _id: { $in: userIds } })
+      .select("-password -emailOtpHash -refreshTokenHash");
+
+    res.json({
+      total: users.length,
+      users,
+    });
   } catch (err) {
     next(err);
   }

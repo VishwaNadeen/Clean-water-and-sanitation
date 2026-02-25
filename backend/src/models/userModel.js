@@ -44,7 +44,7 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: true,
-      select: false, // prevent returning password in queries
+      select: false,
     },
 
     status: {
@@ -62,35 +62,37 @@ const userSchema = new mongoose.Schema(
       type: Date,
     },
 
-    refreshTokenHash: {
+    // ✅ OTP Fields
+    emailOtpHash: {
       type: String,
       select: false,
     },
+
+    emailOtpExpires: {
+      type: Date,
+    },
+
+    passwordResetOtpHash: { 
+      type: String, 
+      select: false },
+
+    passwordResetOtpExpires: { 
+      type: Date },
+      
   },
-  {
-    timestamps: true, // automatically adds createdAt & updatedAt
-  }
+  { timestamps: true }
 );
 
-// 🔐 Hash password before saving (FIXED)
+// 🔐 Hash password
 userSchema.pre("save", async function () {
-  // Only hash if password is new/changed
   if (!this.isModified("password")) return;
-
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
 });
 
-// 🔎 Compare password during login
 userSchema.methods.comparePassword = async function (enteredPassword) {
   return bcrypt.compare(enteredPassword, this.password);
 };
 
-// 👤 Virtual full name (optional)
-userSchema.virtual("fullName").get(function () {
-  return `${this.firstName} ${this.lastName}`;
-});
-
 const User = mongoose.model("User", userSchema);
-
 export default User;
