@@ -8,7 +8,7 @@ import {
   updateStaff,
   deleteStaff,
 
-} from "../controllers/StaffCtrl.js";
+} from "../../controllers/StaffManage/StaffCtrl.js";
 
 //import { requireAuth } from "../middlewares/auth.js"; // your existing auth middleware
 
