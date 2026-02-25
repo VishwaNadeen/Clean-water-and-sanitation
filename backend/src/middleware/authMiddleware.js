@@ -4,6 +4,7 @@ import User from "../models/userModel.js";
 /**
  * 🔐 PROTECT MIDDLEWARE
  * Checks JWT token and attaches logged-in user to req.user
+ * Also attaches role from token to req.user.role
  */
 export const protect = async (req, res, next) => {
   try {
@@ -21,7 +22,7 @@ export const protect = async (req, res, next) => {
       throw new Error("Not authorized. Token missing.");
     }
 
-    // Verify token
+    // Verify token (token payload: { id, role })
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     // Find user (exclude password by default)
@@ -32,14 +33,18 @@ export const protect = async (req, res, next) => {
       throw new Error("User not found.");
     }
 
-    req.user = user; // attach logged-in user
+    // ✅ attach logged-in user
+    req.user = user;
+
+    // ✅ attach role from token (IMPORTANT for admin routes)
+    req.user.role = decoded.role;
+
     next();
   } catch (error) {
     res.status(401);
     next(error);
   }
 };
-
 
 /**
  * 🚫 ACCOUNT STATUS CHECK
@@ -53,7 +58,6 @@ export const checkAccountStatus = (req, res, next) => {
   next();
 };
 
-
 /**
  * 🔑 REQUIRE PASSWORD FOR DELETE
  * Ensures password field exists in delete request
@@ -66,14 +70,13 @@ export const requirePasswordForDelete = (req, res, next) => {
   next();
 };
 
-
 /**
  * 👮 OPTIONAL ROLE AUTHORIZATION
  * Example: authorizeRoles("ADMIN")
  */
 export const authorizeRoles = (...roles) => {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
+    if (!req.user.role || !roles.includes(req.user.role)) {
       res.status(403);
       return next(new Error("Access denied. Insufficient permissions."));
     }

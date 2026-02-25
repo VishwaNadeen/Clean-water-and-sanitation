@@ -276,3 +276,33 @@ export const deleteMyProfile = async (req, res, next) => {
     next(err);
   }
 };
+
+/**
+ * GET all users (ADMIN only)
+ * Private route
+ */
+export const getAllUsers = async (req, res, next) => {
+  try {
+    // Only ADMIN can access this route
+    if (req.user.role !== "ADMIN") {
+      res.status(403);
+      throw new Error("Access denied. Admin only.");
+    }
+
+    // 1️⃣ Get all login records where role = USER
+    const userLogins = await Login.find({ role: "USER" }).select("userId");
+
+    const userIds = userLogins.map((login) => login.userId);
+
+    // 2️⃣ Get only those users
+    const users = await User.find({ _id: { $in: userIds } })
+      .select("-password -emailOtpHash -refreshTokenHash");
+
+    res.json({
+      total: users.length,
+      users,
+    });
+  } catch (err) {
+    next(err);
+  }
+};

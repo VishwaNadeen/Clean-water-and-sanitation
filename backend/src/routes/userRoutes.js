@@ -4,6 +4,7 @@ import {
   viewMyProfile,
   editMyProfile,
   deleteMyProfile,
+  getAllUsers,
 } from "../controllers/userController.js";
 
 import {
@@ -31,5 +32,7 @@ router.delete(
   requirePasswordForDelete,
   deleteMyProfile
 );
+
+router.get("/", protect, getAllUsers);
 
 export default router;
