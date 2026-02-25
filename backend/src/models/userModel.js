@@ -71,14 +71,6 @@ const userSchema = new mongoose.Schema(
     emailOtpExpires: {
       type: Date,
     },
-
-    passwordResetOtpHash: { 
-      type: String, 
-      select: false },
-
-    passwordResetOtpExpires: { 
-      type: Date },
-      
   },
   { timestamps: true }
 );
