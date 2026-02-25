@@ -5,7 +5,7 @@ import District from "../models/districtModel.js";
 import City from "../models/cityModel.js";
 import User from "../../models/userModel.js";          // Using team member's user model
 import Restroom from "../models/restroomModel.js";  // Placeholder - will be replaced by team member
-import { uploadToCloudinary } from "../../config/cloudinary.js";
+import { uploadToCloudinary } from "../utils/cloudinary.js";
 import mongoose from "mongoose";
 
 // CREATE ISSUE
@@ -197,9 +197,18 @@ export const createIssue = async (req, res) => {
                 }
             } catch (uploadError) {
                 console.error('Image upload error:', uploadError);
+                console.error('Error details:', {
+                    message: uploadError.message,
+                    stack: uploadError.stack,
+                    cloudinaryConfig: {
+                        cloud_name: process.env.CLOUDINARY_CLOUD_NAME ? 'SET' : 'NOT SET',
+                        api_key: process.env.CLOUDINARY_API_KEY ? 'SET' : 'NOT SET', 
+                        api_secret: process.env.CLOUDINARY_API_SECRET ? 'SET' : 'NOT SET'
+                    }
+                });
                 return res.status(500).json({
                     success: false,
-                    message: "Error uploading images. Please try again."
+                    message: `Error uploading images: ${uploadError.message}. Please check your image format and size.`
                 });
             }
         }

@@ -1,5 +1,5 @@
 import express from "express";
-import { upload } from "../../config/cloudinary.js";
+import { upload } from "../utils/cloudinary.js";
 import Issue from "../models/issueModel.js";
 import IssueCategory from "../models/issueCategoryModel.js";
 import Province from "../models/provinceModel.js";
