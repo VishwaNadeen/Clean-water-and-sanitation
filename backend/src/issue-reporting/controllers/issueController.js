@@ -621,6 +621,165 @@ export const updateIssueStatus = async (req, res) => {
     }
 };
 
+// UPDATE ISSUE (General updates - title, description, priority, etc.)
+export const updateIssue = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title, description, priority, categoryId, subCategoryId, provinceId, districtId, cityId, restroomId } = req.body;
+        
+        // VALIDATION
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                message: "Issue ID is required"
+            });
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid issue ID format. Please provide a valid issue ID."
+            });
+        }
+
+        // Find the issue first to check ownership (users can only update their own issues, admins can update any)
+        const existingIssue = await Issue.findById(id);
+        if (!existingIssue) {
+            return res.status(404).json({
+                success: false,
+                message: "Issue not found"
+            });
+        }
+
+        // Check if user can update this issue (own issue or admin)
+        if (req.user.role !== 'ADMIN' && existingIssue.reportedBy.toString() !== req.user._id.toString()) {
+            return res.status(403).json({
+                success: false,
+                message: "Access denied. You can only update your own issues."
+            });
+        }
+
+        // Build update object with only provided fields
+        const updateData = {};
+        if (title !== undefined) {
+            if (!title || title.trim().length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Title cannot be empty"
+                });
+            }
+            updateData.title = title.trim();
+        }
+        
+        if (description !== undefined) {
+            if (!description || description.trim().length < 5) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Description must be at least 5 characters"
+                });
+            }
+            updateData.description = description.trim();
+        }
+
+        if (priority !== undefined) {
+            const validPriorities = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
+            if (!validPriorities.includes(priority)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Valid priority is required. Valid priorities: " + validPriorities.join(', ')
+                });
+            }
+            updateData.priority = priority;
+        }
+
+        // Validate ObjectIds if provided
+        const objectIdFields = { categoryId, subCategoryId, provinceId, districtId, cityId, restroomId };
+        for (const [field, value] of Object.entries(objectIdFields)) {
+            if (value !== undefined) {
+                if (!mongoose.Types.ObjectId.isValid(value)) {
+                    return res.status(400).json({
+                        success: false,
+                        message: `Invalid ${field} format. Please provide a valid ${field}.`
+                    });
+                }
+                updateData[field] = value;
+            }
+        }
+
+        // Update the issue
+        const updatedIssue = await Issue.findByIdAndUpdate(
+            id,
+            updateData,
+            { new: true, runValidators: true }
+        )
+        .populate('categoryId', 'name')
+        .populate('provinceId', 'name')
+        .populate('districtId', 'name')
+        .populate('cityId', 'name')
+        .populate('restroomId', 'name city district province condition avgRating ratingCount location')
+        .populate('reportedBy', 'firstName lastName email');
+
+        // Get subcategory name separately if needed
+        let subCategoryName = 'Unknown Subcategory';
+        if (updatedIssue.categoryId && updatedIssue.subCategoryId) {
+            // Get the full category with subcategories to find the subcategory name
+            const categoryWithSubs = await IssueCategory.findById(updatedIssue.categoryId._id).select('subCategories');
+            if (categoryWithSubs && categoryWithSubs.subCategories) {
+                const subCategory = categoryWithSubs.subCategories.find(
+                    sub => sub._id.toString() === updatedIssue.subCategoryId.toString()
+                );
+                subCategoryName = subCategory ? subCategory.name : 'Unknown Subcategory';
+            }
+        }
+
+        // Structure response with proper field ordering
+        const issueObj = updatedIssue.toObject();
+        const responseData = {
+            _id: issueObj._id,
+            issueNumber: issueObj.issueNumber,
+            categoryId: {
+                _id: issueObj.categoryId._id,
+                name: issueObj.categoryId.name
+            },
+            subCategoryId: {
+                _id: issueObj.subCategoryId,
+                name: subCategoryName
+            },
+            provinceId: issueObj.provinceId,
+            districtId: issueObj.districtId,
+            cityId: issueObj.cityId,
+            title: issueObj.title,
+            description: issueObj.description,
+            restroomId: issueObj.restroomId,
+            status: issueObj.status,
+            priority: issueObj.priority,
+            reportedBy: issueObj.reportedBy,
+            images: issueObj.images,
+            resolvedAt: issueObj.resolvedAt,
+            resolutionNote: issueObj.resolutionNote,
+            resolutionImages: issueObj.resolutionImages,
+            adminNotes: issueObj.adminNotes,
+            createdAt: issueObj.createdAt,
+            updatedAt: issueObj.updatedAt,
+            __v: issueObj.__v
+        };
+
+        res.status(200).json({
+            success: true,
+            message: "Issue updated successfully!",
+            data: responseData
+        });
+
+    } catch (error) {
+        console.error('Update issue error:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error updating issue",
+            error: error.message
+        });
+    }
+};
+
 // DELETE ISSUE
 export const deleteIssue = async (req, res) => {
     try {

@@ -1,4 +1,5 @@
 import IssueCategory from '../models/issueCategoryModel.js';
+import mongoose from 'mongoose';
 
 // ==================== PUBLIC CONTROLLERS ====================
 
@@ -128,12 +129,71 @@ export const updateCategory = async (req, res) => {
         const { id } = req.params;
         const { name, description, isActive } = req.body;
         
+        // VALIDATION
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                message: 'Category ID is required'
+            });
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid category ID format. Please provide a valid category ID.'
+            });
+        }
+
+        // Check if category exists
+        const existingCategory = await IssueCategory.findById(id);
+        if (!existingCategory) {
+            return res.status(404).json({
+                success: false,
+                message: 'Category not found'
+            });
+        }
+
+        // Build update data
         const updateData = {
             updatedBy: req.user._id
         };
-        if (name !== undefined) updateData.name = name;
-        if (description !== undefined) updateData.description = description;
-        if (isActive !== undefined) updateData.isActive = isActive;
+        
+        if (name !== undefined) {
+            if (!name || name.trim().length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Category name cannot be empty'
+                });
+            }
+            
+            // Check if name already exists (excluding current category)
+            const nameExists = await IssueCategory.findOne({
+                _id: { $ne: id }, 
+                name: { $regex: new RegExp('^' + name.trim() + '$', 'i') }
+            });
+            if (nameExists) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Category name already exists. Please choose a different name.'
+                });
+            }
+            
+            updateData.name = name.trim();
+        }
+        
+        if (description !== undefined) {
+            updateData.description = description || '';
+        }
+        
+        if (isActive !== undefined) {
+            if (typeof isActive !== 'boolean') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'isActive must be true or false'
+                });
+            }
+            updateData.isActive = isActive;
+        }
         
         const updatedCategory = await IssueCategory.findByIdAndUpdate(
             id,
@@ -141,22 +201,17 @@ export const updateCategory = async (req, res) => {
             { new: true, runValidators: true }
         ).populate('createdBy updatedBy', 'name email');
         
-        if (!updatedCategory) {
-            return res.status(404).json({
-                success: false,
-                message: 'Category not found'
-            });
-        }
-        
         res.json({
             success: true,
             message: 'Category updated successfully',
             data: updatedCategory
         });
     } catch (error) {
+        console.error('Update category error:', error);
         res.status(500).json({
             success: false,
-            message: error.message
+            message: 'Error updating category',
+            error: error.message
         });
     }
 };
@@ -250,6 +305,35 @@ export const updateSubCategory = async (req, res) => {
         const { categoryId, subCategoryId } = req.params;
         const { name, description, isActive } = req.body;
         
+        // VALIDATION
+        if (!categoryId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Category ID is required'
+            });
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(categoryId)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid category ID format. Please provide a valid category ID.'
+            });
+        }
+
+        if (!subCategoryId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Subcategory ID is required'
+            });
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(subCategoryId)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid subcategory ID format. Please provide a valid subcategory ID.'
+            });
+        }
+        
         const category = await IssueCategory.findById(categoryId);
         if (!category) {
             return res.status(404).json({
@@ -265,23 +349,70 @@ export const updateSubCategory = async (req, res) => {
                 message: 'Subcategory not found'
             });
         }
+
+        // Validate and update fields
+        if (name !== undefined) {
+            if (!name || name.trim().length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Subcategory name cannot be empty'
+                });
+            }
+            
+            // Check if name already exists in this category (excluding current subcategory)
+            const nameExists = category.subCategories.find(
+                sub => sub._id.toString() !== subCategoryId && 
+                       sub.name.toLowerCase() === name.trim().toLowerCase()
+            );
+            if (nameExists) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Subcategory name already exists in this category. Please choose a different name.'
+                });
+            }
+            
+            subCategory.name = name.trim();
+        }
         
-        if (name !== undefined) subCategory.name = name;
-        if (description !== undefined) subCategory.description = description;
-        if (isActive !== undefined) subCategory.isActive = isActive;
+        if (description !== undefined) {
+            subCategory.description = description || '';
+        }
+        
+        if (isActive !== undefined) {
+            if (typeof isActive !== 'boolean') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'isActive must be true or false'
+                });
+            }
+            subCategory.isActive = isActive;
+        }
+        
         category.updatedBy = req.user._id;
-        
         await category.save();
         
         res.json({
             success: true,
             message: 'Subcategory updated successfully',
-            data: category
+            data: {
+                category: {
+                    _id: category._id,
+                    name: category.name
+                },
+                subcategory: {
+                    _id: subCategory._id,
+                    name: subCategory.name,
+                    description: subCategory.description,
+                    isActive: subCategory.isActive
+                }
+            }
         });
     } catch (error) {
+        console.error('Update subcategory error:', error);
         res.status(500).json({
             success: false,
-            message: error.message
+            message: 'Error updating subcategory',
+            error: error.message
         });
     }
 };
