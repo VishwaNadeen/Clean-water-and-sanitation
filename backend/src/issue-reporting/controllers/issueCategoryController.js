@@ -1,13 +1,9 @@
-import express from 'express';
 import IssueCategory from '../models/issueCategoryModel.js';
-import User from '../models/userModel.js';  // Placeholder - ensures User model is registered
 
-const router = express.Router();
-
-// ==================== PUBLIC ROUTES ====================
+// ==================== PUBLIC CONTROLLERS ====================
 
 // Get all active categories with their active subcategories (for dropdown)
-router.get('/dropdown', async (req, res) => {
+export const getCategoriesForDropdown = async (req, res) => {
     try {
         const categories = await IssueCategory.find({ isActive: true })
             .select('name subCategories')
@@ -30,10 +26,10 @@ router.get('/dropdown', async (req, res) => {
             message: error.message
         });
     }
-});
+};
 
 // Get subcategories by category ID
-router.get('/:categoryId/subcategories', async (req, res) => {
+export const getSubCategoriesByCategoryId = async (req, res) => {
     try {
         const { categoryId } = req.params;
         const category = await IssueCategory.findById(categoryId);
@@ -57,12 +53,12 @@ router.get('/:categoryId/subcategories', async (req, res) => {
             message: error.message
         });
     }
-});
+};
 
-// ==================== ADMIN ROUTES ====================
+// ==================== ADMIN CONTROLLERS ====================
 
 // Get all categories (admin view)
-router.get('/admin', async (req, res) => {
+export const getAllCategories = async (req, res) => {
     try {
         const categories = await IssueCategory.find()
             .populate('createdBy', 'name email')
@@ -80,10 +76,10 @@ router.get('/admin', async (req, res) => {
             message: error.message
         });
     }
-});
+};
 
 // Create new category
-router.post('/', async (req, res) => {
+export const createCategory = async (req, res) => {
     try {
         const { name, description, subCategories, createdBy } = req.body;
         
@@ -124,10 +120,10 @@ router.post('/', async (req, res) => {
             message: error.message
         });
     }
-});
+};
 
 // Update category
-router.put('/:id', async (req, res) => {
+export const updateCategory = async (req, res) => {
     try {
         const { id } = req.params;
         const { name, description, isActive, updatedBy } = req.body;
@@ -162,10 +158,10 @@ router.put('/:id', async (req, res) => {
             message: error.message
         });
     }
-});
+};
 
 // Delete category
-router.delete('/:id', async (req, res) => {
+export const deleteCategory = async (req, res) => {
     try {
         const { id } = req.params;
         
@@ -188,12 +184,12 @@ router.delete('/:id', async (req, res) => {
             message: error.message
         });
     }
-});
+};
 
-// ==================== SUBCATEGORY ROUTES ====================
+// ==================== SUBCATEGORY CONTROLLERS ====================
 
 // Add subcategory to category
-router.post('/:categoryId/subcategories', async (req, res) => {
+export const addSubCategory = async (req, res) => {
     try {
         const { categoryId } = req.params;
         const { name, description, updatedBy } = req.body;
@@ -247,10 +243,10 @@ router.post('/:categoryId/subcategories', async (req, res) => {
             message: error.message
         });
     }
-});
+};
 
 // Update subcategory
-router.put('/:categoryId/subcategories/:subCategoryId', async (req, res) => {
+export const updateSubCategory = async (req, res) => {
     try {
         const { categoryId, subCategoryId } = req.params;
         const { name, description, isActive, updatedBy } = req.body;
@@ -289,10 +285,10 @@ router.put('/:categoryId/subcategories/:subCategoryId', async (req, res) => {
             message: error.message
         });
     }
-});
+};
 
 // Delete subcategory
-router.delete('/:categoryId/subcategories/:subCategoryId', async (req, res) => {
+export const deleteSubCategory = async (req, res) => {
     try {
         const { categoryId, subCategoryId } = req.params;
         const { updatedBy } = req.body;
@@ -323,6 +319,4 @@ router.delete('/:categoryId/subcategories/:subCategoryId', async (req, res) => {
             message: error.message
         });
     }
-});
-
-export default router;
+};

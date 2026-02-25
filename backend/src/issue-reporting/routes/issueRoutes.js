@@ -1,5 +1,5 @@
 import express from "express";
-import { upload } from "../config/cloudinary.js";
+import { upload } from "../../config/cloudinary.js";
 import Issue from "../models/issueModel.js";
 import IssueCategory from "../models/issueCategoryModel.js";
 import Province from "../models/provinceModel.js";
@@ -11,7 +11,8 @@ import {
     getIssueById,
     resolveIssue,
     updateIssueStatus,
-    deleteIssue
+    deleteIssue,
+    getUserIssues
 } from "../controllers/issueController.js";
 
 const router = express.Router();
@@ -21,6 +22,9 @@ router.post("/", upload.array('images', 5), createIssue);
 
 // Get all issues with filtering and pagination
 router.get("/", getAllIssues);
+
+// Get issues by user ID (user's own issues)
+router.get("/user/:userId", getUserIssues);
 
 // Get single issue by ID  
 router.get("/:id", getIssueById);

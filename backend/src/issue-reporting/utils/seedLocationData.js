@@ -1,5 +1,5 @@
 import { seedLocationData } from './locationSeeder.js';
-import { connectDb } from '../config/db.js';
+import { connectDb } from '../../config/db.js';
 
 // Load environment variables
 import dotenv from 'dotenv';

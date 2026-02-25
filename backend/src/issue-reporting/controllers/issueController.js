@@ -5,7 +5,8 @@ import District from "../models/districtModel.js";
 import City from "../models/cityModel.js";
 import User from "../models/userModel.js";          // Placeholder - will be replaced by team member
 import Restroom from "../models/restroomModel.js";  // Placeholder - will be replaced by team member
-import { uploadToCloudinary } from "../config/cloudinary.js";
+import { uploadToCloudinary } from "../../config/cloudinary.js";
+import mongoose from "mongoose";
 
 // CREATE ISSUE
 export const createIssue = async (req, res) => {
@@ -535,6 +536,107 @@ export const deleteIssue = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Error deleting issue",
+            error: error.message
+        });
+    }
+};
+
+// GET USER'S OWN ISSUES
+export const getUserIssues = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { status, page = 1, limit = 10 } = req.query;
+        
+        // VALIDATION
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid user ID format"
+            });
+        }
+        
+        if (page && (isNaN(page) || page < 1)) {
+            return res.status(400).json({
+                success: false,
+                message: "Page must be a positive number"
+            });
+        }
+
+        if (limit && (isNaN(limit) || limit < 1 || limit > 100)) {
+            return res.status(400).json({
+                success: false,
+                message: "Limit must be between 1 and 100"
+            });
+        }
+
+        const validStatuses = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
+        if (status && !validStatuses.includes(status)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid status filter. Valid statuses: " + validStatuses.join(', ')
+            });
+        }
+
+        // Build filter for user's issues
+        const filter = {
+            reportedBy: new mongoose.Types.ObjectId(userId)
+        };
+        
+        if (status) filter.status = status;
+
+        const skip = (page - 1) * limit;
+        const userIssues = await Issue.find(filter)
+            .populate('categoryId', 'name subCategories')
+            .populate('provinceId', 'name')
+            .populate('districtId', 'name')
+            .populate('cityId', 'name')
+            .populate('reportedBy', 'name email')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(parseInt(limit));
+
+        const total = await Issue.countDocuments(filter);
+
+        // Filter issues to show only selected subcategory
+        const issuesWithSubcategoryNames = userIssues.map(issue => {
+            const issueObj = issue.toObject();
+            
+            // Find and add the subcategory name
+            if (issueObj.categoryId && issueObj.categoryId.subCategories) {
+                const subcategory = issueObj.categoryId.subCategories.find(
+                    sub => sub._id.toString() === issueObj.subCategoryId.toString()
+                );
+                issueObj.subCategoryName = subcategory ? subcategory.name : 'Unknown Subcategory';
+            }
+            
+            return issueObj;
+        });
+
+        const totalPages = Math.ceil(total / limit);
+        const hasNextPage = page < totalPages;
+        const hasPrevPage = page > 1;
+
+        res.status(200).json({
+            success: true,
+            message: "User issues retrieved successfully",
+            data: {
+                issues: issuesWithSubcategoryNames,
+                pagination: {
+                    currentPage: parseInt(page),
+                    totalPages,
+                    totalIssues: total,
+                    limit: parseInt(limit),
+                    hasNextPage,
+                    hasPrevPage
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Get user issues error:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error retrieving user issues",
             error: error.message
         });
     }

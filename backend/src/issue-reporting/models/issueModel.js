@@ -134,7 +134,7 @@ issueSchema.index({ status: 1, createdAt: -1 });
 issueSchema.index({ restroomId: 1, status: 1 });
 issueSchema.index({ provinceId: 1, districtId: 1, cityId: 1 });
 issueSchema.index({ categoryId: 1, subCategoryId: 1 });
-issueSchema.index({ issueNumber: 1 }); // For human-readable ID search
+// Note: issueNumber index is auto-created by unique: true
 
 // Auto-generate issue number before saving
 issueSchema.pre('save', async function() {
