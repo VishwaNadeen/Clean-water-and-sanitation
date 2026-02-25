@@ -1,5 +1,5 @@
-import User from "../models/userModel.js";
-import Login from "../models/logInModel.js";
+import User from "../../models/user-management/userModel.js";
+import Login from "../../models/user-management/logInModel.js";
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
 

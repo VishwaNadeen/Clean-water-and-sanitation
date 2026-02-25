@@ -1,8 +1,8 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
-import Login from "../models/logInModel.js";
-import User from "../models/userModel.js";
+import Login from "../../models/user-management/logInModel.js";
+import User from "../../models/user-management/userModel.js";
 
 const generateToken = (id, role) => {
   return jwt.sign({ id, role }, process.env.JWT_SECRET, {

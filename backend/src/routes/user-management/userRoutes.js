@@ -5,13 +5,13 @@ import {
   editMyProfile,
   deleteMyProfile,
   getAllUsers,
-} from "../controllers/userController.js";
+} from "../../controllers/user-management/userController.js";
 
 import {
   protect,
   checkAccountStatus,
   requirePasswordForDelete,
-} from "../middleware/authMiddleware.js";
+} from "../../middleware/user-management/authMiddleware.js";
 
 const router = express.Router();
 
