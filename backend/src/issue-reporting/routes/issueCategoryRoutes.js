@@ -10,6 +10,7 @@ import {
     updateSubCategory,
     deleteSubCategory
 } from '../controllers/issueCategoryController.js';
+import { protect, checkAccountStatus, authorizeRoles } from "../../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -24,26 +25,26 @@ router.get('/:categoryId/subcategories', getSubCategoriesByCategoryId);
 // ==================== ADMIN ROUTES ====================
 
 // Get all categories (admin view)
-router.get('/admin', getAllCategories);
+router.get('/admin', protect, checkAccountStatus, authorizeRoles('ADMIN'), getAllCategories);
 
 // Create new category
-router.post('/', createCategory);
+router.post('/', protect, checkAccountStatus, authorizeRoles('ADMIN'), createCategory);
 
 // Update category
-router.put('/:id', updateCategory);
+router.put('/:id', protect, checkAccountStatus, authorizeRoles('ADMIN'), updateCategory);
 
 // Delete category
-router.delete('/:id', deleteCategory);
+router.delete('/:id', protect, checkAccountStatus, authorizeRoles('ADMIN'), deleteCategory);
 
 // ==================== SUBCATEGORY ROUTES ====================
 
 // Add subcategory to category
-router.post('/:categoryId/subcategories', addSubCategory);
+router.post('/:categoryId/subcategories', protect, checkAccountStatus, authorizeRoles('ADMIN'), addSubCategory);
 
 // Update subcategory
-router.put('/:categoryId/subcategories/:subCategoryId', updateSubCategory);
+router.put('/:categoryId/subcategories/:subCategoryId', protect, checkAccountStatus, authorizeRoles('ADMIN'), updateSubCategory);
 
 // Delete subcategory
-router.delete('/:categoryId/subcategories/:subCategoryId', deleteSubCategory);
+router.delete('/:categoryId/subcategories/:subCategoryId', protect, checkAccountStatus, authorizeRoles('ADMIN'), deleteSubCategory);
 
 export default router;

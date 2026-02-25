@@ -5,6 +5,7 @@ import IssueCategory from "../models/issueCategoryModel.js";
 import Province from "../models/provinceModel.js";
 import District from "../models/districtModel.js";
 import City from "../models/cityModel.js";
+import { protect, checkAccountStatus, authorizeRoles } from "../../middleware/authMiddleware.js";
 import {
     createIssue,
     getAllIssues,
@@ -17,14 +18,11 @@ import {
 
 const router = express.Router();
 
-// Create new issue with image upload (up to 5 files)
-router.post("/", upload.array('images', 5), createIssue);
+// Create new issue with image upload (up to 5 files) - Requires authentication
+router.post("/", protect, checkAccountStatus, upload.array('images', 5), createIssue);
 
-// Get all issues with filtering and pagination
-router.get("/", getAllIssues);
-
-// Get issues by user ID (user's own issues)
-router.get("/user/:userId", getUserIssues);
+// Get issues (user's own issues) - Requires authentication  
+router.get("/", protect, checkAccountStatus, getAllIssues);
 
 // Get single issue by ID  
 router.get("/:id", getIssueById);
@@ -46,7 +44,7 @@ router.get("/search/:issueNumber", async (req, res) => {
             .populate('provinceId', 'name')
             .populate('districtId', 'name')
             .populate('cityId', 'name')
-            .populate('reportedBy', 'name email');
+            .populate('reportedBy', 'firstName lastName email');
             
         if (!issue) {
             return res.status(404).json({
@@ -108,13 +106,13 @@ router.get("/search/:issueNumber", async (req, res) => {
     }
 });
 
-// Resolve issue with resolution images (up to 3 files)
-router.patch("/:id/resolve", upload.array('resolutionImages', 3), resolveIssue);
+// Resolve issue with resolution images (up to 3 files) - Admin only
+router.patch("/:id/resolve", protect, checkAccountStatus, authorizeRoles("ADMIN"), upload.array('resolutionImages', 3), resolveIssue);
 
-// Update issue status
-router.patch("/:id/status", updateIssueStatus);
+// Update issue status - Admin only
+router.patch("/:id/status", protect, checkAccountStatus, authorizeRoles("ADMIN"), updateIssueStatus);
 
-// Delete issue
-router.delete("/:id", deleteIssue);
+// Delete issue - Admin only
+router.delete("/:id", protect, checkAccountStatus, authorizeRoles("ADMIN"), deleteIssue);
 
 export default router;

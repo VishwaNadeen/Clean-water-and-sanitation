@@ -3,7 +3,7 @@ import IssueCategory from "../models/issueCategoryModel.js";
 import Province from "../models/provinceModel.js";
 import District from "../models/districtModel.js";
 import City from "../models/cityModel.js";
-import User from "../models/userModel.js";          // Placeholder - will be replaced by team member
+import User from "../../models/userModel.js";          // Using team member's user model
 import Restroom from "../models/restroomModel.js";  // Placeholder - will be replaced by team member
 import { uploadToCloudinary } from "../../config/cloudinary.js";
 import mongoose from "mongoose";
@@ -22,7 +22,9 @@ export const createIssue = async (req, res) => {
             restroomId, 
             priority 
         } = req.body;
-        const reportedBy = req.body.reportedBy || "699b293cabd88401534705a"; // Use a valid ObjectId
+        
+        // Get authenticated user ID from middleware
+        const reportedBy = req.user._id;
 
         // VALIDATION
         if (!title || title.trim().length === 0) {
@@ -47,11 +49,19 @@ export const createIssue = async (req, res) => {
             });
         }
 
+        // Check if categoryId is a valid ObjectId format
+        if (!mongoose.Types.ObjectId.isValid(categoryId)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid category ID format. Please provide a valid category ID."
+            });
+        }
+
         const category = await IssueCategory.findById(categoryId);
         if (!category || !category.isActive) {
             return res.status(400).json({
                 success: false,
-                message: "Invalid or inactive category"
+                message: "Category not found in the system or is inactive. Please select a valid category."
             });
         }
 
@@ -62,12 +72,20 @@ export const createIssue = async (req, res) => {
             });
         }
 
+        // Check if subCategoryId is a valid ObjectId format
+        if (!mongoose.Types.ObjectId.isValid(subCategoryId)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid subcategory ID format. Please provide a valid subcategory ID."
+            });
+        }
+
         // Validate subcategory exists in the category
         const subCategory = category.subCategories.id(subCategoryId);
         if (!subCategory || !subCategory.isActive) {
             return res.status(400).json({
                 success: false,
-                message: "Invalid or inactive subcategory"
+                message: "Subcategory not found in the selected category or is inactive. Please select a valid subcategory."
             });
         }
 
@@ -79,23 +97,67 @@ export const createIssue = async (req, res) => {
             });
         }
 
+        // Validate ObjectId formats for location fields
+        if (!mongoose.Types.ObjectId.isValid(provinceId)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid province ID format. Please provide a valid province ID."
+            });
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(districtId)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid district ID format. Please provide a valid district ID."
+            });
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(cityId)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid city ID format. Please provide a valid city ID."
+            });
+        }
+
         const [province, district, city] = await Promise.all([
             Province.findById(provinceId),
             District.findById(districtId),
             City.findById(cityId)
         ]);
 
-        if (!province || !district || !city) {
-            return res.status(400).json({
+        if (!province) {
+            return res.status(404).json({
                 success: false,
-                message: "Invalid location information"
+                message: "Province not found in the system. Please select a valid province."
             });
         }
 
-        if (!restroomId || restroomId.length !== 24) {
+        if (!district) {
+            return res.status(404).json({
+                success: false,
+                message: "District not found in the system. Please select a valid district."
+            });
+        }
+
+        if (!city) {
+            return res.status(404).json({
+                success: false,
+                message: "City not found in the system. Please select a valid city."
+            });
+        }
+
+        // Validate Restroom ID
+        if (!restroomId) {
             return res.status(400).json({
                 success: false,
-                message: "Valid restroom ID is required (24 characters)"
+                message: "Restroom ID is required"
+            });
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(restroomId)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid restroom ID format. Please provide a valid restroom ID."
             });
         }
 
@@ -141,6 +203,17 @@ export const createIssue = async (req, res) => {
                 });
             }
         }
+
+        // Validate User ID (reportedBy) - User is authenticated via middleware
+        if (!reportedBy || !mongoose.Types.ObjectId.isValid(reportedBy)) {
+            return res.status(401).json({
+                success: false,
+                message: "Authentication required. Please log in to report an issue."
+            });
+        }
+
+        // User existence is already verified by auth middleware
+        // req.user contains the authenticated user data
 
         const newIssue = new Issue({
             title: title.trim(),
@@ -200,9 +273,12 @@ export const createIssue = async (req, res) => {
     }
 };
 
-// GET ALL ISSUES
+// GET ALL ISSUES (Role-based access: USER sees own issues, ADMIN sees all issues)
 export const getAllIssues = async (req, res) => {
     try {
+        // Get authenticated user ID and role from middleware
+        const userId = req.user._id;
+        const userRole = req.user.role;
         const { status, page = 1, limit = 10, issueNumber } = req.query;
         
         // VALIDATION  
@@ -228,7 +304,15 @@ export const getAllIssues = async (req, res) => {
             });
         }
 
+        // Role-based filtering
         const filter = {};
+        
+        // If user is not ADMIN, only show their own issues
+        if (userRole !== 'ADMIN') {
+            filter.reportedBy = new mongoose.Types.ObjectId(userId);
+        }
+        // If userRole is ADMIN, no reportedBy filter - show all issues
+        
         if (status) filter.status = status;
         if (issueNumber) filter.issueNumber = { $regex: issueNumber, $options: 'i' };
 
@@ -238,7 +322,8 @@ export const getAllIssues = async (req, res) => {
             .populate('provinceId', 'name')
             .populate('districtId', 'name')
             .populate('cityId', 'name')
-            .populate('reportedBy', 'name email')
+            .populate('restroomId', 'name city district province condition avgRating ratingCount location')
+            .populate('reportedBy', 'firstName lastName email')
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(parseInt(limit));
@@ -288,6 +373,7 @@ export const getAllIssues = async (req, res) => {
 
         res.status(200).json({
             success: true,
+            message: userRole === 'ADMIN' ? "All issues retrieved successfully" : "Your issues retrieved successfully",
             data: issuesWithSubcategoryNames,
             pagination: {
                 currentPage: parseInt(page),
@@ -313,10 +399,17 @@ export const getIssueById = async (req, res) => {
         const { id } = req.params;
 
         // VALIDATION
-        if (!id || id.length !== 24) {
+        if (!id) {
             return res.status(400).json({
                 success: false,
-                message: "Valid issue ID is required (24 characters)"
+                message: "Issue ID is required"
+            });
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid issue ID format. Please provide a valid issue ID."
             });
         }
 
@@ -325,7 +418,8 @@ export const getIssueById = async (req, res) => {
             .populate('provinceId', 'name')
             .populate('districtId', 'name') 
             .populate('cityId', 'name')
-            .populate('reportedBy', 'name email');
+            .populate('restroomId', 'name city district province condition avgRating ratingCount location')
+            .populate('reportedBy', 'firstName lastName email');
 
         if (!issue) {
             return res.status(404).json({
@@ -394,10 +488,17 @@ export const resolveIssue = async (req, res) => {
         const { resolutionNote } = req.body;
         
         // VALIDATION
-        if (!id || id.length !== 24) {
+        if (!id) {
             return res.status(400).json({
                 success: false,
-                message: "Valid issue ID is required (24 characters)"
+                message: "Issue ID is required"
+            });
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid issue ID format. Please provide a valid issue ID."
             });
         }
 
@@ -460,10 +561,17 @@ export const updateIssueStatus = async (req, res) => {
         const { status } = req.body;
         
         // VALIDATION
-        if (!id || id.length !== 24) {
+        if (!id) {
             return res.status(400).json({
                 success: false,
-                message: "Valid issue ID is required (24 characters)"
+                message: "Issue ID is required"
+            });
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid issue ID format. Please provide a valid issue ID."
             });
         }
 
@@ -510,10 +618,17 @@ export const deleteIssue = async (req, res) => {
         const { id } = req.params;
 
         // VALIDATION
-        if (!id || id.length !== 24) {
+        if (!id) {
             return res.status(400).json({
                 success: false,
-                message: "Valid issue ID is required (24 characters)"
+                message: "Issue ID is required"
+            });
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid issue ID format. Please provide a valid issue ID."
             });
         }
 
@@ -541,19 +656,15 @@ export const deleteIssue = async (req, res) => {
     }
 };
 
-// GET USER'S OWN ISSUES
+// GET USER'S OWN ISSUES (Authenticated user's issues only)
 export const getUserIssues = async (req, res) => {
     try {
-        const { userId } = req.params;
+        // Get authenticated user ID from middleware
+        const userId = req.user._id;
         const { status, page = 1, limit = 10 } = req.query;
         
-        // VALIDATION
-        if (!mongoose.Types.ObjectId.isValid(userId)) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid user ID format"
-            });
-        }
+        // User is already authenticated and verified by middleware
+        // No need to validate userId or check if user exists
         
         if (page && (isNaN(page) || page < 1)) {
             return res.status(400).json({
@@ -590,7 +701,8 @@ export const getUserIssues = async (req, res) => {
             .populate('provinceId', 'name')
             .populate('districtId', 'name')
             .populate('cityId', 'name')
-            .populate('reportedBy', 'name email')
+            .populate('restroomId', 'name city district province condition avgRating ratingCount location')
+            .populate('reportedBy', 'firstName lastName email')
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(parseInt(limit));

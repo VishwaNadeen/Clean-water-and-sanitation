@@ -81,12 +81,12 @@ export const getAllCategories = async (req, res) => {
 // Create new category
 export const createCategory = async (req, res) => {
     try {
-        const { name, description, subCategories, createdBy } = req.body;
+        const { name, description, subCategories } = req.body;
         
-        if (!name || !createdBy) {
+        if (!name) {
             return res.status(400).json({
                 success: false,
-                message: 'Name and createdBy are required'
+                message: 'Category name is required'
             });
         }
         
@@ -103,7 +103,7 @@ export const createCategory = async (req, res) => {
             name,
             description: description || "",
             subCategories: subCategories || [],
-            createdBy
+            createdBy: req.user._id
         });
         
         const savedCategory = await newCategory.save();
@@ -126,13 +126,14 @@ export const createCategory = async (req, res) => {
 export const updateCategory = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, description, isActive, updatedBy } = req.body;
+        const { name, description, isActive } = req.body;
         
-        const updateData = {};
+        const updateData = {
+            updatedBy: req.user._id
+        };
         if (name !== undefined) updateData.name = name;
         if (description !== undefined) updateData.description = description;
         if (isActive !== undefined) updateData.isActive = isActive;
-        if (updatedBy) updateData.updatedBy = updatedBy;
         
         const updatedCategory = await IssueCategory.findByIdAndUpdate(
             id,
@@ -226,9 +227,7 @@ export const addSubCategory = async (req, res) => {
             description: description || ""
         });
         
-        if (updatedBy) {
-            category.updatedBy = updatedBy;
-        }
+        category.updatedBy = req.user._id;
         
         await category.save();
         
@@ -249,7 +248,7 @@ export const addSubCategory = async (req, res) => {
 export const updateSubCategory = async (req, res) => {
     try {
         const { categoryId, subCategoryId } = req.params;
-        const { name, description, isActive, updatedBy } = req.body;
+        const { name, description, isActive } = req.body;
         
         const category = await IssueCategory.findById(categoryId);
         if (!category) {
@@ -270,7 +269,7 @@ export const updateSubCategory = async (req, res) => {
         if (name !== undefined) subCategory.name = name;
         if (description !== undefined) subCategory.description = description;
         if (isActive !== undefined) subCategory.isActive = isActive;
-        if (updatedBy) category.updatedBy = updatedBy;
+        category.updatedBy = req.user._id;
         
         await category.save();
         
@@ -291,7 +290,6 @@ export const updateSubCategory = async (req, res) => {
 export const deleteSubCategory = async (req, res) => {
     try {
         const { categoryId, subCategoryId } = req.params;
-        const { updatedBy } = req.body;
         
         const category = await IssueCategory.findById(categoryId);
         if (!category) {
@@ -303,9 +301,7 @@ export const deleteSubCategory = async (req, res) => {
         
         category.subCategories.id(subCategoryId).deleteOne();
         
-        if (updatedBy) {
-            category.updatedBy = updatedBy;
-        }
+        category.updatedBy = req.user._id;
         
         await category.save();
         
