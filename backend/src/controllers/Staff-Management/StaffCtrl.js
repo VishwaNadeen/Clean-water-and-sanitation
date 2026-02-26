@@ -1,7 +1,7 @@
 // backend/controllers/StaffCtrl.js
 import mongoose from "mongoose";
 import { z } from "zod";
-import Staff from "../../models/StaffManage/StaffModel.js";
+import Staff from "../../models/Staff-Management/StaffModel.js";
 
 /* ---------------------------------------------
  * Helpers//If Mongoose throws validation errors, this converts them into a simple object.

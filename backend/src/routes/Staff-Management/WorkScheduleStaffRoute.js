@@ -5,7 +5,7 @@ import {
   startWork,
   uploadProof,
   completeWork,
-} from "../../controllers/StaffManage/WorkScheduleStaffCtrl.js";
+} from "../../controllers/Staff-Management/WorkScheduleStaffCtrl.js";
 
 const router = express.Router();
 
