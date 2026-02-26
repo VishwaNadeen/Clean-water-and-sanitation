@@ -3,8 +3,6 @@ import IssueCategory from "../../models/issue-reporting/issueCategoryModel.js";
 import Province from "../../models/issue-reporting/provinceModel.js";
 import District from "../../models/issue-reporting/districtModel.js";
 import City from "../../models/issue-reporting/cityModel.js";
-import User from "../../models/user-management/userModel.js";          // Using team member's user model
-import Restroom from "../../models/restRoom-Management/Restroom.js";  // Using team member's restroom model
 import { uploadToCloudinary } from "../../utils/issue-reporting/cloudinary.js";
 import mongoose from "mongoose";
 
@@ -172,8 +170,6 @@ export const createIssue = async (req, res) => {
         // Handle image uploads
         if (req.files && req.files.length > 0) {
             try {
-                console.log(`Processing ${req.files.length} image(s)...`);
-                
                 for (const file of req.files) {
                     // Validate file type
                     if (!file.mimetype.startsWith('image/')) {
@@ -191,10 +187,7 @@ export const createIssue = async (req, res) => {
                         });
                     }
 
-                    console.log(`Uploading file: ${file.originalname}, size: ${file.size} bytes`);
                     const uploadResult = await uploadToCloudinary(file.buffer, file.originalname);
-                    console.log(`Successfully uploaded: ${uploadResult.url}`);
-                    
                     images.push({
                         url: uploadResult.url,
                         publicId: uploadResult.publicId
@@ -209,12 +202,11 @@ export const createIssue = async (req, res) => {
                         cloud_name: process.env.CLOUDINARY_CLOUD_NAME ? 'SET' : 'NOT SET',
                         api_key: process.env.CLOUDINARY_API_KEY ? 'SET' : 'NOT SET', 
                         api_secret: process.env.CLOUDINARY_API_SECRET ? 'SET' : 'NOT SET'
-                    },
-                    filesReceived: req.files ? req.files.length : 0
+                    }
                 });
                 return res.status(500).json({
                     success: false,
-                    message: `Error uploading images: ${uploadError.message || 'Unknown upload error'}. Please check your image format and size.`
+                    message: `Error uploading images: ${uploadError.message}. Please check your image format and size.`
                 });
             }
         }
