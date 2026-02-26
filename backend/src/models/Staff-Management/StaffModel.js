@@ -1,3 +1,4 @@
+// backend/models/Staff-Management/StaffModel.js
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
@@ -8,13 +9,19 @@ const StaffSchema = new Schema(
     fullName: { type: String, required: true, trim: true },
     nic: { type: String, required: true, trim: true, unique: true },
 
-    // ✅ NEW: country code (e.g., +94)
+    // country code (e.g., +94)
     countryCode: { type: String, required: true, trim: true, default: "+94" },
 
-    phone: { type: Number, required: true, trim: true },
+    phone: { type: Number, required: true },
 
-    // optional
-    email: { type: String, trim: true, lowercase: true, default: "" },
+    // email required (because login creation needs it)
+    email: {
+      type: String,
+      required: true,
+      trim: true,
+      lowercase: true,
+      unique: true,
+    },
 
     role: {
       type: String,
@@ -22,7 +29,6 @@ const StaffSchema = new Schema(
       required: true,
     },
 
-    // ✅ NEW: gender
     gender: {
       type: String,
       enum: ["MALE", "FEMALE"],
@@ -39,28 +45,27 @@ const StaffSchema = new Schema(
     baseDistrict: { type: String, required: true, trim: true },
 
     address: { type: String, required: true, trim: true },
-    dob: { type: Date, required: true }, // birthday
-    joinDate: { type: Date, default: Date.now }, // joining date
+    dob: { type: Date, required: true },
+    joinDate: { type: Date, default: Date.now },
 
-    // ✅ NEW: password (hashed)
+    // password (hashed)
     password: { type: String, required: true, select: false },
 
-    // optional link
+    // optional link (not required)
     userId: { type: Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true }
 );
 
-// ✅ Hash password before save (only if modified)
-StaffSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
+// ✅ Hash password before save (async hook WITHOUT next)
+StaffSchema.pre("save", async function () {
+  if (!this.isModified("password")) return;
 
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
-  next();
 });
 
-// ✅ Helper method to compare password
+// ✅ compare password helper
 StaffSchema.methods.matchPassword = async function (enteredPassword) {
   return bcrypt.compare(enteredPassword, this.password);
 };
