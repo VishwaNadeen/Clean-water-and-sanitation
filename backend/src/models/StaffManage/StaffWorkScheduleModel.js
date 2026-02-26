@@ -55,13 +55,16 @@ const workScheduleSchema = new mongoose.Schema(
     staffNote: { type: String, default: "" },
     managerReviewNote: { type: String, default: "" },
 
-     proofImages: [
-      {
-        url: { type: String, required: true },
-        publicId: { type: String, default: "" },
-        uploadedAt: { type: Date, default: Date.now },
-      },
-    ],
+     proofImages: {
+  type: [
+    {
+      url: String,
+      publicId: String,
+      uploadedAt: { type: Date, default: Date.now }
+    }
+  ],
+  default: [], // ✅ VERY IMPORTANT
+},
 
     startedAt: { type: Date },
     completedAt: { type: Date },

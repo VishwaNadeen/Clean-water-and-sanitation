@@ -1,5 +1,5 @@
 import WorkSchedule from "../../models/StaffManage/StaffWorkScheduleModel.js";
-import { uploadBufferToCloudinary } from "../../utils/Staffcloudinary.js";
+import { uploadBufferToCloudinary } from "../../utils/staffManage/Staffcloudinary.js";
 
 // ✅ Staff: Get my schedules
 // GET /api/staff/work-schedules/me?staffId=xxxx
@@ -59,7 +59,7 @@ export const uploadProof = async (req, res) => {
 
     if (!req.file) return res.status(400).json({ message: "Proof image is required" });
 
-    const result = await uploadBufferToCloudinary(req.file.buffer, "work-proofs");
+const result = await uploadBufferToCloudinary(req.file.buffer, "work-proofs");
 
     schedule.proofImages.push({
       url: result.secure_url,

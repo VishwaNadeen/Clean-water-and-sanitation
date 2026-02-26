@@ -11,7 +11,7 @@ import {
   protect,
   checkAccountStatus,
   requirePasswordForDelete,
-} from "../../middleware/user-management/authMiddleware.js";
+} from "../../middleware/authMiddleware.js";
 
 const router = express.Router();
 

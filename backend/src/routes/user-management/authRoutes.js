@@ -5,7 +5,7 @@ import { loginUser,
     requestPasswordResetOtp, 
     verifyPasswordResetOtp, 
     resetPasswordWithOtp, } from "../../controllers/user-management/authController.js";
-import { protect } from "../../middleware/user-management/authMiddleware.js";
+import { protect } from "../../middleware/authMiddleware.js";
 
 const router = express.Router();
 

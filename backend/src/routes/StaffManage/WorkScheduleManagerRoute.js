@@ -9,7 +9,7 @@ import {
 } from "../../controllers/StaffManage/WorkScheduleManagerCtrl.js";
 
 const router = express.Router();
-
+` `
 // Manager endpoints
 router.post("/", assignSchedule);
 router.get("/", listSchedules);
