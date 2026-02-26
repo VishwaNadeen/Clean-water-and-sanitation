@@ -1,5 +1,5 @@
 import express from "express";
-import { devAdmin } from "../../middleware/devAdmin.js";
+//import { devAdmin } from "../../middleware/devAdmin.js";
 import {
     createRestroom,
     deleteRestroom,
@@ -8,6 +8,7 @@ import {
     getRestrooms,
     updateRestroom,
 } from "../../controllers/restRoom-Management/restroomController.js";
+import { protect, authorizeRoles } from "../../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -17,9 +18,11 @@ router.get("/nearby", getNearbyRestrooms);
 router.get("/:id", getRestroomById);
 
 // admin (dev-only)
-router.post("/", devAdmin, createRestroom);
-router.put("/:id", devAdmin, updateRestroom);
-router.delete("/:id", devAdmin, deleteRestroom);
+router.post("/", protect, authorizeRoles("ADMIN"), createRestroom);
+router.put("/:id", protect, authorizeRoles("ADMIN"), updateRestroom);
+router.delete("/:id", protect, authorizeRoles("ADMIN"), deleteRestroom);
+
+
 
 export default router;
 
