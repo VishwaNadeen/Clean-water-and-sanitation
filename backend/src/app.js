@@ -9,6 +9,8 @@ import staffRouts from "./routes/StaffManage/StaffRoute.js";
 import managerWorkScheduleRoutes from "./routes/StaffManage/WorkScheduleManagerRoute.js";
 import staffWorkScheduleRoutes from "./routes/StaffManage/WorkScheduleStaffRoute.js";
 
+import restroomRoutes from "./routes/restRoom-Management/restroomRoutes.js";
+
 const app = express();
 
 // Middleware
@@ -23,6 +25,13 @@ app.use("/api/auth", authRoutes);
 app.use("/api/staff",staffRouts);
 app.use("/api/manager/work-schedules", managerWorkScheduleRoutes);
 app.use("/api/staff/work-schedules", staffWorkScheduleRoutes);
+
+app.use("/api/restrooms", restroomRoutes);  
+
+// 404
+app.use((req, res) => {
+  res.status(404).json({ message: "Route not found" });
+})
 
 // Custom error handling middlewares from team member
 app.use(notFound);
