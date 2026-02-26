@@ -3,7 +3,11 @@ import cors from "cors";
 
 import userRoutes from "./routes/user-management/userRoutes.js";
 import authRoutes from "./routes/user-management/authRoutes.js";
-import { notFound, errorHandler } from "./middleware/user-management/errorMiddleware.js";
+import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
+
+import staffRouts from "./routes/StaffManage/StaffRoute.js";
+import managerWorkScheduleRoutes from "./routes/StaffManage/WorkScheduleManagerRoute.js";
+import staffWorkScheduleRoutes from "./routes/StaffManage/WorkScheduleStaffRoute.js";
 
 const app = express();
 
@@ -15,6 +19,10 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
+
+app.use("/api/staff",staffRouts);
+app.use("/api/manager/work-schedules", managerWorkScheduleRoutes);
+app.use("/api/staff/work-schedules", staffWorkScheduleRoutes);
 
 // Custom error handling middlewares from team member
 app.use(notFound);
