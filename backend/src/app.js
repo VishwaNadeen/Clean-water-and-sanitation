@@ -32,6 +32,7 @@ app.use("/api/staff/work-schedules", staffWorkScheduleRoutes);
 app.use("/api/restrooms", restroomRoutes);
 
 app.use("/api/issues", issueRoutes);
+app.use("/api/categories", issueCategoryRoutes);
 
 // Health check route
 app.get("/", (req, res) => {

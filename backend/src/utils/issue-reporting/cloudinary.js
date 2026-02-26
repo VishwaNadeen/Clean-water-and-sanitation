@@ -1,6 +1,6 @@
 // src/middleware/upload.js  (or whatever your file name is)
 
-import cloudinary from '../config/cloudinary.js';  // ✅ import existing config
+import cloudinary from '../../config/cloudinary.js';  // ✅ import existing config
 import multer from 'multer';
 
 // Simple multer configuration (store file in memory)
