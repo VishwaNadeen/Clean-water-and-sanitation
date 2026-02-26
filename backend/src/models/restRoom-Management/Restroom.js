@@ -58,6 +58,14 @@ import mongoose from "mongoose";
 
     {timestamps: true}
  );
+//prevent duplicate restroom with same name + exact location
+restroomSchema.index(
+    {
+        name: 1,
+        "location.coordinates": 1,
+    },
+    {unique: true}
+);
 
  //needed for $near / $geoNear queries
 
