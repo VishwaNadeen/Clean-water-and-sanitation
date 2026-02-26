@@ -25,6 +25,12 @@ router.post("/", protect, checkAccountStatus, upload.array('images', 5), createI
 // Get issues (user's own issues) - Requires authentication  
 router.get("/", protect, checkAccountStatus, getAllIssues);
 
+// Get user's own issues - Must come BEFORE /:id route
+router.get("/user", protect, checkAccountStatus, getUserIssues);
+
+// Get all issues for admin - Must come BEFORE /:id route
+router.get("/admin", protect, checkAccountStatus, authorizeRoles("ADMIN"), getAllIssues);
+
 // Get single issue by ID  
 router.get("/:id", getIssueById);
 
