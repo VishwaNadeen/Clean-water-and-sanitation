@@ -145,21 +145,33 @@ issueSchema.pre('save', async function() {
         
         // Retry logic to handle potential race conditions
         while (attempts < maxAttempts) {
-            // Get the count of existing issues and add 10000000 for 8-digit number
-            const count = await mongoose.models.Issue.countDocuments();
-            issueNumber = (10000000 + count + 1).toString();
-            
-            // Check if this number already exists
-            const existingIssue = await mongoose.models.Issue.findOne({ issueNumber });
-            if (!existingIssue) {
-                this.issueNumber = issueNumber;
-                break;
+            try {
+                // Use this.constructor instead of mongoose.models.Issue
+                const count = await this.constructor.countDocuments();
+                issueNumber = (10000000 + count + 1).toString();
+                
+                // Check if this number already exists
+                const existingIssue = await this.constructor.findOne({ issueNumber });
+                if (!existingIssue) {
+                    this.issueNumber = issueNumber;
+                    break;
+                }
+                attempts++;
+            } catch (error) {
+                console.error(`Attempt ${attempts + 1} failed:`, error);
+                attempts++;
+                
+                // If we can't generate a number, use timestamp as fallback
+                if (attempts >= maxAttempts) {
+                    this.issueNumber = `${10000000 + Date.now()}`.slice(-8);
+                    break;
+                }
             }
-            attempts++;
         }
         
         if (!this.issueNumber) {
-            throw new Error('Unable to generate unique issue number');
+            // Final fallback - use timestamp
+            this.issueNumber = `${10000000 + Date.now()}`.slice(-8);
         }
     }
 });
