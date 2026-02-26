@@ -1,4 +1,4 @@
-import IssueCategory from '../models/issueCategoryModel.js';
+import IssueCategory from '../../models/issue-reporting/issueCategoryModel.js';
 import mongoose from 'mongoose';
 
 // ==================== PUBLIC CONTROLLERS ====================

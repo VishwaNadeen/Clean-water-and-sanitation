@@ -5,13 +5,13 @@ import {
   editMyProfile,
   deleteMyProfile,
   getAllUsers,
-} from "../controllers/userController.js";
+} from "../../controllers/user-management/userController.js";
 
 import {
   protect,
   checkAccountStatus,
   requirePasswordForDelete,
-} from "../middleware/authMiddleware.js";
+} from "../../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -36,5 +36,3 @@ router.delete(
 router.get("/", protect, getAllUsers);
 
 export default router;
-
-

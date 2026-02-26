@@ -1,11 +1,11 @@
-import Issue from "../models/issueModel.js";
-import IssueCategory from "../models/issueCategoryModel.js";
-import Province from "../models/provinceModel.js";
-import District from "../models/districtModel.js";
-import City from "../models/cityModel.js";
-import User from "../../models/userModel.js";          // Using team member's user model
-import Restroom from "../models/restroomModel.js";  // Placeholder - will be replaced by team member
-import { uploadToCloudinary } from "../utils/cloudinary.js";
+import Issue from "../../models/issue-reporting/issueModel.js";
+import IssueCategory from "../../models/issue-reporting/issueCategoryModel.js";
+import Province from "../../models/issue-reporting/provinceModel.js";
+import District from "../../models/issue-reporting/districtModel.js";
+import City from "../../models/issue-reporting/cityModel.js";
+import User from "../../models/user-management/userModel.js";          // Using team member's user model
+import Restroom from "../../models/restRoom-Management/Restroom.js";  // Using team member's restroom model
+import { uploadToCloudinary } from "../../utils/issue-reporting/cloudinary.js";
 import mongoose from "mongoose";
 
 // CREATE ISSUE

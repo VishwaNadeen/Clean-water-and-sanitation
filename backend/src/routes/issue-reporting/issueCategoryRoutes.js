@@ -9,7 +9,7 @@ import {
     addSubCategory,
     updateSubCategory,
     deleteSubCategory
-} from '../controllers/issueCategoryController.js';
+} from '../../controllers/issue-reporting/issueCategoryController.js';
 import { protect, checkAccountStatus, authorizeRoles } from "../../middleware/authMiddleware.js";
 
 const router = express.Router();

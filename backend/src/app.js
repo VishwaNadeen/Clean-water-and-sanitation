@@ -1,11 +1,20 @@
 import express from "express";
 import cors from "cors";
 
-import issueRoutes from "./issue-reporting/routes/issueRoutes.js";
-import issueCategoryRoutes from "./issue-reporting/routes/issueCategoryRoutes.js";
-import userRoutes from "./routes/userRoutes.js";
-import authRoutes from "./routes/authRoutes.js";
+import userRoutes from "./routes/user-management/userRoutes.js";
+import authRoutes from "./routes/user-management/authRoutes.js";
 import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
+
+import staffRouts from "./routes/Staff-Management/StaffRoute.js";
+import managerWorkScheduleRoutes from "./routes/Staff-Management/WorkScheduleManagerRoute.js";
+import staffWorkScheduleRoutes from "./routes/Staff-Management/WorkScheduleStaffRoute.js";
+
+import restroomRoutes from "./routes/restRoom-Management/restroomRoutes.js";
+
+// issue reporting routes
+import issueRoutes from "./routes/issue-reporting/issueRoutes.js";
+import issueCategoryRoutes from "./routes/issue-reporting/issueCategoryRoutes.js";
+
 
 const app = express();
 
@@ -15,10 +24,18 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
-app.use("/api/issues", issueRoutes);
-app.use("/api/categories", issueCategoryRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
+
+app.use("/api/staff",staffRouts);
+app.use("/api/manager/work-schedules", managerWorkScheduleRoutes);
+app.use("/api/staff/work-schedules", staffWorkScheduleRoutes);
+
+app.use("/api/restrooms", restroomRoutes);  
+
+// issue reporting routes
+app.use("/api/issues", issueRoutes);
+app.use("/api/categories", issueCategoryRoutes);
 
 // Health check route
 app.get("/", (req, res) => {

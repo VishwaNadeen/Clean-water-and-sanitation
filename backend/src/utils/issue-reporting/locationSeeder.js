@@ -1,7 +1,7 @@
 import axios from 'axios';
-import Province from '../models/provinceModel.js';
-import District from '../models/districtModel.js';
-import City from '../models/cityModel.js';
+import Province from '../../models/issue-reporting/provinceModel.js';
+import District from '../../models/issue-reporting/districtModel.js';
+import City from '../../models/issue-reporting/cityModel.js';
 
 export const seedLocationData = async () => {
     try {
