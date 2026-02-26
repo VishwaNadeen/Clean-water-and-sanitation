@@ -5,9 +5,9 @@ import userRoutes from "./routes/user-management/userRoutes.js";
 import authRoutes from "./routes/user-management/authRoutes.js";
 import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
 
-import staffRouts from "./routes/StaffManage/StaffRoute.js";
-import managerWorkScheduleRoutes from "./routes/StaffManage/WorkScheduleManagerRoute.js";
-import staffWorkScheduleRoutes from "./routes/StaffManage/WorkScheduleStaffRoute.js";
+import staffRouts from "./routes/Staff-Management/StaffRoute.js";
+import managerWorkScheduleRoutes from "./routes/Staff-Management/WorkScheduleManagerRoute.js";
+import staffWorkScheduleRoutes from "./routes/Staff-Management/WorkScheduleStaffRoute.js";
 
 import restroomRoutes from "./routes/restRoom-Management/restroomRoutes.js";
 

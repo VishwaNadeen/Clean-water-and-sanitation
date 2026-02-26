@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
-import WorkSchedule from "../../models/StaffManage/StaffWorkScheduleModel.js";
-import Staff from "../../models/StaffManage/StaffModel.js";
+import WorkSchedule from "../../models/Staff-Management/StaffWorkScheduleModel.js";
+import Staff from "../../models/Staff-Management/StaffModel.js";
 
 const ROLE_TASK_RULES = {
   Cleaner: ["Cleaning"],

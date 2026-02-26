@@ -6,7 +6,7 @@ import {
   cancelSchedule,
   approveSchedule,
   rejectSchedule,
-} from "../../controllers/StaffManage/WorkScheduleManagerCtrl.js";
+} from "../../controllers/Staff-Management/WorkScheduleManagerCtrl.js";
 
 const router = express.Router();
 ` `

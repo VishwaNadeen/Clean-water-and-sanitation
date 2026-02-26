@@ -17,7 +17,7 @@ const workScheduleSchema = new mongoose.Schema(
     restroomId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Restroom",
-      required: false, // later you can make it true
+      required: true, // later you can make it true
     },
 
     // temporary fallback if restroomId not available
@@ -40,16 +40,11 @@ const workScheduleSchema = new mongoose.Schema(
     startTime: { type: String, required: true }, // "09:00"
     endTime: { type: String, required: true },   // "11:00"
 
-    status: {
-      type: String,
-      enum: ["Assigned",
-        "InProgress",
-        "Completed",
-        "Verified",
-        "Rejected",
-        "Cancelled",],
-      default: "Pending",
-    },
+status: {
+  type: String,
+  enum: ["Pending","Assigned","InProgress","Completed","Verified","Rejected","Cancelled"],
+  default: "Pending",
+},
 
     managerNote: { type: String, default: "" },
     staffNote: { type: String, default: "" },
