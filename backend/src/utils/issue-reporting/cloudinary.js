@@ -1,18 +1,9 @@
-import { v2 as cloudinary } from 'cloudinary';
+// src/middleware/upload.js  (or whatever your file name is)
+
+import cloudinary from '../config/cloudinary.js';  // ✅ import existing config
 import multer from 'multer';
-import dotenv from 'dotenv';
 
-// Load environment variables first
-dotenv.config();
-
-// Cloudinary Configuration using your credentials
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
-// Simple multer configuration
+// Simple multer configuration (store file in memory)
 const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
@@ -32,7 +23,7 @@ export const upload = multer({
     },
 });
 
-// Upload function with your Cloudinary account
+// Upload function to Cloudinary
 export const uploadToCloudinary = (fileBuffer, originalName) => {
     return new Promise((resolve, reject) => {
         cloudinary.uploader.upload_stream(
@@ -55,7 +46,7 @@ export const uploadToCloudinary = (fileBuffer, originalName) => {
     });
 };
 
-// Function to delete image from Cloudinary
+// Delete image from Cloudinary
 export const deleteFromCloudinary = async (publicId) => {
     try {
         const result = await cloudinary.uploader.destroy(publicId);
@@ -65,5 +56,3 @@ export const deleteFromCloudinary = async (publicId) => {
         throw error;
     }
 };
-
-export default cloudinary;
