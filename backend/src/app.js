@@ -11,6 +11,9 @@ import staffWorkScheduleRoutes from "./routes/Staff-Management/WorkScheduleStaff
 
 import restroomRoutes from "./routes/restRoom-Management/restroomRoutes.js";
 
+import issueRoutes from "./routes/issue-reporting/issueRoutes.js";
+import issueCategoryRoutes from "./routes/issue-reporting/issueCategoryRoutes.js";
+
 const app = express();
 
 // Middleware
@@ -26,7 +29,18 @@ app.use("/api/staff",staffRouts);
 app.use("/api/manager/work-schedules", managerWorkScheduleRoutes);
 app.use("/api/staff/work-schedules", staffWorkScheduleRoutes);
 
-app.use("/api/restrooms", restroomRoutes);  
+app.use("/api/restrooms", restroomRoutes);
+
+app.use("/api/issues", issueRoutes);
+app.use("/api/categories", issueCategoryRoutes);
+
+// Health check route
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Clean Water & Sanitation API is running!"
+  });
+});
 
 // 404
 app.use((req, res) => {
