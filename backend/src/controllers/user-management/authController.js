@@ -1,8 +1,10 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
+
 import Login from "../../models/user-management/logInModel.js";
 import User from "../../models/user-management/userModel.js";
+import Staff from "../../models/Staff-Management/StaffModel.js";
 
 const generateToken = (id, role) => {
   return jwt.sign({ id, role }, process.env.JWT_SECRET, {
@@ -10,37 +12,94 @@ const generateToken = (id, role) => {
   });
 };
 
-// 🔐 Login
+// 🔐 Login (checks Login + User, and Login + Staff)
 export const loginUser = async (req, res, next) => {
   try {
     const { email, password } = req.body;
+
+    if (!email || !password) {
+      res.status(400);
+      throw new Error("Email and password are required.");
+    }
+
     const normalizedEmail = email.toLowerCase().trim();
 
+    // 1) Check login collection
     const login = await Login.findOne({ email: normalizedEmail }).select("+password");
-    if (!login) throw new Error("Invalid email or password.");
+    if (!login) {
+      res.status(401);
+      throw new Error("Invalid email or password.");
+    }
 
+    // 2) Compare password
     const match = await bcrypt.compare(password, login.password);
-    if (!match) throw new Error("Invalid email or password.");
+    if (!match) {
+      res.status(401);
+      throw new Error("Invalid email or password.");
+    }
 
-    const user = await User.findById(login.userId);
-    if (!user) throw new Error("User profile not found.");
+    // 3) Check user collection AND staff collection
+    //    - first by ID (login.userId)
+    //    - if not found, fallback by email
+    let user = null;
+    let staff = null;
 
-    if (!user.isEmailVerified) {
+    if (login.userId) {
+      user = await User.findById(login.userId);
+      staff = await Staff.findById(login.userId);
+    }
+
+    if (!user) {
+      user = await User.findOne({ email: normalizedEmail });
+    }
+
+    if (!staff) {
+      staff = await Staff.findOne({ email: normalizedEmail });
+    }
+
+    // 4) If neither found → profile not found
+    if (!user && !staff) {
+      res.status(404);
+      throw new Error("User profile not found.");
+    }
+
+    // 5) Pick the profile (prefer role-based if possible, else pick whichever exists)
+    let profile = null;
+
+    if (login.role === "STAFF") {
+      profile = staff || user;
+    } else {
+      profile = user || staff;
+    }
+
+    if (!profile) {
+      res.status(404);
+      throw new Error("User profile not found.");
+    }
+
+    // 6) Optional checks (do NOT break if fields don't exist)
+    // Email verification (User model has it; Staff may not)
+    if (typeof profile.isEmailVerified !== "undefined" && profile.isEmailVerified === false) {
       res.status(403);
       throw new Error("Please verify your email first.");
     }
 
-    if (user.status === "SUSPENDED") {
+    // Account suspension checks (handle both styles)
+    const statusVal = (profile.status ?? "").toString().toUpperCase();
+    if (statusVal === "SUSPENDED") {
       res.status(403);
       throw new Error("Account is suspended.");
     }
 
-    user.lastLoginAt = new Date();
-    await user.save();
+    // last login update (only if field exists)
+    if ("lastLoginAt" in profile) {
+      profile.lastLoginAt = new Date();
+      await profile.save();
+    }
 
     res.json({
       message: "Login successful",
-      token: generateToken(user._id, login.role),
+      token: generateToken(profile._id, login.role),
       role: login.role,
     });
   } catch (err) {
@@ -52,21 +111,39 @@ export const loginUser = async (req, res, next) => {
 export const verifyEmailOtp = async (req, res, next) => {
   try {
     const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      res.status(400);
+      throw new Error("Email and OTP are required.");
+    }
+
     const normalizedEmail = email.toLowerCase().trim();
 
+    // Email OTP verification is usually for User collection
     const user = await User.findOne({ email: normalizedEmail }).select(
       "+emailOtpHash +emailOtpExpires"
     );
 
-    if (!user) throw new Error("User not found.");
-    if (!user.emailOtpHash || !user.emailOtpExpires)
-      throw new Error("OTP not found.");
+    if (!user) {
+      res.status(404);
+      throw new Error("User not found.");
+    }
 
-    if (user.emailOtpExpires.getTime() < Date.now())
+    if (!user.emailOtpHash || !user.emailOtpExpires) {
+      res.status(400);
+      throw new Error("OTP not found.");
+    }
+
+    if (user.emailOtpExpires.getTime() < Date.now()) {
+      res.status(400);
       throw new Error("OTP expired.");
+    }
 
     const valid = await bcrypt.compare(otp, user.emailOtpHash);
-    if (!valid) throw new Error("Invalid OTP.");
+    if (!valid) {
+      res.status(400);
+      throw new Error("Invalid OTP.");
+    }
 
     user.isEmailVerified = true;
     user.emailOtpHash = undefined;
@@ -82,6 +159,13 @@ export const verifyEmailOtp = async (req, res, next) => {
 
 export const logoutUser = async (req, res, next) => {
   try {
+    // NOTE: this assumes req.user is set by auth middleware.
+    // Keeping your logic unchanged, only adding safety.
+    if (!req.user?._id) {
+      res.status(401);
+      throw new Error("Not authorized.");
+    }
+
     await User.findByIdAndUpdate(req.user._id, {
       refreshTokenHash: null,
     });
@@ -119,25 +203,57 @@ const sendResetOtpEmail = async (email, otp) => {
 export const requestPasswordResetOtp = async (req, res, next) => {
   try {
     const { email } = req.body;
-    if (!email) throw new Error("Email is required.");
+    if (!email) {
+      res.status(400);
+      throw new Error("Email is required.");
+    }
 
     const normalizedEmail = email.toLowerCase().trim();
 
+    // 1) login collection lookup
     const login = await Login.findOne({ email: normalizedEmail });
-    if (!login) throw new Error("Email not found.");
+    if (!login) {
+      res.status(404);
+      throw new Error("Email not found.");
+    }
 
-    const user = await User.findById(login.userId).select(
-      "+passwordResetOtpHash +passwordResetOtpExpires"
-    );
+    // 2) find profile in User OR Staff
+    let profile = null;
 
-    if (!user) throw new Error("User profile not found.");
+    if (login.userId) {
+      profile = await User.findById(login.userId).select(
+        "+passwordResetOtpHash +passwordResetOtpExpires"
+      );
+      if (!profile) {
+        profile = await Staff.findById(login.userId).select(
+          "+passwordResetOtpHash +passwordResetOtpExpires"
+        );
+      }
+    }
+
+    if (!profile) {
+      // fallback by email
+      profile = await User.findOne({ email: normalizedEmail }).select(
+        "+passwordResetOtpHash +passwordResetOtpExpires"
+      );
+      if (!profile) {
+        profile = await Staff.findOne({ email: normalizedEmail }).select(
+          "+passwordResetOtpHash +passwordResetOtpExpires"
+        );
+      }
+    }
+
+    if (!profile) {
+      res.status(404);
+      throw new Error("User profile not found.");
+    }
 
     const otp = String(Math.floor(100000 + Math.random() * 900000));
     const otpHash = await bcrypt.hash(otp, 10);
 
-    user.passwordResetOtpHash = otpHash;
-    user.passwordResetOtpExpires = new Date(Date.now() + 10 * 60 * 1000);
-    await user.save();
+    profile.passwordResetOtpHash = otpHash;
+    profile.passwordResetOtpExpires = new Date(Date.now() + 10 * 60 * 1000);
+    await profile.save();
 
     await sendResetOtpEmail(normalizedEmail, otp);
 
@@ -151,26 +267,59 @@ export const requestPasswordResetOtp = async (req, res, next) => {
 export const verifyPasswordResetOtp = async (req, res, next) => {
   try {
     const { email, otp } = req.body;
-    if (!email || !otp)
+    if (!email || !otp) {
+      res.status(400);
       throw new Error("Email and OTP are required.");
+    }
 
     const normalizedEmail = email.toLowerCase().trim();
 
     const login = await Login.findOne({ email: normalizedEmail });
-    if (!login) throw new Error("Email not found.");
+    if (!login) {
+      res.status(404);
+      throw new Error("Email not found.");
+    }
 
-    const user = await User.findById(login.userId).select(
-      "+passwordResetOtpHash +passwordResetOtpExpires"
-    );
+    // profile in User OR Staff
+    let profile = null;
 
-    if (!user || !user.passwordResetOtpHash || !user.passwordResetOtpExpires)
+    if (login.userId) {
+      profile = await User.findById(login.userId).select(
+        "+passwordResetOtpHash +passwordResetOtpExpires"
+      );
+      if (!profile) {
+        profile = await Staff.findById(login.userId).select(
+          "+passwordResetOtpHash +passwordResetOtpExpires"
+        );
+      }
+    }
+
+    if (!profile) {
+      profile = await User.findOne({ email: normalizedEmail }).select(
+        "+passwordResetOtpHash +passwordResetOtpExpires"
+      );
+      if (!profile) {
+        profile = await Staff.findOne({ email: normalizedEmail }).select(
+          "+passwordResetOtpHash +passwordResetOtpExpires"
+        );
+      }
+    }
+
+    if (!profile || !profile.passwordResetOtpHash || !profile.passwordResetOtpExpires) {
+      res.status(400);
       throw new Error("OTP not found.");
+    }
 
-    if (user.passwordResetOtpExpires.getTime() < Date.now())
+    if (profile.passwordResetOtpExpires.getTime() < Date.now()) {
+      res.status(400);
       throw new Error("OTP expired.");
+    }
 
-    const ok = await bcrypt.compare(otp, user.passwordResetOtpHash);
-    if (!ok) throw new Error("Invalid OTP.");
+    const ok = await bcrypt.compare(otp, profile.passwordResetOtpHash);
+    if (!ok) {
+      res.status(400);
+      throw new Error("Invalid OTP.");
+    }
 
     res.json({ message: "Reset OTP verified successfully." });
   } catch (err) {
@@ -183,39 +332,77 @@ export const resetPasswordWithOtp = async (req, res, next) => {
   try {
     const { email, otp, newPassword, confirmPassword } = req.body;
 
-    if (!email || !otp || !newPassword || !confirmPassword)
+    if (!email || !otp || !newPassword || !confirmPassword) {
+      res.status(400);
       throw new Error("All fields are required.");
+    }
 
-    if (newPassword !== confirmPassword)
+    if (newPassword !== confirmPassword) {
+      res.status(400);
       throw new Error("Passwords do not match.");
+    }
 
     const normalizedEmail = email.toLowerCase().trim();
 
     const login = await Login.findOne({ email: normalizedEmail }).select("+password");
-    if (!login) throw new Error("Email not found.");
+    if (!login) {
+      res.status(404);
+      throw new Error("Email not found.");
+    }
 
-    const user = await User.findById(login.userId).select(
-      "+password +passwordResetOtpHash +passwordResetOtpExpires"
-    );
+    // profile in User OR Staff
+    let profile = null;
 
-    if (!user || !user.passwordResetOtpHash || !user.passwordResetOtpExpires)
+    if (login.userId) {
+      profile = await User.findById(login.userId).select(
+        "+password +passwordResetOtpHash +passwordResetOtpExpires"
+      );
+
+      if (!profile) {
+        profile = await Staff.findById(login.userId).select(
+          "+password +passwordResetOtpHash +passwordResetOtpExpires"
+        );
+      }
+    }
+
+    if (!profile) {
+      profile = await User.findOne({ email: normalizedEmail }).select(
+        "+password +passwordResetOtpHash +passwordResetOtpExpires"
+      );
+
+      if (!profile) {
+        profile = await Staff.findOne({ email: normalizedEmail }).select(
+          "+password +passwordResetOtpHash +passwordResetOtpExpires"
+        );
+      }
+    }
+
+    if (!profile || !profile.passwordResetOtpHash || !profile.passwordResetOtpExpires) {
+      res.status(400);
       throw new Error("OTP not found.");
+    }
 
-    if (user.passwordResetOtpExpires.getTime() < Date.now())
+    if (profile.passwordResetOtpExpires.getTime() < Date.now()) {
+      res.status(400);
       throw new Error("OTP expired.");
+    }
 
-    const ok = await bcrypt.compare(otp, user.passwordResetOtpHash);
-    if (!ok) throw new Error("Invalid OTP.");
+    const ok = await bcrypt.compare(otp, profile.passwordResetOtpHash);
+    if (!ok) {
+      res.status(400);
+      throw new Error("Invalid OTP.");
+    }
 
-    user.password = newPassword;
-    user.passwordResetOtpHash = undefined;
-    user.passwordResetOtpExpires = undefined;
+    // update profile password (if profile has password field)
+    profile.password = newPassword;
+    profile.passwordResetOtpHash = undefined;
+    profile.passwordResetOtpExpires = undefined;
+    await profile.save();
 
-    await user.save();
-
+    // update login password too (keep your behavior)
     await Login.updateOne(
       { _id: login._id },
-      { $set: { password: user.password } }
+      { $set: { password: profile.password } }
     );
 
     res.json({ message: "Password reset successful." });
