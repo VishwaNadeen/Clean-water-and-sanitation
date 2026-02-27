@@ -25,7 +25,7 @@ router.get("/", listStaff);
 
 // Get one staff
 router.get("/:id", getStaffById);
-router.get("/", getAllStaff);
+
 
 // Update staff
 router.put("/:id", updateStaff);

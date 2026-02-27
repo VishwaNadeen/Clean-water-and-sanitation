@@ -1,5 +1,5 @@
 import express from "express";
-import upload from "../../middleware/StaffuploadImg.js";
+import upload from "../../middleware/StaffUploadImg.js";
 import {
   getMySchedules,
   startWork,
