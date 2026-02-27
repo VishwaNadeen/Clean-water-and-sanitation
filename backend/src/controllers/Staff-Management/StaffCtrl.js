@@ -1,50 +1,86 @@
-// backend/controllers/StaffCtrl.js
+// backend/controllers/Staff-Management/StaffCtrl.js
 import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
 import { z } from "zod";
+
 import Staff from "../../models/Staff-Management/StaffModel.js";
+import Login from "../../models/user-Management/logInModel.js";
 
 /* ---------------------------------------------
- * Helpers//If Mongoose throws validation errors, this converts them into a simple object.
+ * Helpers
  * --------------------------------------------- */
 function fieldErrors(err) {
-  // for mongoose validation errors (optional)
   if (!err?.errors) return undefined;
   const out = {};
   for (const [k, v] of Object.entries(err.errors)) out[k] = v.message;
   return out;
 }
 
+function escapeRegex(str) {
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function splitFullName(fullName) {
+  const cleaned = String(fullName || "").trim().replace(/\s+/g, " ");
+  const parts = cleaned.split(" ").filter(Boolean);
+
+  const firstName = parts[0] || "Staff";
+  const lastName = parts.length > 1 ? parts.slice(1).join(" ") : "N/A";
+  return { firstName, lastName };
+}
+
+function isLoggedIn(req) {
+  return Boolean(req.user?.id);
+}
+
+function isAdmin(req) {
+  return String(req.user?.role || "").toUpperCase() === "ADMIN";
+}
+
+function isSelf(req, staffId) {
+  return String(req.user?.id) === String(staffId);
+}
+
 /* ---------------------------------------------
- * Zod Validation Schemas 
+ * Zod Validation Schemas (match StaffModel.js)
  * --------------------------------------------- */
 const staffCreateSchema = z.object({
   fullName: z.string().trim().min(2, "Full name is too short").max(80),
   nic: z.string().trim().min(5, "NIC is too short").max(20),
-  phone: z.string().trim().min(8, "Phone too short").max(25),
 
-  email: z.string().trim().toLowerCase().email().optional().or(z.literal("")),
+  countryCode: z.string().trim().min(2).max(6).optional().default("+94"),
+
+  phone: z.coerce.number(),
+
+  email: z.string().trim().toLowerCase().email("Invalid email"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
 
   role: z.enum(["Cleaner", "Supervisor", "Technician"]),
   status: z.enum(["Active", "Inactive", "OnLeave"]).optional(),
 
+  gender: z.enum(["MALE", "FEMALE"]),
+
   baseProvince: z.string().trim().min(2).max(50),
   baseDistrict: z.string().trim().min(2).max(50),
 
-  
   address: z.string().trim().min(3, "Address is too short").max(200),
-  dob: z.coerce.date(),      // accepts "2000-05-12" as Date
-  joinDate: z.coerce.date(), // accepts "2026-02-20" as Date
+  dob: z.coerce.date(),
+  joinDate: z.coerce.date(),
 });
 
 const staffUpdateSchema = z.object({
   fullName: z.string().trim().min(2).max(80).optional(),
   nic: z.string().trim().min(5).max(20).optional(),
-  phone: z.string().trim().min(8).max(25).optional(),
 
-  email: z.string().trim().toLowerCase().email().optional().or(z.literal("")),
+  countryCode: z.string().trim().min(2).max(6).optional(),
+  phone: z.coerce.number().optional(),
+
+  email: z.string().trim().toLowerCase().email().optional(),
 
   role: z.enum(["Cleaner", "Supervisor", "Technician"]).optional(),
   status: z.enum(["Active", "Inactive", "OnLeave"]).optional(),
+
+  gender: z.enum(["MALE", "FEMALE"]).optional(),
 
   baseProvince: z.string().trim().min(2).max(50).optional(),
   baseDistrict: z.string().trim().min(2).max(50).optional(),
@@ -54,27 +90,62 @@ const staffUpdateSchema = z.object({
   joinDate: z.coerce.date().optional(),
 });
 
+const staffPasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(6, "New password must be at least 6 characters"),
+});
+
+const deleteRequestSchema = z.object({
+  reason: z.string().trim().min(3, "Reason is too short").max(300).optional(),
+});
+
 /* ===================== CREATE STAFF ===================== */
 export async function createStaff(req, res) {
+  // If you want create staff to be admin-only, enable these:
+  // if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
+  // if (!isAdmin(req)) return res.status(403).json({ message: "Forbidden" });
+
+  const parsed = staffCreateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    const details = parsed.error.issues.map((i) => ({
+      name: i.path.join("."),
+      reason: i.message,
+    }));
+    return res.status(422).json({ message: "Validation failed", invalidParams: details });
+  }
+
+  const staffPayload = parsed.data;
+  const { firstName, lastName } = splitFullName(staffPayload.fullName);
+
   try {
-    // Validate request body
-    const parsed = staffCreateSchema.safeParse(req.body);
-    if (!parsed.success) {
-      const details = parsed.error.issues.map((i) => ({
-        name: i.path.join("."),
-        reason: i.message,
-      }));
-      return res.status(422).json({ message: "Validation failed", invalidParams: details });
+    const staff = await Staff.create({
+      ...staffPayload,
+      email: staffPayload.email.toLowerCase().trim(),
+    });
+
+    // Get hashed password from DB (Staff.password is select:false)
+    const staffWithPw = await Staff.findById(staff._id).select("+password");
+    if (!staffWithPw?.password) {
+      return res.status(500).json({ message: "Staff created but password not found for login creation" });
     }
 
-    // Create staff (createdAt auto)
-    const doc = await Staff.create(parsed.data);
+    // Create Login record
+    await Login.create({
+      userId: staff._id,
+      firstName,
+      lastName,
+      email: staff.email,
+      password: staffWithPw.password, // hashed password
+      role: "STAFF",
+    });
 
-    return res.status(201).json({ message: "Staff created", staff: doc });
+    return res.status(201).json({ message: "Staff created", staff });
   } catch (err) {
-    // Duplicate NIC error
     if (err?.code === 11000) {
-      return res.status(409).json({ message: "NIC already exists" });
+      const keys = err?.keyPattern || err?.keyValue || {};
+      if (keys.email) return res.status(409).json({ message: "Email already exists" });
+      if (keys.nic) return res.status(409).json({ message: "NIC already exists" });
+      return res.status(409).json({ message: "Duplicate key error" });
     }
 
     console.error("❌ createStaff:", err);
@@ -87,15 +158,20 @@ export async function createStaff(req, res) {
 }
 
 /* ===================== LIST STAFF ===================== */
-// supports optional filters: ?q=kamal&role=Cleaner&status=Active&province=Western&district=Colombo
 export async function listStaff(req, res) {
+  // ✅ require login
+  if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
+
+  // (optional) admin-only list (recommended)
+  if (!isAdmin(req)) return res.status(403).json({ message: "Forbidden" });
+
   try {
     const { q, role, status, province, district } = req.query || {};
     const filter = {};
 
     if (q && String(q).trim() !== "") {
       const t = String(q).trim();
-      const re = new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+      const re = new RegExp(escapeRegex(t), "i");
       filter.$or = [{ fullName: re }, { nic: re }, { phone: re }, { email: re }];
     }
 
@@ -112,12 +188,19 @@ export async function listStaff(req, res) {
   }
 }
 
-/* ===================== GET ONE STAFF ===================== */
+/* ===================== GET ONE STAFF (PROFILE) ===================== */
 export async function getStaffById(req, res) {
-  const { id } = req.params;
+  // ✅ require login
+  if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
 
+  const { id } = req.params;
   if (!mongoose.isValidObjectId(id)) {
     return res.status(400).json({ message: "Invalid staff id" });
+  }
+
+  // ✅ staff can view only self | admin can view any
+  if (!isAdmin(req) && !isSelf(req, id)) {
+    return res.status(403).json({ message: "Forbidden" });
   }
 
   try {
@@ -130,28 +213,43 @@ export async function getStaffById(req, res) {
     return res.status(500).json({ message: "Server error" });
   }
 }
+
+/* ===================== GET ALL STAFF ===================== */
 export const getAllStaff = async (req, res) => {
+  // ✅ require login
+  if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
+
+  // ✅ admin-only
+  if (!isAdmin(req)) return res.status(403).json({ message: "Forbidden" });
+
   try {
     const { role } = req.query;
 
     const filter = {};
-    if (role) filter.role = role; // Cleaner / Technician
+    if (role) filter.role = role;
 
     const staff = await Staff.find(filter).sort({ fullName: 1 });
     res.json(staff);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
-}
+};
+
 /* ===================== UPDATE STAFF ===================== */
 export async function updateStaff(req, res) {
-  const { id } = req.params;
+  // ✅ require login
+  if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
 
+  const { id } = req.params;
   if (!mongoose.isValidObjectId(id)) {
     return res.status(400).json({ message: "Invalid staff id" });
   }
 
-  // Validate update body
+  // ✅ staff can update only self | admin can update any
+  if (!isAdmin(req) && !isSelf(req, id)) {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+
   const parsed = staffUpdateSchema.safeParse(req.body);
   if (!parsed.success) {
     const details = parsed.error.issues.map((i) => ({
@@ -169,11 +267,30 @@ export async function updateStaff(req, res) {
 
     if (!updated) return res.status(404).json({ message: "Staff not found" });
 
+    // Sync Login (name/email only). Role stays STAFF
+    const loginUpdate = {};
+    if (parsed.data.fullName) {
+      const { firstName, lastName } = splitFullName(parsed.data.fullName);
+      loginUpdate.firstName = firstName;
+      loginUpdate.lastName = lastName;
+    }
+    if (parsed.data.email) {
+      loginUpdate.email = parsed.data.email.toLowerCase().trim();
+    }
+
+    if (Object.keys(loginUpdate).length > 0) {
+      await Login.updateOne({ userId: updated._id }, { $set: loginUpdate });
+    }
+
     return res.status(200).json({ message: "Staff updated", staff: updated });
   } catch (err) {
     if (err?.code === 11000) {
-      return res.status(409).json({ message: "NIC already exists" });
+      const keys = err?.keyPattern || err?.keyValue || {};
+      if (keys.email) return res.status(409).json({ message: "Email already exists" });
+      if (keys.nic) return res.status(409).json({ message: "NIC already exists" });
+      return res.status(409).json({ message: "Duplicate key error" });
     }
+
     console.error("❌ updateStaff:", err);
     return res.status(400).json({
       message: "Invalid staff data",
@@ -183,19 +300,137 @@ export async function updateStaff(req, res) {
   }
 }
 
-/* ===================== DELETE STAFF ===================== */
-export async function deleteStaff(req, res) {
-  const { id } = req.params;
+/* ===================== UPDATE STAFF PASSWORD ===================== */
+/**
+ * ✅ require login
+ * ✅ staff can update only self | admin can update any (optional but allowed)
+ * ✅ updates both Staff.password + Login.password (hashed)
+ */
+export async function updateStaffPassword(req, res) {
+  if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
 
+  const { id } = req.params;
+  if (!mongoose.isValidObjectId(id)) {
+    return res.status(400).json({ message: "Invalid staff id" });
+  }
+
+  if (!isAdmin(req) && !isSelf(req, id)) {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+
+  const parsed = staffPasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    const details = parsed.error.issues.map((i) => ({
+      name: i.path.join("."),
+      reason: i.message,
+    }));
+    return res.status(422).json({ message: "Validation failed", invalidParams: details });
+  }
+
+  const { currentPassword, newPassword } = parsed.data;
+
+  try {
+    const staff = await Staff.findById(id).select("+password");
+    if (!staff) return res.status(404).json({ message: "Staff not found" });
+
+    const ok = await bcrypt.compare(currentPassword, staff.password);
+    if (!ok) return res.status(401).json({ message: "Current password is incorrect" });
+
+    // set new password -> pre('save') hashes it
+    staff.password = newPassword;
+    await staff.save();
+
+    // sync Login password (store hashed password)
+    await Login.updateOne({ userId: staff._id }, { $set: { password: staff.password } });
+
+    return res.status(200).json({ message: "Password updated successfully" });
+  } catch (err) {
+    console.error("❌ updateStaffPassword:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+}
+
+/* ===================== REQUEST DELETE PROFILE ===================== */
+/**
+ * ✅ require login
+ * ✅ user cannot delete; only request delete
+ * ✅ staff can request only self | admin can request for someone (optional)
+ */
+export async function requestDeleteProfile(req, res) {
+  if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
+
+  const { id } = req.params;
+  if (!mongoose.isValidObjectId(id)) {
+    return res.status(400).json({ message: "Invalid staff id" });
+  }
+
+  if (!isAdmin(req) && !isSelf(req, id)) {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+
+  const parsed = deleteRequestSchema.safeParse(req.body || {});
+  if (!parsed.success) {
+    const details = parsed.error.issues.map((i) => ({
+      name: i.path.join("."),
+      reason: i.message,
+    }));
+    return res.status(422).json({ message: "Validation failed", invalidParams: details });
+  }
+
+  try {
+    const staff = await Staff.findById(id);
+    if (!staff) return res.status(404).json({ message: "Staff not found" });
+
+    staff.deleteRequest = {
+      requested: true,
+      reason: parsed.data.reason || "",
+      requestedAt: new Date(),
+      requestedBy: req.user.id,
+    };
+
+    await staff.save();
+
+    return res.status(200).json({
+      message: "Delete request submitted. Admin will review your request.",
+      deleteRequest: staff.deleteRequest,
+    });
+  } catch (err) {
+    console.error("❌ requestDeleteProfile:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+}
+
+/* ===================== DELETE STAFF ===================== */
+/**
+ * ✅ require login
+ * ✅ ONLY ADMIN CAN DELETE
+ * ✅ (optional) allow delete only if staff.deleteRequest.requested === true
+ */
+export async function deleteStaff(req, res) {
+  if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
+
+  // ✅ admin-only hard rule (as you asked)
+  if (!isAdmin(req)) return res.status(403).json({ message: "Forbidden: only admin can delete profiles" });
+
+  const { id } = req.params;
   if (!mongoose.isValidObjectId(id)) {
     return res.status(400).json({ message: "Invalid staff id" });
   }
 
   try {
-    const deleted = await Staff.findByIdAndDelete(id);
-    if (!deleted) return res.status(404).json({ message: "Staff not found" });
+    const staff = await Staff.findById(id).lean();
+    if (!staff) return res.status(404).json({ message: "Staff not found" });
 
-    return res.status(200).json({ message: "Staff deleted", staff: deleted });
+    // Optional safety: only delete if request exists
+    // If you don't want this restriction, comment this block.
+    if (!staff?.deleteRequest?.requested) {
+      return res.status(400).json({ message: "Cannot delete: no delete request found for this profile" });
+    }
+
+    await Login.deleteOne({ userId: id });
+    const deleted = await Staff.findByIdAndDelete(id);
+
+    return res.status(200).json({ message: "Staff deleted by admin", staff: deleted });
   } catch (err) {
     console.error("❌ deleteStaff:", err);
     return res.status(500).json({ message: "Server error" });

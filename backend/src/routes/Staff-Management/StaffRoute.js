@@ -1,37 +1,46 @@
-// backend/routes/staffRoutes.js
 import express from "express";
 import {
   createStaff,
   listStaff,
   getStaffById,
-  getAllStaff,
   updateStaff,
   deleteStaff,
-
+  requestDeleteProfile,
+  updateStaffPassword
 } from "../../controllers/Staff-Management/StaffCtrl.js";
 
-//import { requireAuth } from "../middlewares/auth.js"; // your existing auth middleware
+import { protect, authorizeRoles }
+from "../../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// All staff routes require authentication (same style as your appointment routes)
-//router.use(requireAuth);
+/* ================= LOGIN REQUIRED ================= */
+router.use(protect); // ✅ require login for all routes
 
 // Create staff
 router.post("/", createStaff);
 
-// List staff (filters supported)
-router.get("/", listStaff);
+// List staff (admin recommended)
+router.get("/", authorizeRoles("ADMIN"), listStaff);
 
-// Get one staff
+// View profile
 router.get("/:id", getStaffById);
 
-
-// Update staff
+// Update profile
 router.put("/:id", updateStaff);
 router.patch("/:id", updateStaff);
 
-// Delete staff
-router.delete("/:id", deleteStaff);
+// Update password
+router.patch("/:id/password", updateStaffPassword);
+
+// Request delete profile
+router.post("/:id/delete-request", requestDeleteProfile);
+
+// ✅ ONLY ADMIN CAN DELETE
+router.delete(
+  "/:id",
+  authorizeRoles("ADMIN"),
+  deleteStaff
+);
 
 export default router;
