@@ -1,10 +1,6 @@
 import express from "express";
 import { upload } from "../../utils/issue-reporting/cloudinary.js";
 import Issue from "../../models/issue-reporting/issueModel.js";
-import IssueCategory from "../../models/issue-reporting/issueCategoryModel.js";
-import Province from "../../models/issue-reporting/provinceModel.js";
-import District from "../../models/issue-reporting/districtModel.js";
-import City from "../../models/issue-reporting/cityModel.js";
 import { protect, checkAccountStatus, authorizeRoles } from "../../middleware/authMiddleware.js";
 import {
     createIssue,
