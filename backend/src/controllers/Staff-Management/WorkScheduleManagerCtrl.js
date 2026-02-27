@@ -136,6 +136,26 @@ export const cancelSchedule = async (req, res) => {
     return res.status(500).json({ message: err.message });
   }
 };
+//Delete schedule 
+export const deleteSchedule = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid id" });
+    }
+
+    const schedule = await WorkSchedule.findByIdAndDelete(id);
+
+    if (!schedule) {
+      return res.status(404).json({ message: "Schedule not found" });
+    }
+
+    return res.json({ message: "Schedule deleted successfully" });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
 
 // ✅ Manager: Approve (Completed -> Verified)
 export const approveSchedule = async (req, res) => {
