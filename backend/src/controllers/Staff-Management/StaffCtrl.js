@@ -1,5 +1,6 @@
 // backend/controllers/Staff-Management/StaffCtrl.js
 import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
 import { z } from "zod";
 
 import Staff from "../../models/Staff-Management/StaffModel.js";
@@ -28,6 +29,18 @@ function splitFullName(fullName) {
   return { firstName, lastName };
 }
 
+function isLoggedIn(req) {
+  return Boolean(req.user?.id);
+}
+
+function isAdmin(req) {
+  return String(req.user?.role || "").toUpperCase() === "ADMIN";
+}
+
+function isSelf(req, staffId) {
+  return String(req.user?.id) === String(staffId);
+}
+
 /* ---------------------------------------------
  * Zod Validation Schemas (match StaffModel.js)
  * --------------------------------------------- */
@@ -37,7 +50,6 @@ const staffCreateSchema = z.object({
 
   countryCode: z.string().trim().min(2).max(6).optional().default("+94"),
 
-  // StaffModel phone is Number -> accept string/number and coerce to number
   phone: z.coerce.number(),
 
   email: z.string().trim().toLowerCase().email("Invalid email"),
@@ -63,7 +75,6 @@ const staffUpdateSchema = z.object({
   countryCode: z.string().trim().min(2).max(6).optional(),
   phone: z.coerce.number().optional(),
 
-  // allow email update (and sync to Login)
   email: z.string().trim().toLowerCase().email().optional(),
 
   role: z.enum(["Cleaner", "Supervisor", "Technician"]).optional(),
@@ -79,8 +90,21 @@ const staffUpdateSchema = z.object({
   joinDate: z.coerce.date().optional(),
 });
 
+const staffPasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(6, "New password must be at least 6 characters"),
+});
+
+const deleteRequestSchema = z.object({
+  reason: z.string().trim().min(3, "Reason is too short").max(300).optional(),
+});
+
 /* ===================== CREATE STAFF ===================== */
 export async function createStaff(req, res) {
+  // If you want create staff to be admin-only, enable these:
+  // if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
+  // if (!isAdmin(req)) return res.status(403).json({ message: "Forbidden" });
+
   const parsed = staffCreateSchema.safeParse(req.body);
   if (!parsed.success) {
     const details = parsed.error.issues.map((i) => ({
@@ -94,19 +118,18 @@ export async function createStaff(req, res) {
   const { firstName, lastName } = splitFullName(staffPayload.fullName);
 
   try {
-    // ✅ 1) Create Staff first (password will be hashed by StaffModel pre-save hook)
     const staff = await Staff.create({
       ...staffPayload,
       email: staffPayload.email.toLowerCase().trim(),
     });
 
-    // ✅ 2) Get hashed password from DB (because Staff.password is select:false)
+    // Get hashed password from DB (Staff.password is select:false)
     const staffWithPw = await Staff.findById(staff._id).select("+password");
     if (!staffWithPw?.password) {
       return res.status(500).json({ message: "Staff created but password not found for login creation" });
     }
 
-    // ✅ 3) Create Login record (role always STAFF, cannot be changed)
+    // Create Login record
     await Login.create({
       userId: staff._id,
       firstName,
@@ -136,6 +159,12 @@ export async function createStaff(req, res) {
 
 /* ===================== LIST STAFF ===================== */
 export async function listStaff(req, res) {
+  // ✅ require login
+  if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
+
+  // (optional) admin-only list (recommended)
+  if (!isAdmin(req)) return res.status(403).json({ message: "Forbidden" });
+
   try {
     const { q, role, status, province, district } = req.query || {};
     const filter = {};
@@ -159,12 +188,19 @@ export async function listStaff(req, res) {
   }
 }
 
-/* ===================== GET ONE STAFF ===================== */
+/* ===================== GET ONE STAFF (PROFILE) ===================== */
 export async function getStaffById(req, res) {
-  const { id } = req.params;
+  // ✅ require login
+  if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
 
+  const { id } = req.params;
   if (!mongoose.isValidObjectId(id)) {
     return res.status(400).json({ message: "Invalid staff id" });
+  }
+
+  // ✅ staff can view only self | admin can view any
+  if (!isAdmin(req) && !isSelf(req, id)) {
+    return res.status(403).json({ message: "Forbidden" });
   }
 
   try {
@@ -178,7 +214,14 @@ export async function getStaffById(req, res) {
   }
 }
 
+/* ===================== GET ALL STAFF ===================== */
 export const getAllStaff = async (req, res) => {
+  // ✅ require login
+  if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
+
+  // ✅ admin-only
+  if (!isAdmin(req)) return res.status(403).json({ message: "Forbidden" });
+
   try {
     const { role } = req.query;
 
@@ -194,10 +237,17 @@ export const getAllStaff = async (req, res) => {
 
 /* ===================== UPDATE STAFF ===================== */
 export async function updateStaff(req, res) {
-  const { id } = req.params;
+  // ✅ require login
+  if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
 
+  const { id } = req.params;
   if (!mongoose.isValidObjectId(id)) {
     return res.status(400).json({ message: "Invalid staff id" });
+  }
+
+  // ✅ staff can update only self | admin can update any
+  if (!isAdmin(req) && !isSelf(req, id)) {
+    return res.status(403).json({ message: "Forbidden" });
   }
 
   const parsed = staffUpdateSchema.safeParse(req.body);
@@ -250,21 +300,137 @@ export async function updateStaff(req, res) {
   }
 }
 
-/* ===================== DELETE STAFF ===================== */
-export async function deleteStaff(req, res) {
-  const { id } = req.params;
+/* ===================== UPDATE STAFF PASSWORD ===================== */
+/**
+ * ✅ require login
+ * ✅ staff can update only self | admin can update any (optional but allowed)
+ * ✅ updates both Staff.password + Login.password (hashed)
+ */
+export async function updateStaffPassword(req, res) {
+  if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
 
+  const { id } = req.params;
+  if (!mongoose.isValidObjectId(id)) {
+    return res.status(400).json({ message: "Invalid staff id" });
+  }
+
+  if (!isAdmin(req) && !isSelf(req, id)) {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+
+  const parsed = staffPasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    const details = parsed.error.issues.map((i) => ({
+      name: i.path.join("."),
+      reason: i.message,
+    }));
+    return res.status(422).json({ message: "Validation failed", invalidParams: details });
+  }
+
+  const { currentPassword, newPassword } = parsed.data;
+
+  try {
+    const staff = await Staff.findById(id).select("+password");
+    if (!staff) return res.status(404).json({ message: "Staff not found" });
+
+    const ok = await bcrypt.compare(currentPassword, staff.password);
+    if (!ok) return res.status(401).json({ message: "Current password is incorrect" });
+
+    // set new password -> pre('save') hashes it
+    staff.password = newPassword;
+    await staff.save();
+
+    // sync Login password (store hashed password)
+    await Login.updateOne({ userId: staff._id }, { $set: { password: staff.password } });
+
+    return res.status(200).json({ message: "Password updated successfully" });
+  } catch (err) {
+    console.error("❌ updateStaffPassword:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+}
+
+/* ===================== REQUEST DELETE PROFILE ===================== */
+/**
+ * ✅ require login
+ * ✅ user cannot delete; only request delete
+ * ✅ staff can request only self | admin can request for someone (optional)
+ */
+export async function requestDeleteProfile(req, res) {
+  if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
+
+  const { id } = req.params;
+  if (!mongoose.isValidObjectId(id)) {
+    return res.status(400).json({ message: "Invalid staff id" });
+  }
+
+  if (!isAdmin(req) && !isSelf(req, id)) {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+
+  const parsed = deleteRequestSchema.safeParse(req.body || {});
+  if (!parsed.success) {
+    const details = parsed.error.issues.map((i) => ({
+      name: i.path.join("."),
+      reason: i.message,
+    }));
+    return res.status(422).json({ message: "Validation failed", invalidParams: details });
+  }
+
+  try {
+    const staff = await Staff.findById(id);
+    if (!staff) return res.status(404).json({ message: "Staff not found" });
+
+    staff.deleteRequest = {
+      requested: true,
+      reason: parsed.data.reason || "",
+      requestedAt: new Date(),
+      requestedBy: req.user.id,
+    };
+
+    await staff.save();
+
+    return res.status(200).json({
+      message: "Delete request submitted. Admin will review your request.",
+      deleteRequest: staff.deleteRequest,
+    });
+  } catch (err) {
+    console.error("❌ requestDeleteProfile:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+}
+
+/* ===================== DELETE STAFF ===================== */
+/**
+ * ✅ require login
+ * ✅ ONLY ADMIN CAN DELETE
+ * ✅ (optional) allow delete only if staff.deleteRequest.requested === true
+ */
+export async function deleteStaff(req, res) {
+  if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
+
+  // ✅ admin-only hard rule (as you asked)
+  if (!isAdmin(req)) return res.status(403).json({ message: "Forbidden: only admin can delete profiles" });
+
+  const { id } = req.params;
   if (!mongoose.isValidObjectId(id)) {
     return res.status(400).json({ message: "Invalid staff id" });
   }
 
   try {
+    const staff = await Staff.findById(id).lean();
+    if (!staff) return res.status(404).json({ message: "Staff not found" });
+
+    // Optional safety: only delete if request exists
+    // If you don't want this restriction, comment this block.
+    if (!staff?.deleteRequest?.requested) {
+      return res.status(400).json({ message: "Cannot delete: no delete request found for this profile" });
+    }
+
     await Login.deleteOne({ userId: id });
     const deleted = await Staff.findByIdAndDelete(id);
 
-    if (!deleted) return res.status(404).json({ message: "Staff not found" });
-
-    return res.status(200).json({ message: "Staff deleted", staff: deleted });
+    return res.status(200).json({ message: "Staff deleted by admin", staff: deleted });
   } catch (err) {
     console.error("❌ deleteStaff:", err);
     return res.status(500).json({ message: "Server error" });

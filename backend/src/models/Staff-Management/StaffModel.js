@@ -53,6 +53,14 @@ const StaffSchema = new Schema(
 
     // optional link (not required)
     userId: { type: Schema.Types.ObjectId, ref: "User" },
+
+    // ✅ NEW: Delete request (user can only request, admin can delete)
+    deleteRequest: {
+      requested: { type: Boolean, default: false },
+      reason: { type: String, default: "" },
+      requestedAt: { type: Date },
+      requestedBy: { type: Schema.Types.ObjectId }, // store requester id (usually req.user.id)
+    },
   },
   { timestamps: true }
 );
