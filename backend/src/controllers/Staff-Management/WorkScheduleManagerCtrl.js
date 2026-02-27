@@ -71,6 +71,31 @@ export const listSchedules = async (req, res) => {
   }
 };
 
+// ✅ Manager: Get single schedule
+export const getSingleSchedule = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid schedule id" });
+    }
+
+    const schedule = await WorkSchedule.findById(id)
+      .select(
+        "taskType staffId restroomId restroomLabel title date startTime endTime status managerNote managerReviewNote verifiedAt createdAt updatedAt"
+      )
+      .populate("staffId", "fullName email phone role");
+
+    if (!schedule) {
+      return res.status(404).json({ message: "Schedule not found" });
+    }
+
+    return res.json(schedule);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
 // ✅ Manager: Edit schedule
 export const editSchedule = async (req, res) => {
   try {
