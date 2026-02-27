@@ -67,4 +67,5 @@ status: {
   },
   { timestamps: true }
 );
-export default mongoose.model("WorkSchedule", workScheduleSchema);
+export default mongoose.models.WorkSchedule ||
+  mongoose.model("WorkSchedule", workScheduleSchema);
