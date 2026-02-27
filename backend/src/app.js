@@ -34,13 +34,6 @@ app.use("/api/restrooms", restroomRoutes);
 app.use("/api/issues", issueRoutes);
 app.use("/api/categories", issueCategoryRoutes);
 
-// Health check route
-app.get("/", (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "Clean Water & Sanitation API is running!"
-  });
-});
 
 // 404
 app.use((req, res) => {
