@@ -1,7 +1,7 @@
 import WorkSchedule from "../../models/Staff-Management/StaffWorkScheduleModel.js";
 import { uploadBufferToCloudinary } from "../../utils/staffManage/Staffcloudinary.js";
 
-// ✅ Staff: Get my schedules
+// Staff: Get my schedules
 // GET /api/staff/work-schedules/me?staffId=xxxx
 export const getMySchedules = async (req, res) => {
   try {
@@ -15,7 +15,7 @@ export const getMySchedules = async (req, res) => {
   }
 };
 
-// ✅ Staff: Start (Assigned -> InProgress)
+//  Staff: Start (Assigned -> InProgress)
 // PATCH /api/staff/work-schedules/:id/start?staffId=xxxx
 export const startWork = async (req, res) => {
   try {
@@ -43,7 +43,7 @@ export const startWork = async (req, res) => {
   }
 };
 
-// ✅ Staff: Upload proof image
+// staff: Upload proof image
 // POST /api/staff/work-schedules/:id/proof?staffId=xxxx  (form-data key = proof)
 export const uploadProof = async (req, res) => {
   try {
@@ -73,7 +73,7 @@ const result = await uploadBufferToCloudinary(req.file.buffer, "work-proofs");
   }
 };
 
-// ✅ Staff: Complete (InProgress -> Completed) only if proof uploaded
+// Staff: Complete (InProgress -> Completed) only if proof uploaded
 // PATCH /api/staff/work-schedules/:id/complete?staffId=xxxx
 export const completeWork = async (req, res) => {
   try {

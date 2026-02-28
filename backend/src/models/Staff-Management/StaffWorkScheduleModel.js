@@ -19,6 +19,7 @@ const workScheduleSchema = new mongoose.Schema(
       ref: "Restroom",
       required: true, // later you can make it true
     },
+    issueId: { type: mongoose.Schema.Types.ObjectId, ref: "Issue", default: null },
 
     // temporary fallback if restroomId not available
     restroomLabel: {

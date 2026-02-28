@@ -8,7 +8,7 @@ const ROLE_TASK_RULES = {
   Supervisor: ["Inspection"], // optional
 };
 
-// ✅ Manager: Assign schedule
+// Manager: Assign schedule
 export const assignSchedule = async (req, res) => {
   try {
     const { staffId, taskType, restroomId, restroomLabel, title, date, startTime, endTime, managerNote } =
@@ -45,7 +45,7 @@ export const assignSchedule = async (req, res) => {
   }
 };
 
-// ✅ Manager: List schedules (filters)
+// Manager: List schedules (filters)
 export const listSchedules = async (req, res) => {
   try {
     const { status, staffId, date } = req.query;
@@ -71,7 +71,7 @@ export const listSchedules = async (req, res) => {
   }
 };
 
-// ✅ Manager: Get single schedule
+//  Manager: Get single schedule
 export const getSingleSchedule = async (req, res) => {
   try {
     const { id } = req.params;
@@ -96,7 +96,7 @@ export const getSingleSchedule = async (req, res) => {
   }
 };
 
-// ✅ Manager: Edit schedule
+// Manager: Edit schedule
 export const editSchedule = async (req, res) => {
   try {
     const { id } = req.params;
@@ -120,7 +120,7 @@ export const editSchedule = async (req, res) => {
   }
 };
 
-// ✅ Manager: Cancel schedule
+//  Manager: Cancel schedule
 export const cancelSchedule = async (req, res) => {
   try {
     const { id } = req.params;
@@ -157,7 +157,7 @@ export const deleteSchedule = async (req, res) => {
   }
 };
 
-// ✅ Manager: Approve (Completed -> Verified)
+// Manager: Approve (Completed -> Verified)
 export const approveSchedule = async (req, res) => {
   try {
     const { id } = req.params;
@@ -181,7 +181,7 @@ export const approveSchedule = async (req, res) => {
   }
 };
 
-// ✅ Manager: Reject (Completed -> Rejected)
+// Manager: Reject (Completed -> Rejected)
 export const rejectSchedule = async (req, res) => {
   try {
     const { id } = req.params;

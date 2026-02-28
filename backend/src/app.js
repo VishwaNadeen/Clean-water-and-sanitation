@@ -8,6 +8,7 @@ import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
 import staffRouts from "./routes/Staff-Management/StaffRoute.js";
 import managerWorkScheduleRoutes from "./routes/Staff-Management/WorkScheduleManagerRoute.js";
 import staffWorkScheduleRoutes from "./routes/Staff-Management/WorkScheduleStaffRoute.js";
+import issueAssignRoutes from "./routes/Staff-Management/IssueAssignRoutes.js";
 
 import restroomRoutes from "./routes/restRoom-Management/restroomRoutes.js";
 
@@ -28,6 +29,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/staff",staffRouts);
 app.use("/api/manager/work-schedules", managerWorkScheduleRoutes);
 app.use("/api/staff/work-schedules", staffWorkScheduleRoutes);
+app.use("/api/manager/issue-assign", issueAssignRoutes);
 
 app.use("/api/restrooms", restroomRoutes);
 
