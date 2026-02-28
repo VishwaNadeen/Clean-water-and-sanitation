@@ -2,10 +2,141 @@ import User from "../../models/user-management/userModel.js";
 import Login from "../../models/user-management/logInModel.js";
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
+import { z } from "zod";
 
-/**
- * Helper function to send OTP email
- */
+/* ---------------------------------------------
+ * Zod helpers
+ * --------------------------------------------- */
+const zodFieldErrors = (zodError) => {
+  const out = {};
+  const issues = zodError?.issues || [];
+  for (const issue of issues) {
+    const key = issue.path?.length ? issue.path.join(".") : "body";
+    // keep first error per field
+    if (!out[key]) out[key] = issue.message;
+  }
+  return out;
+};
+
+const validate = (schema, data) => {
+  const parsed = schema.safeParse(data);
+  if (!parsed.success) {
+    const err = new Error("Validation failed.");
+    err.statusCode = 400;
+    err.fieldErrors = zodFieldErrors(parsed.error);
+    throw err;
+  }
+  return parsed.data;
+};
+
+//Common validators
+
+// email: lowercase only + normal email validation
+const emailLowercaseSchema = z
+  .string({ required_error: "Email is required." })
+  .trim()
+  .min(6, "Email is too short.")
+  .max(254, "Email is too long.")
+  .refine(
+    (v) => v === v.toLowerCase(),
+    "Email must contain only lowercase letters.")
+  .regex(
+    /^[a-z0-9]+@[a-z0-9]+\.[a-z]{2,}$/,
+    "Email must contain only lowercase letters and numbers (example: name123@gmail.com)");
+
+// phone: starts with 0, digits only, max 15
+const phoneSchema = z
+  .string({ required_error: "Phone is required." })
+  .trim()
+  .regex(/^\d+$/, "Phone must contain only numbers.")
+  .max(15, "Phone number must be maximum 15 digits.")
+  .min(9, "Phone number is too short.");
+
+// gender: MALE/FEMALE/OTHER only
+const genderSchema = z.enum(["MALE", "FEMALE", "OTHER"], {
+  required_error: "Gender is required.",
+});
+
+// password: 6-12, upper+lower+number+special
+const passwordSchema = z
+  .string({ required_error: "Password is required." })
+  .min(6, "Password must be at least 6 characters.")
+  .max(12, "Password must be at most 12 characters.")
+  .refine((v) => /[a-z]/.test(v), "Password must include a lowercase letter.")
+  .refine((v) => /[A-Z]/.test(v), "Password must include an uppercase letter.")
+  .refine((v) => /\d/.test(v), "Password must include a number.")
+  .refine(
+    (v) => /[^A-Za-z0-9]/.test(v),
+    "Password must include a special character."
+  );
+
+// country code (e.g., +94) - suitable validation
+const countryCodeSchema = z
+  .string({ required_error: "Country code is required." })
+  .trim()
+  .regex(/^\+\d{1,4}$/, "Country code must be like +94.");
+
+// names - suitable validation
+const nameSchema = z
+  .string()
+  .trim()
+  .min(2, "Must be at least 2 characters.")
+  .max(50, "Must be at most 50 characters.")
+  .regex(/^[A-Za-z\s.'-]+$/, "Only letters and basic punctuation allowed.");
+
+//Schemas per route
+const createUserProfileSchema = z.object({
+  firstName: nameSchema,
+  lastName: nameSchema,
+  email: emailLowercaseSchema,
+  countryCode: countryCodeSchema,
+  phone: phoneSchema,
+  gender: genderSchema,
+  password: passwordSchema,
+});
+
+const editMyProfileSchema = z
+  .object({
+    firstName: nameSchema.optional(),
+    lastName: nameSchema.optional(),
+    countryCode: countryCodeSchema.optional(),
+    phone: phoneSchema.optional(),
+    gender: genderSchema.optional(),
+
+    // these are not allowed to change (we still validate type if present)
+    email: emailLowercaseSchema.optional(),
+    role: z.string().optional(),
+
+    currentPassword: z.string().min(1, "currentPassword cannot be empty.").optional(),
+    newPassword: passwordSchema.optional(),
+  })
+  .superRefine((data, ctx) => {
+    const needPassword = Boolean(data.currentPassword || data.newPassword);
+    if (needPassword) {
+      if (!data.currentPassword) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["currentPassword"],
+          message: "currentPassword is required to change password.",
+        });
+      }
+      if (!data.newPassword) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["newPassword"],
+          message: "newPassword is required to change password.",
+        });
+      }
+    }
+  });
+
+const deleteMyProfileSchema = z.object({
+  password: z.string({ required_error: "Password is required." }).min(1, "Password is required."),
+});
+
+
+// Helper function to send OTP email
+
 const sendOtpEmail = async (email, otp) => {
   const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -34,8 +165,11 @@ const sendOtpEmail = async (email, otp) => {
  */
 export const createUserProfile = async (req, res, next) => {
   try {
+    // Zod validation (does not change your logic; just validates inputs)
+    const body = validate(createUserProfileSchema, req.body);
+
     const { firstName, lastName, email, countryCode, phone, gender, password } =
-      req.body;
+      body;
 
     if (
       !firstName ||
@@ -62,7 +196,7 @@ export const createUserProfile = async (req, res, next) => {
     const otp = String(Math.floor(100000 + Math.random() * 900000));
     const otpHash = await bcrypt.hash(otp, 10);
 
-    // 1️⃣ Create User (password will be hashed by User model hook)
+    // Create User (password will be hashed by User model hook)
     const user = await User.create({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
@@ -77,7 +211,7 @@ export const createUserProfile = async (req, res, next) => {
       emailOtpExpires: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
     });
 
-    // 2️⃣ Create Login record (role must always be USER)
+    // Create Login record (role must always be USER)
     await Login.create({
       userId: user._id,
       firstName: user.firstName,
@@ -87,7 +221,7 @@ export const createUserProfile = async (req, res, next) => {
       role: "USER",
     });
 
-    // 3️⃣ Send OTP email
+    // Send OTP email
     await sendOtpEmail(user.email, otp);
 
     res.status(201).json({
@@ -108,6 +242,11 @@ export const createUserProfile = async (req, res, next) => {
       },
     });
   } catch (err) {
+    // If our validator threw it, attach 400 and fieldErrors
+    if (err?.statusCode === 400 && err?.fieldErrors) {
+      res.status(400).json({ message: err.message, fieldErrors: err.fieldErrors });
+      return;
+    }
     next(err);
   }
 };
@@ -151,6 +290,9 @@ export const viewMyProfile = async (req, res, next) => {
  */
 export const editMyProfile = async (req, res, next) => {
   try {
+    // Zod validation
+    const body = validate(editMyProfileSchema, req.body);
+
     const {
       firstName,
       lastName,
@@ -161,7 +303,7 @@ export const editMyProfile = async (req, res, next) => {
       role,
       currentPassword,
       newPassword,
-    } = req.body;
+    } = body;
 
     const needPassword = Boolean(currentPassword || newPassword);
 
@@ -240,16 +382,20 @@ export const editMyProfile = async (req, res, next) => {
       },
     });
   } catch (err) {
+    if (err?.statusCode === 400 && err?.fieldErrors) {
+      res.status(400).json({ message: err.message, fieldErrors: err.fieldErrors });
+      return;
+    }
     next(err);
   }
 };
 
-/**
- * DELETE own profile
- */
+//DELETE own profile
 export const deleteMyProfile = async (req, res, next) => {
   try {
-    const { password } = req.body;
+    // Zod validation
+    const body = validate(deleteMyProfileSchema, req.body);
+    const { password } = body;
 
     if (!password) {
       res.status(400);
@@ -273,6 +419,10 @@ export const deleteMyProfile = async (req, res, next) => {
 
     res.json({ message: "Profile deleted successfully." });
   } catch (err) {
+    if (err?.statusCode === 400 && err?.fieldErrors) {
+      res.status(400).json({ message: err.message, fieldErrors: err.fieldErrors });
+      return;
+    }
     next(err);
   }
 };
@@ -289,12 +439,12 @@ export const getAllUsers = async (req, res, next) => {
       throw new Error("Access denied. Admin only.");
     }
 
-    // 1️⃣ Get all login records where role = USER
+    // Get all login records where role = USER
     const userLogins = await Login.find({ role: "USER" }).select("userId");
 
     const userIds = userLogins.map((login) => login.userId);
 
-    // 2️⃣ Get only those users
+    // Get only those users
     const users = await User.find({ _id: { $in: userIds } })
       .select("-password -emailOtpHash -refreshTokenHash");
 
