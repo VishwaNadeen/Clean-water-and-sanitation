@@ -1,5 +1,5 @@
 import WorkSchedule from "../../models/Staff-Management/StaffWorkScheduleModel.js";
-import { uploadBufferToCloudinary } from "../../utils/staffManage/Staffcloudinary.js";
+import { uploadBufferToCloudinary } from "../../utils/staff-Management/Staffcloudinary.js";
 
 // Staff: Get my schedules
 // GET /api/staff/work-schedules/me?staffId=xxxx
@@ -22,7 +22,7 @@ export const getMySchedules = async (req, res) => {
 // PATCH /api/staff/work-schedules/:id/start?staffId=xxxx
 export const startWork = async (req, res) => {
   try {
-    const { staffId } = req.query;
+    const staffId = req.user.id; // ✅ from JWT
     const { id } = req.params;
 
     const schedule = await WorkSchedule.findById(id);
@@ -33,7 +33,9 @@ export const startWork = async (req, res) => {
     }
 
     if (schedule.status !== "Assigned") {
-      return res.status(400).json({ message: "Only Assigned schedules can be started" });
+      return res
+        .status(400)
+        .json({ message: "Only Assigned schedules can be started" });
     }
 
     schedule.status = "InProgress";
@@ -50,7 +52,7 @@ export const startWork = async (req, res) => {
 // POST /api/staff/work-schedules/:id/proof?staffId=xxxx  (form-data key = proof)
 export const uploadProof = async (req, res) => {
   try {
-    const { staffId } = req.query;
+    const staffId = req.user.id; // ✅ from JWT
     const { id } = req.params;
 
     const schedule = await WorkSchedule.findById(id);
@@ -60,9 +62,14 @@ export const uploadProof = async (req, res) => {
       return res.status(403).json({ message: "Not your schedule" });
     }
 
-    if (!req.file) return res.status(400).json({ message: "Proof image is required" });
+    if (!req.file) {
+      return res.status(400).json({ message: "Proof image is required" });
+    }
 
-const result = await uploadBufferToCloudinary(req.file.buffer, "work-proofs");
+    const result = await uploadBufferToCloudinary(
+      req.file.buffer,
+      "work-proofs"
+    );
 
     schedule.proofImages.push({
       url: result.secure_url,
@@ -80,7 +87,7 @@ const result = await uploadBufferToCloudinary(req.file.buffer, "work-proofs");
 // PATCH /api/staff/work-schedules/:id/complete?staffId=xxxx
 export const completeWork = async (req, res) => {
   try {
-    const { staffId } = req.query;
+    const staffId = req.user.id; // ✅ from JWT
     const { id } = req.params;
     const { staffNote } = req.body;
 
@@ -92,11 +99,15 @@ export const completeWork = async (req, res) => {
     }
 
     if (schedule.status !== "InProgress") {
-      return res.status(400).json({ message: "Only InProgress schedules can be completed" });
+      return res
+        .status(400)
+        .json({ message: "Only InProgress schedules can be completed" });
     }
 
     if (!schedule.proofImages || schedule.proofImages.length === 0) {
-      return res.status(400).json({ message: "Upload proof image before completing" });
+      return res
+        .status(400)
+        .json({ message: "Upload proof image before completing" });
     }
 
     schedule.status = "Completed";

@@ -1,7 +1,8 @@
 import cloudinary from "../../config/cloudinary.js";
+import streamifier from "streamifier";
 
-export const uploadBufferToCloudinary = (buffer, folder = "work-proofs") => {
-  return new Promise((resolve, reject) => {
+export const uploadBufferToCloudinary = (buffer, folder) =>
+  new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       { folder },
       (error, result) => {
@@ -9,6 +10,6 @@ export const uploadBufferToCloudinary = (buffer, folder = "work-proofs") => {
         resolve(result);
       }
     );
-    stream.end(buffer);
+
+    streamifier.createReadStream(buffer).pipe(stream);
   });
-};
