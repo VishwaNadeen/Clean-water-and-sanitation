@@ -6,10 +6,13 @@ import Login from "../../models/user-management/logInModel.js";
 import User from "../../models/user-management/userModel.js";
 import Staff from "../../models/Staff-Management/StaffModel.js";
 
-const generateToken = (id, role) => {
-  return jwt.sign({ id, role }, process.env.JWT_SECRET, {
-    expiresIn: "7d",
-  });
+// ✅ token payload: { id: LOGIN_ID, role, profileId }
+const generateToken = (loginId, role, profileId) => {
+  return jwt.sign(
+    { id: loginId, role, profileId },
+    process.env.JWT_SECRET,
+    { expiresIn: "7d" }
+  );
 };
 
 // 🔐 Login (checks Login + User, and Login + Staff)
@@ -39,8 +42,6 @@ export const loginUser = async (req, res, next) => {
     }
 
     // 3) Check user collection AND staff collection
-    //    - first by ID (login.userId)
-    //    - if not found, fallback by email
     let user = null;
     let staff = null;
 
@@ -49,24 +50,17 @@ export const loginUser = async (req, res, next) => {
       staff = await Staff.findById(login.userId);
     }
 
-    if (!user) {
-      user = await User.findOne({ email: normalizedEmail });
-    }
+    if (!user) user = await User.findOne({ email: normalizedEmail });
+    if (!staff) staff = await Staff.findOne({ email: normalizedEmail });
 
-    if (!staff) {
-      staff = await Staff.findOne({ email: normalizedEmail });
-    }
-
-    // 4) If neither found → profile not found
     if (!user && !staff) {
       res.status(404);
       throw new Error("User profile not found.");
     }
 
-    // 5) Pick the profile (prefer role-based if possible, else pick whichever exists)
+    // 4) Pick profile based on role
     let profile = null;
-
-    if (login.role === "STAFF") {
+    if (String(login.role).toUpperCase() === "STAFF") {
       profile = staff || user;
     } else {
       profile = user || staff;
@@ -77,29 +71,28 @@ export const loginUser = async (req, res, next) => {
       throw new Error("User profile not found.");
     }
 
-    // 6) Optional checks (do NOT break if fields don't exist)
-    // Email verification (User model has it; Staff may not)
+    // 5) Optional checks (do NOT break if fields don't exist)
     if (typeof profile.isEmailVerified !== "undefined" && profile.isEmailVerified === false) {
       res.status(403);
       throw new Error("Please verify your email first.");
     }
 
-    // Account suspension checks (handle both styles)
     const statusVal = (profile.status ?? "").toString().toUpperCase();
     if (statusVal === "SUSPENDED") {
       res.status(403);
       throw new Error("Account is suspended.");
     }
 
-    // last login update (only if field exists)
     if ("lastLoginAt" in profile) {
       profile.lastLoginAt = new Date();
       await profile.save();
     }
 
+    // ✅ CRITICAL FIX:
+    // token id MUST be Login._id (NOT profile._id)
     res.json({
       message: "Login successful",
-      token: generateToken(profile._id, login.role),
+      token: generateToken(login._id, login.role, login.userId), // ✅ FIXED
       role: login.role,
     });
   } catch (err) {
@@ -119,7 +112,6 @@ export const verifyEmailOtp = async (req, res, next) => {
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Email OTP verification is usually for User collection
     const user = await User.findOne({ email: normalizedEmail }).select(
       "+emailOtpHash +emailOtpExpires"
     );
@@ -159,8 +151,6 @@ export const verifyEmailOtp = async (req, res, next) => {
 
 export const logoutUser = async (req, res, next) => {
   try {
-    // NOTE: this assumes req.user is set by auth middleware.
-    // Keeping your logic unchanged, only adding safety.
     if (!req.user?._id) {
       res.status(401);
       throw new Error("Not authorized.");
@@ -210,14 +200,12 @@ export const requestPasswordResetOtp = async (req, res, next) => {
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    // 1) login collection lookup
     const login = await Login.findOne({ email: normalizedEmail });
     if (!login) {
       res.status(404);
       throw new Error("Email not found.");
     }
 
-    // 2) find profile in User OR Staff
     let profile = null;
 
     if (login.userId) {
@@ -232,7 +220,6 @@ export const requestPasswordResetOtp = async (req, res, next) => {
     }
 
     if (!profile) {
-      // fallback by email
       profile = await User.findOne({ email: normalizedEmail }).select(
         "+passwordResetOtpHash +passwordResetOtpExpires"
       );
@@ -280,7 +267,6 @@ export const verifyPasswordResetOtp = async (req, res, next) => {
       throw new Error("Email not found.");
     }
 
-    // profile in User OR Staff
     let profile = null;
 
     if (login.userId) {
@@ -350,7 +336,6 @@ export const resetPasswordWithOtp = async (req, res, next) => {
       throw new Error("Email not found.");
     }
 
-    // profile in User OR Staff
     let profile = null;
 
     if (login.userId) {
@@ -393,17 +378,12 @@ export const resetPasswordWithOtp = async (req, res, next) => {
       throw new Error("Invalid OTP.");
     }
 
-    // update profile password (if profile has password field)
     profile.password = newPassword;
     profile.passwordResetOtpHash = undefined;
     profile.passwordResetOtpExpires = undefined;
     await profile.save();
 
-    // update login password too (keep your behavior)
-    await Login.updateOne(
-      { _id: login._id },
-      { $set: { password: profile.password } }
-    );
+    await Login.updateOne({ _id: login._id }, { $set: { password: profile.password } });
 
     res.json({ message: "Password reset successful." });
   } catch (err) {
