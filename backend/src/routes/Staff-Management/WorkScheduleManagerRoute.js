@@ -1,4 +1,5 @@
 import express from "express";
+import { protect, authorizeRoles } from "../../middleware/authMiddleware.js";
 import {
   assignSchedule,
   listSchedules,
@@ -12,6 +13,7 @@ import {
 const router = express.Router();
 
 // Manager endpoints
+router.use(protect, authorizeRoles("ADMIN"));
 router.post("/", assignSchedule);
 router.get("/", listSchedules);
 router.get("/:id", getSingleSchedule);

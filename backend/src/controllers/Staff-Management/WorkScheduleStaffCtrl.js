@@ -5,13 +5,16 @@ import { uploadBufferToCloudinary } from "../../utils/staffManage/Staffcloudinar
 // GET /api/staff/work-schedules/me?staffId=xxxx
 export const getMySchedules = async (req, res) => {
   try {
-    const { staffId } = req.query;
-    if (!staffId) return res.status(400).json({ message: "staffId is required" });
+    const staffId = req.user.id; // 👈 from JWT
 
-    const schedules = await WorkSchedule.find({ staffId }).sort({ date: 1, startTime: 1 });
+    const schedules = await WorkSchedule
+      .find({ staffId })
+      .sort({ date: 1, startTime: 1 });
+
     return res.json(schedules);
-  } catch (err) {
-    return res.status(500).json({ message: err.message });
+
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
   }
 };
 
