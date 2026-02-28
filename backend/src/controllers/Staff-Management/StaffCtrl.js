@@ -1,4 +1,3 @@
-// backend/controllers/Staff-Management/StaffCtrl.js
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -29,8 +28,13 @@ function splitFullName(fullName) {
   return { firstName, lastName };
 }
 
+// ✅ NOW req.user is Staff profile doc (because protect loads Staff by role=STAFF)
+function getAuthUserId(req) {
+  return String(req.user?._id || req.user?.id || "");
+}
+
 function isLoggedIn(req) {
-  return Boolean(req.user?.id);
+  return Boolean(getAuthUserId(req));
 }
 
 function isAdmin(req) {
@@ -38,7 +42,7 @@ function isAdmin(req) {
 }
 
 function isSelf(req, staffId) {
-  return String(req.user?.id) === String(staffId);
+  return getAuthUserId(req) === String(staffId);
 }
 
 /* ---------------------------------------------
@@ -101,10 +105,6 @@ const deleteRequestSchema = z.object({
 
 /* ===================== CREATE STAFF ===================== */
 export async function createStaff(req, res) {
-  // If you want create staff to be admin-only, enable these:
-  // if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
-  // if (!isAdmin(req)) return res.status(403).json({ message: "Forbidden" });
-
   const parsed = staffCreateSchema.safeParse(req.body);
   if (!parsed.success) {
     const details = parsed.error.issues.map((i) => ({
@@ -123,19 +123,17 @@ export async function createStaff(req, res) {
       email: staffPayload.email.toLowerCase().trim(),
     });
 
-    // Get hashed password from DB (Staff.password is select:false)
     const staffWithPw = await Staff.findById(staff._id).select("+password");
     if (!staffWithPw?.password) {
       return res.status(500).json({ message: "Staff created but password not found for login creation" });
     }
 
-    // Create Login record
     await Login.create({
       userId: staff._id,
       firstName,
       lastName,
       email: staff.email,
-      password: staffWithPw.password, // hashed password
+      password: staffWithPw.password,
       role: "STAFF",
     });
 
@@ -157,13 +155,10 @@ export async function createStaff(req, res) {
   }
 }
 
-/* ===================== LIST STAFF ===================== */
+/* ===================== LIST STAFF (ADMIN ONLY) ===================== */
 export async function listStaff(req, res) {
-  // ✅ require login
   if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
-
-  // (optional) admin-only list (recommended)
-  if (!isAdmin(req)) return res.status(403).json({ message: "Forbidden" });
+  if (!isAdmin(req)) return res.status(403).json({ message: "Forbidden: admin only" });
 
   try {
     const { q, role, status, province, district } = req.query || {};
@@ -188,25 +183,35 @@ export async function listStaff(req, res) {
   }
 }
 
-/* ===================== GET ONE STAFF (PROFILE) ===================== */
-export async function getStaffById(req, res) {
-  // ✅ require login
+/* ===================== GET MY PROFILE (TOKEN BASED) ===================== */
+export async function getMyStaffProfile(req, res) {
   if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
 
-  const { id } = req.params;
-  if (!mongoose.isValidObjectId(id)) {
-    return res.status(400).json({ message: "Invalid staff id" });
-  }
-
-  // ✅ staff can view only self | admin can view any
-  if (!isAdmin(req) && !isSelf(req, id)) {
-    return res.status(403).json({ message: "Forbidden" });
-  }
+  const id = getAuthUserId(req);
+  if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: "Invalid staff id" });
 
   try {
     const staff = await Staff.findById(id).lean();
     if (!staff) return res.status(404).json({ message: "Staff not found" });
+    return res.status(200).json({ staff });
+  } catch (err) {
+    console.error("❌ getMyStaffProfile:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+}
 
+/* ===================== GET ONE STAFF (PROFILE) ===================== */
+export async function getStaffById(req, res) {
+  if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
+
+  const { id } = req.params;
+  if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: "Invalid staff id" });
+
+  if (!isAdmin(req) && !isSelf(req, id)) return res.status(403).json({ message: "Forbidden" });
+
+  try {
+    const staff = await Staff.findById(id).lean();
+    if (!staff) return res.status(404).json({ message: "Staff not found" });
     return res.status(200).json({ staff });
   } catch (err) {
     console.error("❌ getStaffById:", err);
@@ -214,60 +219,23 @@ export async function getStaffById(req, res) {
   }
 }
 
-/* ===================== GET ALL STAFF ===================== */
-export const getAllStaff = async (req, res) => {
-  // ✅ require login
+/* ===================== UPDATE MY PROFILE (TOKEN BASED) ===================== */
+export async function updateMyStaffProfile(req, res) {
   if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
 
-  // ✅ admin-only
-  if (!isAdmin(req)) return res.status(403).json({ message: "Forbidden" });
-
-  try {
-    const { role } = req.query;
-
-    const filter = {};
-    if (role) filter.role = role;
-
-    const staff = await Staff.find(filter).sort({ fullName: 1 });
-    res.json(staff);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-/* ===================== UPDATE STAFF ===================== */
-export async function updateStaff(req, res) {
-  // ✅ require login
-  if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
-
-  const { id } = req.params;
-  if (!mongoose.isValidObjectId(id)) {
-    return res.status(400).json({ message: "Invalid staff id" });
-  }
-
-  // ✅ staff can update only self | admin can update any
-  if (!isAdmin(req) && !isSelf(req, id)) {
-    return res.status(403).json({ message: "Forbidden" });
-  }
+  const id = getAuthUserId(req);
+  if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: "Invalid staff id" });
 
   const parsed = staffUpdateSchema.safeParse(req.body);
   if (!parsed.success) {
-    const details = parsed.error.issues.map((i) => ({
-      name: i.path.join("."),
-      reason: i.message,
-    }));
+    const details = parsed.error.issues.map((i) => ({ name: i.path.join("."), reason: i.message }));
     return res.status(422).json({ message: "Validation failed", invalidParams: details });
   }
 
   try {
-    const updated = await Staff.findByIdAndUpdate(id, parsed.data, {
-      new: true,
-      runValidators: true,
-    });
-
+    const updated = await Staff.findByIdAndUpdate(id, parsed.data, { new: true, runValidators: true });
     if (!updated) return res.status(404).json({ message: "Staff not found" });
 
-    // Sync Login (name/email only). Role stays STAFF
     const loginUpdate = {};
     if (parsed.data.fullName) {
       const { firstName, lastName } = splitFullName(parsed.data.fullName);
@@ -277,6 +245,50 @@ export async function updateStaff(req, res) {
     if (parsed.data.email) {
       loginUpdate.email = parsed.data.email.toLowerCase().trim();
     }
+    if (Object.keys(loginUpdate).length > 0) {
+      await Login.updateOne({ userId: updated._id }, { $set: loginUpdate });
+    }
+
+    return res.status(200).json({ message: "Staff updated", staff: updated });
+  } catch (err) {
+    if (err?.code === 11000) {
+      const keys = err?.keyPattern || err?.keyValue || {};
+      if (keys.email) return res.status(409).json({ message: "Email already exists" });
+      if (keys.nic) return res.status(409).json({ message: "NIC already exists" });
+      return res.status(409).json({ message: "Duplicate key error" });
+    }
+
+    console.error("❌ updateMyStaffProfile:", err);
+    return res.status(400).json({ message: "Invalid staff data", error: err.message, errors: fieldErrors(err) });
+  }
+}
+
+/* ===================== UPDATE STAFF (BY ID) ===================== */
+export async function updateStaff(req, res) {
+  if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
+
+  const { id } = req.params;
+  if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: "Invalid staff id" });
+
+  if (!isAdmin(req) && !isSelf(req, id)) return res.status(403).json({ message: "Forbidden" });
+
+  const parsed = staffUpdateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    const details = parsed.error.issues.map((i) => ({ name: i.path.join("."), reason: i.message }));
+    return res.status(422).json({ message: "Validation failed", invalidParams: details });
+  }
+
+  try {
+    const updated = await Staff.findByIdAndUpdate(id, parsed.data, { new: true, runValidators: true });
+    if (!updated) return res.status(404).json({ message: "Staff not found" });
+
+    const loginUpdate = {};
+    if (parsed.data.fullName) {
+      const { firstName, lastName } = splitFullName(parsed.data.fullName);
+      loginUpdate.firstName = firstName;
+      loginUpdate.lastName = lastName;
+    }
+    if (parsed.data.email) loginUpdate.email = parsed.data.email.toLowerCase().trim();
 
     if (Object.keys(loginUpdate).length > 0) {
       await Login.updateOne({ userId: updated._id }, { $set: loginUpdate });
@@ -292,38 +304,20 @@ export async function updateStaff(req, res) {
     }
 
     console.error("❌ updateStaff:", err);
-    return res.status(400).json({
-      message: "Invalid staff data",
-      error: err.message,
-      errors: fieldErrors(err),
-    });
+    return res.status(400).json({ message: "Invalid staff data", error: err.message, errors: fieldErrors(err) });
   }
 }
 
-/* ===================== UPDATE STAFF PASSWORD ===================== */
-/**
- * ✅ require login
- * ✅ staff can update only self | admin can update any (optional but allowed)
- * ✅ updates both Staff.password + Login.password (hashed)
- */
-export async function updateStaffPassword(req, res) {
+/* ===================== UPDATE MY PASSWORD (TOKEN BASED) ===================== */
+export async function updateMyStaffPassword(req, res) {
   if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
 
-  const { id } = req.params;
-  if (!mongoose.isValidObjectId(id)) {
-    return res.status(400).json({ message: "Invalid staff id" });
-  }
-
-  if (!isAdmin(req) && !isSelf(req, id)) {
-    return res.status(403).json({ message: "Forbidden" });
-  }
+  const id = getAuthUserId(req);
+  if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: "Invalid staff id" });
 
   const parsed = staffPasswordSchema.safeParse(req.body);
   if (!parsed.success) {
-    const details = parsed.error.issues.map((i) => ({
-      name: i.path.join("."),
-      reason: i.message,
-    }));
+    const details = parsed.error.issues.map((i) => ({ name: i.path.join("."), reason: i.message }));
     return res.status(422).json({ message: "Validation failed", invalidParams: details });
   }
 
@@ -336,11 +330,45 @@ export async function updateStaffPassword(req, res) {
     const ok = await bcrypt.compare(currentPassword, staff.password);
     if (!ok) return res.status(401).json({ message: "Current password is incorrect" });
 
-    // set new password -> pre('save') hashes it
     staff.password = newPassword;
     await staff.save();
 
-    // sync Login password (store hashed password)
+    await Login.updateOne({ userId: staff._id }, { $set: { password: staff.password } });
+
+    return res.status(200).json({ message: "Password updated successfully" });
+  } catch (err) {
+    console.error("❌ updateMyStaffPassword:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+}
+
+/* ===================== UPDATE STAFF PASSWORD (BY ID) ===================== */
+export async function updateStaffPassword(req, res) {
+  if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
+
+  const { id } = req.params;
+  if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: "Invalid staff id" });
+
+  if (!isAdmin(req) && !isSelf(req, id)) return res.status(403).json({ message: "Forbidden" });
+
+  const parsed = staffPasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    const details = parsed.error.issues.map((i) => ({ name: i.path.join("."), reason: i.message }));
+    return res.status(422).json({ message: "Validation failed", invalidParams: details });
+  }
+
+  const { currentPassword, newPassword } = parsed.data;
+
+  try {
+    const staff = await Staff.findById(id).select("+password");
+    if (!staff) return res.status(404).json({ message: "Staff not found" });
+
+    const ok = await bcrypt.compare(currentPassword, staff.password);
+    if (!ok) return res.status(401).json({ message: "Current password is incorrect" });
+
+    staff.password = newPassword;
+    await staff.save();
+
     await Login.updateOne({ userId: staff._id }, { $set: { password: staff.password } });
 
     return res.status(200).json({ message: "Password updated successfully" });
@@ -350,30 +378,16 @@ export async function updateStaffPassword(req, res) {
   }
 }
 
-/* ===================== REQUEST DELETE PROFILE ===================== */
-/**
- * ✅ require login
- * ✅ user cannot delete; only request delete
- * ✅ staff can request only self | admin can request for someone (optional)
- */
-export async function requestDeleteProfile(req, res) {
+/* ===================== REQUEST DELETE MY PROFILE (TOKEN BASED) ===================== */
+export async function requestMyDeleteProfile(req, res) {
   if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
 
-  const { id } = req.params;
-  if (!mongoose.isValidObjectId(id)) {
-    return res.status(400).json({ message: "Invalid staff id" });
-  }
-
-  if (!isAdmin(req) && !isSelf(req, id)) {
-    return res.status(403).json({ message: "Forbidden" });
-  }
+  const id = getAuthUserId(req);
+  if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: "Invalid staff id" });
 
   const parsed = deleteRequestSchema.safeParse(req.body || {});
   if (!parsed.success) {
-    const details = parsed.error.issues.map((i) => ({
-      name: i.path.join("."),
-      reason: i.message,
-    }));
+    const details = parsed.error.issues.map((i) => ({ name: i.path.join("."), reason: i.message }));
     return res.status(422).json({ message: "Validation failed", invalidParams: details });
   }
 
@@ -385,7 +399,45 @@ export async function requestDeleteProfile(req, res) {
       requested: true,
       reason: parsed.data.reason || "",
       requestedAt: new Date(),
-      requestedBy: req.user.id,
+      requestedBy: req.auth?._id, // ✅ Login id (auditable)
+    };
+
+    await staff.save();
+
+    return res.status(200).json({
+      message: "Delete request submitted. Admin will review your request.",
+      deleteRequest: staff.deleteRequest,
+    });
+  } catch (err) {
+    console.error("❌ requestMyDeleteProfile:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+}
+
+/* ===================== REQUEST DELETE PROFILE (BY ID) ===================== */
+export async function requestDeleteProfile(req, res) {
+  if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
+
+  const { id } = req.params;
+  if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: "Invalid staff id" });
+
+  if (!isAdmin(req) && !isSelf(req, id)) return res.status(403).json({ message: "Forbidden" });
+
+  const parsed = deleteRequestSchema.safeParse(req.body || {});
+  if (!parsed.success) {
+    const details = parsed.error.issues.map((i) => ({ name: i.path.join("."), reason: i.message }));
+    return res.status(422).json({ message: "Validation failed", invalidParams: details });
+  }
+
+  try {
+    const staff = await Staff.findById(id);
+    if (!staff) return res.status(404).json({ message: "Staff not found" });
+
+    staff.deleteRequest = {
+      requested: true,
+      reason: parsed.data.reason || "",
+      requestedAt: new Date(),
+      requestedBy: req.auth?._id, // ✅ Login id
     };
 
     await staff.save();
@@ -400,29 +452,18 @@ export async function requestDeleteProfile(req, res) {
   }
 }
 
-/* ===================== DELETE STAFF ===================== */
-/**
- * ✅ require login
- * ✅ ONLY ADMIN CAN DELETE
- * ✅ (optional) allow delete only if staff.deleteRequest.requested === true
- */
+/* ===================== DELETE STAFF (ADMIN ONLY) ===================== */
 export async function deleteStaff(req, res) {
   if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
-
-  // ✅ admin-only hard rule (as you asked)
   if (!isAdmin(req)) return res.status(403).json({ message: "Forbidden: only admin can delete profiles" });
 
   const { id } = req.params;
-  if (!mongoose.isValidObjectId(id)) {
-    return res.status(400).json({ message: "Invalid staff id" });
-  }
+  if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: "Invalid staff id" });
 
   try {
     const staff = await Staff.findById(id).lean();
     if (!staff) return res.status(404).json({ message: "Staff not found" });
 
-    // Optional safety: only delete if request exists
-    // If you don't want this restriction, comment this block.
     if (!staff?.deleteRequest?.requested) {
       return res.status(400).json({ message: "Cannot delete: no delete request found for this profile" });
     }
