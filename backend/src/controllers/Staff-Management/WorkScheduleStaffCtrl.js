@@ -1,4 +1,4 @@
-import WorkSchedule from "../../models/Staff-Management/StaffWorkScheduleModel.js";
+import WorkSchedule from "../../models/Staff-Management/WorkScheduleStaffModel.js";
 import { uploadBufferToCloudinary } from "../../utils/staff-Management/Staffcloudinary.js";
 
 // Staff: Get my schedules
