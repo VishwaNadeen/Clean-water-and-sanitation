@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import WorkSchedule from "../../models/Staff-Management/WorkScheduleManagerModel.js";
+import WorkSchedule from "../../models/Staff-Management/WorkScheduleModel.js";
 import Staff from "../../models/Staff-Management/StaffModel.js";
 
 const ROLE_TASK_RULES = {
@@ -23,6 +23,14 @@ const toMinutes = (t) => {
   return h * 60 + m;
 };
 
+const isTimeOverlap = (startA, endA, startB, endB) => {
+  const a1 = toMinutes(startA);
+  const a2 = toMinutes(endA);
+  const b1 = toMinutes(startB);
+  const b2 = toMinutes(endB);
+  return a1 < b2 && a2 > b1;
+};
+
 // overlap check: same staff, same day, overlapping time, not cancelled
 const hasOverlap = async ({ staffId, date, startTime, endTime, excludeId }) => {
   const dayStart = new Date(date);
@@ -31,49 +39,17 @@ const hasOverlap = async ({ staffId, date, startTime, endTime, excludeId }) => {
   const dayEnd = new Date(date);
   dayEnd.setHours(24, 0, 0, 0);
 
-  const startMin = toMinutes(startTime);
-  const endMin = toMinutes(endTime);
-
   const q = {
     staffId,
     status: { $ne: "Cancelled" },
     date: { $gte: dayStart, $lt: dayEnd },
-    $expr: {
-      // overlap if existing.start < new.end AND existing.end > new.start
-      $and: [
-        { $lt: [{ $toInt: { $substr: ["$startTime", 0, 2] } }, 24] }, // keep mongo happy
-      ],
-    },
   };
 
-  // NOTE: startTime/endTime are strings. We'll compare by converting to minutes in JS after pulling
+  if (excludeId) q._id = { $ne: excludeId };
+
   const existing = await WorkSchedule.find(q).select("startTime endTime").lean();
 
-  const conflicts = existing.some((s) => {
-    const a = toMinutes(s.startTime);
-    const b = toMinutes(s.endTime);
-    return a < endMin && b > startMin;
-  });
-
-  if (!conflicts) return false;
-
-  // if editing, ignore overlap with itself by filtering out excludeId before JS check
-  if (!excludeId) return true;
-
-  const existing2 = await WorkSchedule.find({
-    staffId,
-    status: { $ne: "Cancelled" },
-    date: { $gte: dayStart, $lt: dayEnd },
-    _id: { $ne: excludeId },
-  })
-    .select("startTime endTime")
-    .lean();
-
-  return existing2.some((s) => {
-    const a = toMinutes(s.startTime);
-    const b = toMinutes(s.endTime);
-    return a < endMin && b > startMin;
-  });
+  return existing.some((s) => isTimeOverlap(startTime, endTime, s.startTime, s.endTime));
 };
 
 // ---------- Manager: Assign schedule ----------
@@ -120,14 +96,16 @@ export const assignSchedule = async (req, res) => {
     }
 
     // staff exists + role rule
-    const staff = await Staff.findById(staffId).select("role");
+    const staff = await Staff.findById(staffId).select("role status fullName email phone");
     if (!staff) return res.status(404).json({ message: "Staff not found" });
+
+    if (String(staff.status) !== "Active") {
+      return res.status(400).json({ message: "Staff is not Active" });
+    }
 
     const allowed = ROLE_TASK_RULES[staff.role] || [];
     if (!allowed.includes(taskType)) {
-      return res
-        .status(400)
-        .json({ message: `Cannot assign ${taskType} to ${staff.role}` });
+      return res.status(400).json({ message: `Cannot assign ${taskType} to ${staff.role}` });
     }
 
     // overlap check
@@ -138,12 +116,14 @@ export const assignSchedule = async (req, res) => {
       });
     }
 
-    const schedule = await WorkSchedule.create({
+    // create
+    const created = await WorkSchedule.create({
+      staffName: staff.fullName,
       staffId,
       taskType,
       restroomId: restroomId || undefined,
       restroomLabel: restroomLabel || "",
-      title: title.trim(),
+      title: String(title).trim(),
       date: new Date(date),
       startTime,
       endTime,
@@ -151,6 +131,10 @@ export const assignSchedule = async (req, res) => {
       issueId: issueId || null,
       status: "Assigned",
     });
+
+    // ✅ populate staff details in response
+    const schedule = await WorkSchedule.findById(created._id)
+      .populate("staffId", "fullName email phone role");
 
     return res.status(201).json(schedule);
   } catch (err) {
@@ -272,7 +256,7 @@ export const editSchedule = async (req, res) => {
     const updated = await WorkSchedule.findByIdAndUpdate(id, updates, {
       new: true,
       runValidators: true,
-    });
+    }).populate("staffId", "fullName email phone role");
 
     return res.json(updated);
   } catch (err) {
@@ -285,22 +269,26 @@ export const cancelSchedule = async (req, res) => {
   try {
     const { id } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
+    if (!isValidObjectId(id)) {
       return res.status(400).json({ message: "Invalid id" });
     }
 
     const schedule = await WorkSchedule.findById(id);
     if (!schedule) return res.status(404).json({ message: "Not found" });
 
-    // optional: block cancel after verified
     if (schedule.status === "Verified") {
       return res.status(400).json({ message: "Cannot cancel Verified schedule" });
     }
 
     schedule.status = "Cancelled";
-    await schedule.save({ validateBeforeSave: false }); // ✅ prevents required validation issues
+    await schedule.save({ validateBeforeSave: false });
 
-    return res.json(schedule);
+    const populated = await WorkSchedule.findById(id).populate(
+      "staffId",
+      "fullName email phone role"
+    );
+
+    return res.json(populated);
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
@@ -342,7 +330,12 @@ export const approveSchedule = async (req, res) => {
     schedule.managerReviewNote = managerReviewNote || "";
     await schedule.save();
 
-    return res.json(schedule);
+    const populated = await WorkSchedule.findById(id).populate(
+      "staffId",
+      "fullName email phone role"
+    );
+
+    return res.json(populated);
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
@@ -367,7 +360,12 @@ export const rejectSchedule = async (req, res) => {
     schedule.managerReviewNote = managerReviewNote || "Rejected by manager";
     await schedule.save();
 
-    return res.json(schedule);
+    const populated = await WorkSchedule.findById(id).populate(
+      "staffId",
+      "fullName email phone role"
+    );
+
+    return res.json(populated);
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }

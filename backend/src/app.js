@@ -36,7 +36,6 @@ app.use("/api/restrooms", restroomRoutes);
 app.use("/api/issues", issueRoutes);
 app.use("/api/categories", issueCategoryRoutes);
 
-
 // 404
 app.use((req, res) => {
   res.status(404).json({ message: "Route not found" });
