@@ -54,12 +54,21 @@ export const uploadProof = async (req, res) => {
     const { id } = req.params;
 
     console.log("✅ uploadProof HIT");
+    console.log("staffId:", staffId);
+    console.log("scheduleId:", id);
     console.log("req.file:", req.file ? {
       fieldname: req.file.fieldname,
       originalname: req.file.originalname,
       mimetype: req.file.mimetype,
       size: req.file.size,
     } : null);
+
+    // Check Cloudinary config
+    console.log("Cloudinary config:", {
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME ? "SET" : "NOT SET",
+      api_key: process.env.CLOUDINARY_API_KEY ? "SET" : "NOT SET",
+      api_secret: process.env.CLOUDINARY_API_SECRET ? "SET" : "NOT SET",
+    });
 
     const schedule = await WorkSchedule.findById(id);
     if (!schedule) return res.status(404).json({ message: "Schedule not found" });
@@ -72,7 +81,34 @@ export const uploadProof = async (req, res) => {
       return res.status(400).json({ message: "Proof image is required" });
     }
 
-    const result = await uploadBufferToCloudinary(req.file.buffer, "work-proofs");
+    let result;
+    
+    // Try Cloudinary upload first, fallback to base64 if not configured
+    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_SECRET) {
+      console.log("Attempting to upload to Cloudinary...");
+      try {
+        result = await uploadBufferToCloudinary(req.file.buffer, "work-proofs");
+        console.log("Cloudinary upload successful:", result);
+      } catch (cloudinaryError) {
+        console.error("Cloudinary upload failed, using fallback:", cloudinaryError.message);
+        // Fallback: convert to base64
+        const base64Image = req.file.buffer.toString('base64');
+        const dataUrl = `data:${req.file.mimetype};base64,${base64Image}`;
+        result = {
+          secure_url: dataUrl,
+          public_id: `local_${Date.now()}_${req.file.originalname}`
+        };
+      }
+    } else {
+      console.log("Cloudinary not configured, using base64 fallback");
+      // Fallback: convert to base64
+      const base64Image = req.file.buffer.toString('base64');
+      const dataUrl = `data:${req.file.mimetype};base64,${base64Image}`;
+      result = {
+        secure_url: dataUrl,
+        public_id: `local_${Date.now()}_${req.file.originalname}`
+      };
+    }
 
     schedule.proofImages.push({
       url: result.secure_url,
