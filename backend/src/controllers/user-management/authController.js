@@ -6,7 +6,7 @@ import Login from "../../models/user-management/logInModel.js";
 import User from "../../models/user-management/userModel.js";
 import Staff from "../../models/Staff-Management/StaffModel.js";
 
-// ✅ token payload: { id: LOGIN_ID, role, profileId }
+// token payload: { id: LOGIN_ID, role, profileId }
 const generateToken = (loginId, role, profileId) => {
   return jwt.sign(
     { id: loginId, role, profileId },
@@ -15,7 +15,7 @@ const generateToken = (loginId, role, profileId) => {
   );
 };
 
-// 🔐 Login (checks Login + User, and Login + Staff)
+// Login (checks Login + User, and Login + Staff)
 export const loginUser = async (req, res, next) => {
   try {
     const { email, password } = req.body;
@@ -88,11 +88,11 @@ export const loginUser = async (req, res, next) => {
       await profile.save();
     }
 
-    // ✅ CRITICAL FIX:
+    // CRITICAL FIX:
     // token id MUST be Login._id (NOT profile._id)
     res.json({
       message: "Login successful",
-      token: generateToken(login._id, login.role, login.userId), // ✅ FIXED
+      token: generateToken(login._id, login.role, login.userId), // FIXED
       role: login.role,
     });
   } catch (err) {
@@ -100,7 +100,7 @@ export const loginUser = async (req, res, next) => {
   }
 };
 
-// ✅ Verify Email OTP
+// Verify Email OTP
 export const verifyEmailOtp = async (req, res, next) => {
   try {
     const { email, otp } = req.body;
@@ -189,7 +189,7 @@ const sendResetOtpEmail = async (email, otp) => {
   });
 };
 
-// ✅ Forgot Password
+// Forgot Password
 export const requestPasswordResetOtp = async (req, res, next) => {
   try {
     const { email } = req.body;
@@ -250,7 +250,7 @@ export const requestPasswordResetOtp = async (req, res, next) => {
   }
 };
 
-// ✅ Verify Reset OTP
+// Verify Reset OTP
 export const verifyPasswordResetOtp = async (req, res, next) => {
   try {
     const { email, otp } = req.body;
@@ -313,7 +313,7 @@ export const verifyPasswordResetOtp = async (req, res, next) => {
   }
 };
 
-// ✅ Reset Password
+// Reset Password
 export const resetPasswordWithOtp = async (req, res, next) => {
   try {
     const { email, otp, newPassword, confirmPassword } = req.body;
