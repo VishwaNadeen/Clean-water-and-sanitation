@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import Staff from "../../models/Staff-Management/StaffModel.js";
-import WorkSchedule from "../../models/Staff-Management/WorkScheduleStaffModel.js";
+import WorkSchedule from "../../models/Staff-Management/WorkScheduleModel.js";
 
 // gets the already-registered Issue model
 const getIssueModel = () => {

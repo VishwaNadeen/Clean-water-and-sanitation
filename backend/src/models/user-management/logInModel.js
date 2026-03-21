@@ -46,7 +46,7 @@ const loginSchema = new mongoose.Schema(
   }
 );
 
-// ✅ Prevent OverwriteModelError (important for nodemon / hot reload)
+//  Prevent OverwriteModelError (important for nodemon / hot reload)
 const Login = mongoose.models.Login || mongoose.model("Login", loginSchema);
 
 export default Login;

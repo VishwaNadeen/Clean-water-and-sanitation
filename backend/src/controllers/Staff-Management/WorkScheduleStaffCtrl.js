@@ -1,28 +1,27 @@
-import WorkSchedule from "../../models/Staff-Management/WorkScheduleStaffModel.js";
+import WorkSchedule from "../../models/Staff-Management/WorkScheduleModel.js";
 import { uploadBufferToCloudinary } from "../../utils/staff-Management/Staffcloudinary.js";
 
 // Staff: Get my schedules
-// GET /api/staff/work-schedules/me?staffId=xxxx
+// GET /api/staff/work-schedules/me
 export const getMySchedules = async (req, res) => {
   try {
-    const staffId = req.user.id; // 👈 from JWT
+    const staffId = req.user.id;
 
-    const schedules = await WorkSchedule
-      .find({ staffId })
+    const schedules = await WorkSchedule.find({ staffId })
+      .populate("staffId", "fullName role")
       .sort({ date: 1, startTime: 1 });
 
     return res.json(schedules);
-
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
 };
 
-//  Staff: Start (Assigned -> InProgress)
-// PATCH /api/staff/work-schedules/:id/start?staffId=xxxx
+// Staff: Start (Assigned -> InProgress)
+// PATCH /api/staff/work-schedules/:id/start
 export const startWork = async (req, res) => {
   try {
-    const staffId = req.user.id; // ✅ from JWT
+    const staffId = req.user.id;
     const { id } = req.params;
 
     const schedule = await WorkSchedule.findById(id);
@@ -33,63 +32,113 @@ export const startWork = async (req, res) => {
     }
 
     if (schedule.status !== "Assigned") {
-      return res
-        .status(400)
-        .json({ message: "Only Assigned schedules can be started" });
+      return res.status(400).json({ message: "Only Assigned schedules can be started" });
     }
 
+    //  do NOT read status from req.body
     schedule.status = "InProgress";
     schedule.startedAt = new Date();
-    await schedule.save();
 
+    await schedule.save();
     return res.json(schedule);
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
 };
 
-// staff: Upload proof image
-// POST /api/staff/work-schedules/:id/proof?staffId=xxxx  (form-data key = proof)
+// Staff: Upload proof image
+// POST /api/staff/work-schedules/:id/proof  (form-data key = proof)
 export const uploadProof = async (req, res) => {
   try {
-    const staffId = req.user.id; // ✅ from JWT
+    const staffId = req.user.id;
     const { id } = req.params;
 
+    console.log("✅ uploadProof HIT");
+    console.log("staffId:", staffId);
+    console.log("scheduleId:", id);
+    console.log("req.file:", req.file ? {
+      fieldname: req.file.fieldname,
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+    } : null);
+
+    // Check Cloudinary config
+    console.log("Cloudinary config:", {
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME ? "SET" : "NOT SET",
+      api_key: process.env.CLOUDINARY_API_KEY ? "SET" : "NOT SET",
+      api_secret: process.env.CLOUDINARY_API_SECRET ? "SET" : "NOT SET",
+    });
+
     const schedule = await WorkSchedule.findById(id);
-    if (!schedule) return res.status(404).json({ message: "Not found" });
+    if (!schedule) return res.status(404).json({ message: "Schedule not found" });
 
     if (schedule.staffId.toString() !== staffId) {
       return res.status(403).json({ message: "Not your schedule" });
     }
 
-    if (!req.file) {
+    if (!req.file || !req.file.buffer) {
       return res.status(400).json({ message: "Proof image is required" });
     }
 
-    const result = await uploadBufferToCloudinary(
-      req.file.buffer,
-      "work-proofs"
-    );
+    let result;
+    
+    // Try Cloudinary upload first, fallback to base64 if not configured
+    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_SECRET) {
+      console.log("Attempting to upload to Cloudinary...");
+      try {
+        result = await uploadBufferToCloudinary(req.file.buffer, "work-proofs");
+        console.log("Cloudinary upload successful:", result);
+      } catch (cloudinaryError) {
+        console.error("Cloudinary upload failed, using fallback:", cloudinaryError.message);
+        // Fallback: convert to base64
+        const base64Image = req.file.buffer.toString('base64');
+        const dataUrl = `data:${req.file.mimetype};base64,${base64Image}`;
+        result = {
+          secure_url: dataUrl,
+          public_id: `local_${Date.now()}_${req.file.originalname}`
+        };
+      }
+    } else {
+      console.log("Cloudinary not configured, using base64 fallback");
+      // Fallback: convert to base64
+      const base64Image = req.file.buffer.toString('base64');
+      const dataUrl = `data:${req.file.mimetype};base64,${base64Image}`;
+      result = {
+        secure_url: dataUrl,
+        public_id: `local_${Date.now()}_${req.file.originalname}`
+      };
+    }
 
     schedule.proofImages.push({
       url: result.secure_url,
       publicId: result.public_id,
+      uploadedAt: new Date(),
     });
 
     await schedule.save();
-    return res.json(schedule);
+
+    return res.status(200).json({
+      message: "Proof uploaded successfully",
+      schedule,
+    });
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    console.error("❌ uploadProof ERROR:", err);
+    return res.status(500).json({
+      message: err.message,
+      stack: err.stack,
+    });
   }
 };
 
-// Staff: Complete (InProgress -> Completed) only if proof uploaded
-// PATCH /api/staff/work-schedules/:id/complete?staffId=xxxx
+// Staff: Complete (InProgress -> Completed)
+// PATCH /api/staff/work-schedules/:id/complete
 export const completeWork = async (req, res) => {
   try {
-    const staffId = req.user.id; // ✅ from JWT
+    const staffId = req.user.id;
     const { id } = req.params;
-    const { staffNote } = req.body;
+
+    const { staffNote, materialsUsed, issuesFound } = req.body;
 
     const schedule = await WorkSchedule.findById(id);
     if (!schedule) return res.status(404).json({ message: "Not found" });
@@ -99,22 +148,21 @@ export const completeWork = async (req, res) => {
     }
 
     if (schedule.status !== "InProgress") {
-      return res
-        .status(400)
-        .json({ message: "Only InProgress schedules can be completed" });
+      return res.status(400).json({ message: "Only InProgress schedules can be completed" });
     }
 
     if (!schedule.proofImages || schedule.proofImages.length === 0) {
-      return res
-        .status(400)
-        .json({ message: "Upload proof image before completing" });
+      return res.status(400).json({ message: "Upload proof image before completing" });
     }
 
     schedule.status = "Completed";
     schedule.completedAt = new Date();
-    schedule.staffNote = staffNote || "";
-    await schedule.save();
 
+    schedule.staffNote = staffNote || "";
+    schedule.materialsUsed = materialsUsed || "";
+    schedule.issuesFound = issuesFound || "";
+
+    await schedule.save();
     return res.json(schedule);
   } catch (err) {
     return res.status(500).json({ message: err.message });

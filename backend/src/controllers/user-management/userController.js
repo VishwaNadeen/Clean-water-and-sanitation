@@ -4,9 +4,7 @@ import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
 import { z } from "zod";
 
-/* ---------------------------------------------
- * Zod helpers
- * --------------------------------------------- */
+//Zod helpers
 const zodFieldErrors = (zodError) => {
   const out = {};
   const issues = zodError?.issues || [];
