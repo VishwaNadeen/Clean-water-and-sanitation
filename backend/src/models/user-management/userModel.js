@@ -62,7 +62,7 @@ const userSchema = new mongoose.Schema(
       type: Date,
     },
 
-    // ✅ OTP Fields
+    // OTP Fields
     emailOtpHash: {
       type: String,
       select: false,
@@ -83,7 +83,7 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// 🔐 Hash password
+// Hash password
 userSchema.pre("save", async function () {
   if (!this.isModified("password")) return;
   const salt = await bcrypt.genSalt(10);
