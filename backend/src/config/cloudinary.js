@@ -21,3 +21,4 @@ cloudinary.config({
 console.log('Cloudinary configured:', cloudinary.config());
 
 export default cloudinary;
+
