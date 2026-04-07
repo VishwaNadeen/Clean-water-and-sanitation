@@ -1,6 +1,6 @@
-import Navbar from "./components/Navbar.jsx";
-import Footer from "./components/Footer.jsx";
-import AppRoutes from "./app/routes.jsx";
+import Navbar from "./components/common/Navbar.jsx";
+import Footer from "./components/common/Footer.jsx";
+import AppRoutes from "./routes/index.jsx";
 
 export default function App() {
   return (
