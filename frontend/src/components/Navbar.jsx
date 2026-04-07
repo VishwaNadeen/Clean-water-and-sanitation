@@ -40,8 +40,6 @@ export default function Navbar() {
     { to: "/rest-rooms", label: "Rest Rooms" },
     { to: "/about", label: "About Us" },
     { to: "/contact", label: "Contact Us" },
-    { to: "/manager/dashboard", label: "Staff Manager" },//temppery
-    { to: "/staff/role", label: "Staff Role" },//temppery
   ];
 
   return (
