@@ -4,6 +4,7 @@ import AuthRoutes from "./AuthRoutes";
 import HomeRoutes from "./HomeRoutes";
 import ProfileRoutes from "./ProfileRoutes";
 import AdminRoutes from "./AdminRoutes";
+import StaffRoutes from "./StaffRoutes";
 
 export default function AppRoutes() {
   return (
@@ -13,6 +14,7 @@ export default function AppRoutes() {
       {AuthRoutes}
       {ProfileRoutes}
       {AdminRoutes}
+      {StaffRoutes}
     </Routes>
   );
 }
