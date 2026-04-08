@@ -1,12 +1,13 @@
 import { Route } from "react-router-dom";
-import Home from "../../pages/home/Home.jsx";
-import Login from "../../pages/auth/Login.jsx";
+import MainLayout from "../layouts/MainLayout";
+import About from "../pages/public/About";
+import Contact from "../pages/public/Contact";
 
-export default function PublicRoutes() {
-  return (
-    <>
-      <Route path="/" element={<Home />} />
-      <Route path="/login" element={<Login />} />
-    </>
-  );
-}
+const PublicRoutes = (
+  <Route element={<MainLayout />}>
+    <Route path="/about" element={<About />} />
+    <Route path="/contact" element={<Contact />} />
+  </Route>
+);
+
+export default PublicRoutes;
