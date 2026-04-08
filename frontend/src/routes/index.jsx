@@ -1,9 +1,10 @@
-import { Routes } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 import PublicRoutes from "./PublicRoutes";
 import AuthRoutes from "./AuthRoutes";
 import HomeRoutes from "./HomeRoutes";
 import ProfileRoutes from "./ProfileRoutes";
-import AdminRoutes from "./AdminRoutes";
+import StaffManagementRoutes from "./StaffManagementRoutes";
+import NotFound from "../pages/NotFound";
 
 export default function AppRoutes() {
   return (
@@ -12,7 +13,10 @@ export default function AppRoutes() {
       {PublicRoutes}
       {AuthRoutes}
       {ProfileRoutes}
-      {AdminRoutes}
+      {StaffManagementRoutes.map((route) => (
+        <Route key={route.path} path={route.path} element={route.element} />
+      ))}
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }

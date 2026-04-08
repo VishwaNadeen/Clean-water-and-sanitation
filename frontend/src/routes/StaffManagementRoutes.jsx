@@ -1,5 +1,6 @@
 import ProtectedRoute from "../components/common/ProtectedRoute.jsx";
-import AdminDashboard from "../pages/admin/Dashboard.jsx";
+import MainLayout from "../layouts/MainLayout.jsx";
+import AdminDashboard from "../pages/admin/AdminDashboard.jsx";
 import StaffList from "../pages/admin/StaffList.jsx";
 import Schedules from "../pages/admin/Schedule.jsx";
 import Issues from "../pages/admin/Issues.jsx";
@@ -11,7 +12,9 @@ const staffManagementRoutes = [
     path: "/admin/dashboard",
     element: (
       <ProtectedRoute>
-        <AdminDashboard />
+        <MainLayout>
+          <AdminDashboard />
+        </MainLayout>
       </ProtectedRoute>
     ),
   },
@@ -19,7 +22,9 @@ const staffManagementRoutes = [
     path: "/admin/staff-list",
     element: (
       <ProtectedRoute>
-        <StaffList />
+        <MainLayout>
+          <StaffList />
+        </MainLayout>
       </ProtectedRoute>
     ),
   },
@@ -27,7 +32,9 @@ const staffManagementRoutes = [
     path: "/admin/schedules",
     element: (
       <ProtectedRoute>
-        <Schedules />
+        <MainLayout>
+          <Schedules />
+        </MainLayout>
       </ProtectedRoute>
     ),
   },
@@ -35,7 +42,9 @@ const staffManagementRoutes = [
     path: "/admin/issues",
     element: (
       <ProtectedRoute>
-        <Issues />
+        <MainLayout>
+          <Issues />
+        </MainLayout>
       </ProtectedRoute>
     ),
   },
@@ -43,7 +52,9 @@ const staffManagementRoutes = [
     path: "/staff/dashboard",
     element: (
       <ProtectedRoute>
-        <StaffDashboard />
+        <MainLayout>
+          <StaffDashboard />
+        </MainLayout>
       </ProtectedRoute>
     ),
   },
@@ -51,7 +62,9 @@ const staffManagementRoutes = [
     path: "/staff/my-schedules",
     element: (
       <ProtectedRoute>
-        <MySchedules />
+        <MainLayout>
+          <MySchedules />
+        </MainLayout>
       </ProtectedRoute>
     ),
   },

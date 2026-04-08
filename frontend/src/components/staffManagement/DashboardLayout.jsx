@@ -111,9 +111,6 @@ export default function DashboardLayout({ title, subtitle, children }) {
                     <NavLink to="/staff/my-schedules" className={navClass}>
                       My Schedules
                     </NavLink>
-                    <NavLink to="/profile" className={navClass}>
-                      My Profile
-                    </NavLink>
 
                     <SectionTitle>Account</SectionTitle>
 
