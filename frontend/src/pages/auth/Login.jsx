@@ -3,20 +3,6 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { loginUser } from "../../services/authService";
 import { setAuthSession, isLoggedIn, getStoredUser } from "../../utils/auth";
 
-function getRedirectPathByRole(role) {
-  const normalizedRole = String(role || "").trim().toLowerCase();
-
-  if (normalizedRole === "admin" || normalizedRole === "manager") {
-    return "/admin/dashboard";
-  }
-
-  if (normalizedRole === "staff") {
-    return "/staff/dashboard";
-  }
-
-  return "/profile";
-}
-
 export default function Login() {
   const navigate = useNavigate();
 
@@ -30,10 +16,18 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   const storedUser = getStoredUser?.();
-  const redirectPath = getRedirectPathByRole(storedUser?.role);
+  const storedRole = String(storedUser?.role || "").toLowerCase();
 
   if (isLoggedIn()) {
-    return <Navigate to={redirectPath} replace />;
+    if (storedRole === "admin") {
+      return <Navigate to="/admin/dashboard" replace />;
+    }
+
+    if (storedRole === "staff") {
+      return <Navigate to="/staff/dashboard" replace />;
+    }
+
+    return <Navigate to="/profile" replace />;
   }
 
   function handleChange(event) {
@@ -100,7 +94,13 @@ export default function Login() {
         user: safeUser,
       });
 
-      navigate(getRedirectPathByRole(userRole), { replace: true });
+      if (userRole === "admin") {
+        navigate("/admin/dashboard", { replace: true });
+      } else if (userRole === "staff") {
+        navigate("/staff/dashboard", { replace: true });
+      } else {
+        navigate("/profile", { replace: true });
+      }
     } catch (error) {
       setSubmitError(error.message || "Login failed.");
     } finally {
