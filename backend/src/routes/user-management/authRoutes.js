@@ -1,6 +1,7 @@
 import express from "express";
 import { loginUser, 
     verifyEmailOtp,
+    resendEmailOtp,
     logoutUser,
     requestPasswordResetOtp, 
     verifyPasswordResetOtp, 
@@ -11,6 +12,7 @@ const router = express.Router();
 
 router.post("/login", loginUser);
 router.post("/verify-otp", verifyEmailOtp);
+router.post("/resend-verify-otp", resendEmailOtp);
 router.post("/logout", protect, logoutUser);
 
 // Forgot password OTP flow

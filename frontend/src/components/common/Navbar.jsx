@@ -199,13 +199,14 @@ export default function Navbar() {
             </nav>
 
             <div className="flex items-center gap-2">
-              <a
-                href="#get-started"
+              <NavLink
+                to="/auth/register"
+                onClick={() => setMenuOpen(false)}
                 className="relative hidden overflow-hidden rounded-[11px] border border-sky-300/80 bg-gradient-to-br from-sky-400 to-blue-300 px-[18px] py-[9px] text-[13px] font-semibold tracking-[0.2px] text-white shadow-[0_2px_14px_rgba(56,189,248,0.22)] transition-all duration-300 hover:-translate-y-[1px] hover:shadow-[0_4px_24px_rgba(56,189,248,0.35),0_0_0_3px_rgba(125,211,252,0.22)] md:inline-block animate-[fadeSlideRight_0.4s_0.3s_both]"
               >
                 <span className="absolute left-[-100%] top-0 h-full w-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-all duration-500 hover:left-[100%]" />
                 <span className="relative z-10">Get Started</span>
-              </a>
+              </NavLink>
 
               {!loggedIn ? (
                 <button
