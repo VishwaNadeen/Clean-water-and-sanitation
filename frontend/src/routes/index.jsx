@@ -3,8 +3,10 @@ import homeRoutes from "./HomeRoutes.jsx";
 import authRoutes from "./AuthRoutes.jsx";
 import profileRoutes from "./ProfileRoutes.jsx";
 import NotFound from "../pages/NotFound.jsx";
+import staffManagementRoutes from "./StaffManagementRoutes.jsx";
 
-const allRoutes = [...homeRoutes, ...authRoutes, ...profileRoutes];
+const allRoutes = [...homeRoutes, ...authRoutes, ...profileRoutes, ...staffManagementRoutes ];
+
 
 export default function AppRoutes() {
   return (

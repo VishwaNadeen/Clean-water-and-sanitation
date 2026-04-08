@@ -11,11 +11,14 @@ import {
   // ✅ token-based (no id)
   getMyStaffProfile,
   updateMyStaffProfile,
+  uploadMyStaffProfileImage,
+  removeMyStaffProfileImage,
   updateMyStaffPassword,
   requestMyDeleteProfile,
 } from "../../controllers/Staff-Management/StaffCtrl.js";
 
 import { protect, authorizeRoles } from "../../middleware/authMiddleware.js";
+import upload from "../../middleware/StaffUploadImg.js";
 
 const router = express.Router();
 
@@ -25,6 +28,8 @@ router.use(protect);
 // ✅ staff self endpoints (NO user id)
 router.get("/me", getMyStaffProfile);
 router.patch("/me", updateMyStaffProfile);
+router.post("/me/profile-image", upload.single("profileImage"), uploadMyStaffProfileImage);
+router.delete("/me/profile-image", removeMyStaffProfileImage);
 router.patch("/me/password", updateMyStaffPassword);
 router.post("/me/delete-request", requestMyDeleteProfile);
 
