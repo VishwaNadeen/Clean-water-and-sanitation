@@ -657,6 +657,13 @@ export const updateIssue = async (req, res) => {
             });
         }
 
+        if (req.user.role !== 'ADMIN' && existingIssue.status !== 'OPEN') {
+            return res.status(400).json({
+                success: false,
+                message: "You can only update issues while the status is OPEN."
+            });
+        }
+
         // Build update object with only provided fields
         const updateData = {};
         if (title !== undefined) {
@@ -915,6 +922,74 @@ export const getUserIssues = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Error retrieving user issues",
+            error: error.message
+        });
+    }
+};
+
+// CANCEL ISSUE (User can cancel own OPEN issue, admin can cancel any)
+export const cancelIssue = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                message: "Issue ID is required"
+            });
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid issue ID format. Please provide a valid issue ID."
+            });
+        }
+
+        const existingIssue = await Issue.findById(id);
+        if (!existingIssue) {
+            return res.status(404).json({
+                success: false,
+                message: "Issue not found"
+            });
+        }
+
+        if (req.user.role !== 'ADMIN' && existingIssue.reportedBy.toString() !== req.user._id.toString()) {
+            return res.status(403).json({
+                success: false,
+                message: "Access denied. You can only cancel your own issues."
+            });
+        }
+
+        if (req.user.role !== 'ADMIN' && existingIssue.status !== 'OPEN') {
+            return res.status(400).json({
+                success: false,
+                message: "Only OPEN issues can be cancelled."
+            });
+        }
+
+        if (existingIssue.status === 'CLOSED') {
+            return res.status(400).json({
+                success: false,
+                message: "This issue is already closed."
+            });
+        }
+
+        existingIssue.status = 'CLOSED';
+        if (!existingIssue.adminNotes) {
+            existingIssue.adminNotes = 'Issue cancelled by reporter.';
+        }
+        await existingIssue.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Issue cancelled successfully."
+        });
+    } catch (error) {
+        console.error('Cancel issue error:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error cancelling issue",
             error: error.message
         });
     }

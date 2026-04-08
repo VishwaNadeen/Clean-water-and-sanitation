@@ -7,6 +7,7 @@ import {
     getAllIssues,
     getIssueById,
     updateIssue,
+    cancelIssue,
     resolveIssue,
     updateIssueStatus,
     deleteIssue,
@@ -32,6 +33,9 @@ router.get("/:id", getIssueById);
 
 // Update issue (title, description, priority, etc.) - User can update own issues, Admin can update any
 router.put("/:id", protect, checkAccountStatus, updateIssue);
+
+// Cancel own issue while still OPEN
+router.patch("/:id/cancel", protect, checkAccountStatus, cancelIssue);
 
 // Search issue by issue number
 router.get("/search/:issueNumber", async (req, res) => {
