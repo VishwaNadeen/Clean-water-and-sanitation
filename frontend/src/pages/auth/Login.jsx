@@ -23,6 +23,10 @@ export default function Login() {
       return <Navigate to="/admin/dashboard" replace />;
     }
 
+    if (storedRole === "staff") {
+      return <Navigate to="/staff/dashboard" replace />;
+    }
+
     return <Navigate to="/profile" replace />;
   }
 
@@ -92,6 +96,8 @@ export default function Login() {
 
       if (userRole === "admin") {
         navigate("/admin/dashboard", { replace: true });
+      } else if (userRole === "staff") {
+        navigate("/staff/dashboard", { replace: true });
       } else {
         navigate("/profile", { replace: true });
       }
