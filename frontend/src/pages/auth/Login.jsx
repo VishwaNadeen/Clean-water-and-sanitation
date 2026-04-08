@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { loginUser } from "../../services/authService";
-import { setAuthSession, isLoggedIn } from "../../utils/auth";
+import { setAuthSession, isLoggedIn, getStoredUser } from "../../utils/auth";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -15,7 +15,14 @@ export default function Login() {
   const [submitError, setSubmitError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const storedUser = getStoredUser?.();
+  const storedRole = String(storedUser?.role || "").toLowerCase();
+
   if (isLoggedIn()) {
+    if (storedRole === "admin") {
+      return <Navigate to="/admin/dashboard" replace />;
+    }
+
     return <Navigate to="/profile" replace />;
   }
 
@@ -63,20 +70,31 @@ export default function Login() {
       setLoading(true);
       setSubmitError("");
 
-      const data = await loginUser(formData);
+      const data = await loginUser({
+        email: formData.email.trim(),
+        password: formData.password,
+      });
+
+      const userRole = String(data?.role || "user").toLowerCase();
 
       const safeUser = {
-        email: formData.email.trim().toLowerCase(),
-        role: data?.role || "USER",
-        fullName: "User",
+        id: data?.id || data?._id || "",
+        username: data?.username || data?.fullName || "User",
+        fullName: data?.fullName || data?.username || "User",
+        email: data?.email || formData.email.trim().toLowerCase(),
+        role: userRole,
       };
 
       setAuthSession({
-        token: data.token,
+        token: data?.token,
         user: safeUser,
       });
 
-      navigate("/profile");
+      if (userRole === "admin") {
+        navigate("/admin/dashboard", { replace: true });
+      } else {
+        navigate("/profile", { replace: true });
+      }
     } catch (error) {
       setSubmitError(error.message || "Login failed.");
     } finally {
@@ -90,7 +108,7 @@ export default function Login() {
         <div className="order-2 md:order-1">
           <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-4 py-1.5 text-[12px] font-semibold tracking-[0.3px] text-sky-700">
             <span className="h-2 w-2 rounded-full bg-sky-400" />
-            Clean Water & Sanitation
+            Clean Water &amp; Sanitation
           </div>
 
           <h1 className="mt-5 text-4xl font-bold leading-tight text-slate-900 md:text-5xl">
@@ -101,28 +119,6 @@ export default function Login() {
             Access your account, view your profile, and manage your sanitation
             and water-related requests in one place.
           </p>
-
-          <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl border border-sky-200 bg-white/90 p-5 shadow-[0_8px_30px_rgba(56,189,248,0.08)]">
-              <div className="text-2xl">🔐</div>
-              <h3 className="mt-3 text-lg font-semibold text-slate-900">
-                Secure login
-              </h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                This is now connected to your backend login API.
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-sky-200 bg-white/90 p-5 shadow-[0_8px_30px_rgba(56,189,248,0.08)]">
-              <div className="text-2xl">👤</div>
-              <h3 className="mt-3 text-lg font-semibold text-slate-900">
-                Profile ready
-              </h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                After login, you can open profile, update it, or delete it.
-              </p>
-            </div>
-          </div>
         </div>
 
         <div className="order-1 md:order-2">
@@ -149,14 +145,14 @@ export default function Login() {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  placeholder="Enter your email"
+                  autoComplete="email"
                   className="w-full rounded-xl border border-sky-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100"
                 />
-                {errors.email ? (
+                {errors.email && (
                   <p className="mt-2 text-xs font-medium text-red-500">
                     {errors.email}
                   </p>
-                ) : null}
+                )}
               </div>
 
               <div>
@@ -168,21 +164,21 @@ export default function Login() {
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  placeholder="Enter your password"
+                  autoComplete="current-password"
                   className="w-full rounded-xl border border-sky-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100"
                 />
-                {errors.password ? (
+                {errors.password && (
                   <p className="mt-2 text-xs font-medium text-red-500">
                     {errors.password}
                   </p>
-                ) : null}
+                )}
               </div>
 
-              {submitError ? (
+              {submitError && (
                 <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
                   {submitError}
                 </div>
-              ) : null}
+              )}
 
               <button
                 type="submit"
