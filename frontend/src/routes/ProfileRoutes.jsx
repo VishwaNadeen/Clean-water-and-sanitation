@@ -1,42 +1,24 @@
+import { Route } from "react-router-dom";
+import MainLayout from "../layouts/MainLayout.jsx";
+import ProtectedRoute from "../components/common/ProtectedRoute.jsx";
 import Profile from "../pages/profile/Profile.jsx";
 import EditProfile from "../pages/profile/EditProfile.jsx";
 import ChangePassword from "../pages/profile/ChangePassword.jsx";
 import DeleteProfile from "../pages/profile/DeleteProfile.jsx";
-import ProtectedRoute from "../components/common/ProtectedRoute.jsx";
 
-const profileRoutes = [
-  {
-    path: "/profile",
-    element: (
+const ProfileRoutes = (
+  <Route
+    element={
       <ProtectedRoute>
-        <Profile />
+        <MainLayout />
       </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/profile/edit",
-    element: (
-      <ProtectedRoute>
-        <EditProfile />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/profile/password",
-    element: (
-      <ProtectedRoute>
-        <ChangePassword />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/profile/delete",
-    element: (
-      <ProtectedRoute>
-        <DeleteProfile />
-      </ProtectedRoute>
-    ),
-  },
-];
+    }
+  >
+    <Route path="/profile" element={<Profile />} />
+    <Route path="/profile/edit" element={<EditProfile />} />
+    <Route path="/profile/password" element={<ChangePassword />} />
+    <Route path="/profile/delete" element={<DeleteProfile />} />
+  </Route>
+);
 
-export default profileRoutes;
+export default ProfileRoutes;
