@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 
-/* ── Animated counter hook ── */
+/* â”€â”€ Animated counter hook â”€â”€ */
 function useCounter(target, duration = 1800, start = false) {
   const [val, setVal] = useState(0);
 
@@ -23,7 +23,7 @@ function useCounter(target, duration = 1800, start = false) {
   return val;
 }
 
-/* ── Intersection observer hook ── */
+/* â”€â”€ Intersection observer hook â”€â”€ */
 function useInView(threshold = 0.2) {
   const ref = useRef(null);
   const [inView, setInView] = useState(false);
@@ -43,7 +43,7 @@ function useInView(threshold = 0.2) {
   return [ref, inView];
 }
 
-/* ── Stat card ── */
+/* â”€â”€ Stat card â”€â”€ */
 function Stat({ title, value, hint, icon, delay = 0 }) {
   const [ref, inView] = useInView(0.3);
   const num = useCounter(parseInt(value), 1600, inView);
@@ -73,7 +73,7 @@ function Stat({ title, value, hint, icon, delay = 0 }) {
   );
 }
 
-/* ── Feature card ── */
+/* â”€â”€ Feature card â”€â”€ */
 function Feature({ icon, title, desc, delay = 0 }) {
   const [ref, inView] = useInView(0.2);
 
@@ -95,7 +95,7 @@ function Feature({ icon, title, desc, delay = 0 }) {
         </div>
         <p className="text-[13.5px] leading-[1.65] text-slate-500">{desc}</p>
         <div className="mt-[18px] translate-x-[-6px] text-[16px] text-sky-500 opacity-0 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100">
-          →
+          â†’
         </div>
       </div>
     </div>
@@ -109,7 +109,7 @@ export default function Home() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 
         @keyframes particleFloat {
           0%   { transform: translateY(0) scale(1); opacity: 0; }
@@ -145,7 +145,7 @@ export default function Home() {
       `}</style>
 
       <div
-        className="min-h-screen bg-[linear-gradient(180deg,rgba(255,255,255,1)_0%,rgba(240,249,255,1)_50%,rgba(224,242,254,1)_100%)] font-['Outfit'] text-slate-800"
+        className="min-h-screen bg-[linear-gradient(180deg,rgba(255,255,255,1)_0%,rgba(240,249,255,1)_50%,rgba(224,242,254,1)_100%)] font-['Poppins'] text-slate-800"
         style={{
           backgroundImage: `
             radial-gradient(ellipse 80% 50% at 10% 0%, rgba(125,211,252,0.25) 0%, transparent 60%),
@@ -154,7 +154,7 @@ export default function Home() {
           `,
         }}
       >
-        {/* ── HERO ── */}
+        {/* â”€â”€ HERO â”€â”€ */}
         <section
           className="relative mx-auto flex max-w-[1200px] flex-col items-center px-6 pb-[60px] pt-20 text-center"
           ref={heroRef}
@@ -180,134 +180,30 @@ export default function Home() {
             ))}
           </div>
 
-          <div
-            className="relative z-[1] mb-7 inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-4 py-1.5 text-[12.5px] font-medium tracking-[0.4px] text-sky-600"
-            style={{ animation: "hmFadeDown 0.5s 0.1s both" }}
-          >
-            <span
-              className="h-[6px] w-[6px] rounded-full bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.7)]"
-              style={{ animation: "badgePulse 2s ease-in-out infinite" }}
-            />
-            Clean Water & Sanitation Platform
-          </div>
-
           <h1
-            className="relative z-[1] max-w-[800px] font-['DM_Serif_Display'] text-[clamp(2.4rem,6vw,4.2rem)] font-normal leading-[1.1] tracking-[-1px] text-slate-900"
+            className="relative z-[1] max-w-[980px] font-['Poppins'] text-[clamp(2.4rem,6vw,4.2rem)] font-semibold leading-[1.1] tracking-[-1px] text-slate-900"
             style={{ animation: "hmFadeDown 0.6s 0.2s both" }}
           >
             Access to{" "}
             <em className="bg-gradient-to-br from-sky-400 via-sky-500 to-blue-500 bg-clip-text not-italic text-transparent">
-              clean water
+              CWAS
             </em>{" "}
-            is a fundamental human right
+            is a
+            <br />
+            fundamental human right
           </h1>
 
           <p
             className="relative z-[1] mt-5 max-w-[520px] text-[16px] leading-[1.7] text-slate-600"
             style={{ animation: "hmFadeDown 0.6s 0.3s both" }}
           >
-            A community-driven platform to report, track, and resolve water
-            quality and sanitation issues across districts.
+            A community-driven platform to report, track, and improve clean
+            water access, sanitation issues, and public restroom conditions
+            across districts.
           </p>
-
-          <div
-            className="relative z-[1] mt-9 flex flex-wrap justify-center gap-3"
-            id="get-started"
-            style={{ animation: "hmFadeDown 0.6s 0.4s both" }}
-          >
-            <button className="relative overflow-hidden rounded-xl border border-sky-200 bg-gradient-to-br from-sky-400 to-blue-400 px-7 py-[13px] text-[14px] font-semibold text-white shadow-[0_2px_20px_rgba(56,189,248,0.24)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_28px_rgba(56,189,248,0.32)]">
-              Submit a Report
-            </button>
-            <button className="rounded-xl border border-sky-200 bg-white px-7 py-[13px] text-[14px] font-medium text-sky-600 transition-all duration-300 hover:-translate-y-0.5 hover:border-sky-300 hover:bg-sky-50 hover:shadow-[0_4px_18px_rgba(56,189,248,0.10)]">
-              Explore Dashboard →
-            </button>
-          </div>
         </section>
 
-        {/* ── STATS ── */}
-        <div className="mx-auto max-w-[1200px] px-6 pb-16" ref={statsRef}>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Stat
-              icon="📋"
-              title="Reports Filed"
-              value="128"
-              hint="last 30 days"
-              delay={0}
-            />
-            <Stat
-              icon="✅"
-              title="Issues Resolved"
-              value="76"
-              hint="community verified"
-              delay={80}
-            />
-            <Stat
-              icon="⚠️"
-              title="High Risk Zones"
-              value="12"
-              hint="needs attention"
-              delay={160}
-            />
-            <Stat
-              icon="🗺️"
-              title="Districts Active"
-              value="9"
-              hint="areas covered"
-              delay={240}
-            />
-          </div>
-        </div>
-
-        {/* ── FEATURES ── */}
-        <section className="mx-auto max-w-[1200px] px-6 pb-[72px]" id="features">
-          <div className="mb-[10px] text-[11px] font-semibold uppercase tracking-[1.8px] text-sky-500">
-            What we offer
-          </div>
-          <div className="mb-9 font-['DM_Serif_Display'] text-[clamp(1.8rem,3.5vw,2.6rem)] font-normal leading-[1.15] tracking-[-0.5px] text-slate-900">
-            Tools built for <em className="not-italic text-sky-500">real impact</em>
-          </div>
-
-          <div className="grid gap-[14px] md:grid-cols-3">
-            <Feature
-              icon="🧾"
-              title="Issue Reporting"
-              desc="Submit water or sanitation issues with precise location details, photos, and severity ratings for faster verification."
-              delay={0}
-            />
-            <Feature
-              icon="📊"
-              title="Live Dashboard"
-              desc="Monitor trends, track resolution rates, and view status summaries across all districts in real time."
-              delay={100}
-            />
-            <Feature
-              icon="📍"
-              title="Location Insights"
-              desc="Pinpoint and organise issues by district or area, helping authorities prioritise where intervention is needed most."
-              delay={200}
-            />
-            <Feature
-              icon="🔔"
-              title="Alert System"
-              desc="Receive instant notifications when a high-risk zone is identified or when a report status changes."
-              delay={300}
-            />
-            <Feature
-              icon="🤝"
-              title="Community Verify"
-              desc="Residents can verify and upvote reports, building trust and ensuring data accuracy at a grassroots level."
-              delay={400}
-            />
-            <Feature
-              icon="📁"
-              title="Export & Share"
-              desc="Download district-level reports as PDFs or share live dashboard links with NGOs, media, and government bodies."
-              delay={500}
-            />
-          </div>
-        </section>
-
-        {/* ── IMPACT ── */}
+        {/* â”€â”€ IMPACT â”€â”€ */}
         <div className="mx-auto max-w-[1200px] px-6 pb-20" id="impact">
           <div className="relative overflow-hidden rounded-[24px] border border-sky-200 bg-gradient-to-br from-white via-sky-50 to-blue-50 px-10 py-12 shadow-[0_8px_40px_rgba(125,211,252,0.18),inset_0_1px_0_rgba(255,255,255,0.8)]">
             <div
@@ -320,10 +216,10 @@ export default function Home() {
             />
 
             <div className="mb-5 inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-[11.5px] font-semibold tracking-[0.4px] text-sky-600">
-              💙 Why it matters
+              ðŸ’™ Why it matters
             </div>
 
-            <h2 className="mb-[18px] max-w-[580px] font-['DM_Serif_Display'] text-[clamp(1.7rem,3vw,2.4rem)] font-normal leading-[1.15] tracking-[-0.3px] text-slate-900">
+            <h2 className="mb-[18px] max-w-[580px] font-['Poppins'] text-[clamp(1.7rem,3vw,2.4rem)] font-semibold leading-[1.15] tracking-[-0.3px] text-slate-900">
               Every data point brings us{" "}
               <em className="not-italic text-sky-500">closer to change</em>
             </h2>
