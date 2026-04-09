@@ -54,9 +54,20 @@ import mongoose from "mongoose";
         default: 0,
     },
 
+    // Array of images uploaded to Cloudinary
+    // Each image stores its public URL and Cloudinary public_id (needed for deletion)
+    images: [
+        {
+            url:      { type: String, required: true },   // Cloudinary secure URL
+            publicId: { type: String, required: true },   // used to delete from Cloudinary later
+            uploadedAt: { type: Date, default: Date.now },
+        }
+    ],
+
     },
 
     {timestamps: true}
+
  );
 //prevent duplicate restroom with same name + exact location
 restroomSchema.index(

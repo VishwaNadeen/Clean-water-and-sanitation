@@ -136,10 +136,40 @@ export default function RestroomDetailPanel({ restroom, onClose, isNearby }) {
         </div>
 
         {/* Source indicator */}
+                {/* Images — shown only if admin has uploaded photos of this restroom */}
+        {restroom.images && restroom.images.length > 0 && (
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Photos</p>
+            <div className="grid grid-cols-2 gap-2">
+              {restroom.images.map((img, index) => (
+                <a
+                  key={img.publicId || index}
+                  href={img.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  // Opens full image in new tab when clicked
+                  className="block rounded-lg overflow-hidden border border-slate-700 hover:border-teal-500 transition-colors"
+                >
+                  <img
+                    src={img.url}
+                    alt={`${restroom.name} photo ${index + 1}`}
+                    className="w-full h-24 object-cover"
+                    // Cloudinary supports transformations via URL params
+                    // This shows a 300px wide thumbnail to keep load fast
+                    onError={(e) => { e.target.style.display = "none"; }}
+                  />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Source indicator */}
         <div className="flex items-center gap-2 rounded-lg bg-teal-500/10 border border-teal-500/20 px-3 py-2">
           <span className="text-teal-400 text-sm">🚻</span>
           <span className="text-teal-300 text-xs">Verified facility in our database</span>
         </div>
+
       </div>
 
       {/* ── Footer actions ──────────────────────────────────────────────── */}

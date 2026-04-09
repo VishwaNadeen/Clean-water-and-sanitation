@@ -49,7 +49,14 @@ export default function AdminLayout() {
                   Users
                 </Link>
               </li>
-
+              <li>
+              <Link
+                to="/admin/restrooms"
+                className="block rounded-xl px-4 py-3 text-sm font-medium transition hover:bg-blue-600 hover:text-white"
+              >
+                Restrooms
+              </Link>
+            </li>
               <li>
                 <Link
                   to="/admin/staff"
