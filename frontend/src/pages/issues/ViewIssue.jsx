@@ -250,8 +250,8 @@ export default function ViewIssue() {
 
                     {!canUserEdit && (
                       <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-                        This issue is no longer editable by the reporter because
-                        its status is not OPEN.
+                        This issue is currently being handled, so editing is
+                        unavailable now.
                       </div>
                     )}
                   </div>

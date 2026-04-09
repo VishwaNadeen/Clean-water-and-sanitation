@@ -233,10 +233,10 @@ export default function ViewComplaint({
 
             <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.3px] text-red-500">
-                Danger Zone
+                Delete Complaint
               </p>
               <p className="mt-3 text-sm text-red-600">
-                Delete this complaint permanently if it is invalid or should be removed by admin.
+                Remove this complaint permanently if it was submitted by mistake or should no longer appear in the system.
               </p>
               <button
                 type="button"
