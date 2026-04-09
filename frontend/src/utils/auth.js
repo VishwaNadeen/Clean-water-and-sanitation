@@ -26,6 +26,17 @@ export function clearAuthSession() {
   window.dispatchEvent(new Event("auth-changed"));
 }
 
+export function updateStoredUser(patch) {
+  const currentUser = getStoredUser() || {};
+  const nextUser = {
+    ...currentUser,
+    ...patch,
+  };
+
+  localStorage.setItem(USER_KEY, JSON.stringify(nextUser));
+  window.dispatchEvent(new Event("auth-changed"));
+}
+
 export function isLoggedIn() {
   return Boolean(getToken());
 }

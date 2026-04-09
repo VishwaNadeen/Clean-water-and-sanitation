@@ -1,9 +1,11 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import cloudinary from "../../config/cloudinary.js";
 
 import Staff from "../../models/Staff-Management/StaffModel.js";
 import Login from "../../models/user-Management/logInModel.js";
+import { uploadBufferToCloudinary } from "../../utils/staff-Management/Staffcloudinary.js";
 
 /* ---------------------------------------------
  * Helpers
@@ -28,7 +30,7 @@ function splitFullName(fullName) {
   return { firstName, lastName };
 }
 
-// ✅ NOW req.user is Staff profile doc (because protect loads Staff by role=STAFF)
+// NOW req.user is Staff profile doc (because protect loads Staff by role=STAFF)
 function getAuthUserId(req) {
   return String(req.user?._id || req.user?.id || "");
 }
@@ -474,6 +476,91 @@ export async function deleteStaff(req, res) {
     return res.status(200).json({ message: "Staff deleted by admin", staff: deleted });
   } catch (err) {
     console.error("❌ deleteStaff:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+}
+
+export async function uploadMyStaffProfileImage(req, res) {
+  if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
+
+  const id = getAuthUserId(req);
+  if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: "Invalid staff id" });
+  if (!req.file) return res.status(400).json({ message: "Profile image is required" });
+
+  try {
+    const staff = await Staff.findById(id);
+    if (!staff) return res.status(404).json({ message: "Staff not found" });
+
+    if (staff.profileImagePublicId) {
+      try {
+        await cloudinary.uploader.destroy(staff.profileImagePublicId);
+      } catch (error) {
+        console.error("Failed to remove previous profile image:", error.message);
+      }
+    }
+
+    let result;
+    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_SECRET) {
+      try {
+        result = await uploadBufferToCloudinary(req.file.buffer, "staff-profile-images");
+      } catch (cloudinaryError) {
+        console.error("Profile image upload failed, using fallback:", cloudinaryError.message);
+        const base64Image = req.file.buffer.toString("base64");
+        result = {
+          secure_url: `data:${req.file.mimetype};base64,${base64Image}`,
+          public_id: `local_${Date.now()}_${req.file.originalname}`,
+        };
+      }
+    } else {
+      const base64Image = req.file.buffer.toString("base64");
+      result = {
+        secure_url: `data:${req.file.mimetype};base64,${base64Image}`,
+        public_id: `local_${Date.now()}_${req.file.originalname}`,
+      };
+    }
+
+    staff.profileImageUrl = result.secure_url || result.url || "";
+    staff.profileImagePublicId = result.public_id || "";
+    await staff.save();
+
+    return res.status(200).json({
+      message: "Profile image uploaded successfully",
+      staff,
+    });
+  } catch (err) {
+    console.error("uploadMyStaffProfileImage:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+}
+
+export async function removeMyStaffProfileImage(req, res) {
+  if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
+
+  const id = getAuthUserId(req);
+  if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: "Invalid staff id" });
+
+  try {
+    const staff = await Staff.findById(id);
+    if (!staff) return res.status(404).json({ message: "Staff not found" });
+
+    if (staff.profileImagePublicId && !staff.profileImagePublicId.startsWith("local_")) {
+      try {
+        await cloudinary.uploader.destroy(staff.profileImagePublicId);
+      } catch (error) {
+        console.error("Failed to remove profile image from cloudinary:", error.message);
+      }
+    }
+
+    staff.profileImageUrl = "";
+    staff.profileImagePublicId = "";
+    await staff.save();
+
+    return res.status(200).json({
+      message: "Profile image removed successfully",
+      staff,
+    });
+  } catch (err) {
+    console.error("removeMyStaffProfileImage:", err);
     return res.status(500).json({ message: "Server error" });
   }
 }

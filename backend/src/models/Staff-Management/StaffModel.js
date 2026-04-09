@@ -50,6 +50,9 @@ const StaffSchema = new Schema(
 
     userId: { type: Schema.Types.ObjectId, ref: "User" },
 
+    profileImageUrl: { type: String, trim: true, default: "" },
+    profileImagePublicId: { type: String, trim: true, default: "" },
+
     deleteRequest: {
       requested: { type: Boolean, default: false },
       reason: { type: String, default: "" },

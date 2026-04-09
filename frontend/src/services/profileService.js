@@ -59,6 +59,7 @@ function normalizeProfileResponse(data, role, storedUser) {
       phone: raw.phone || raw.mobile || raw.contactNumber || "",
       gender: raw.gender || "",
       role: raw.role || storedUser?.role || "staff",
+      profileImageUrl: raw.profileImageUrl || raw.avatarUrl || "",
       originalData: raw,
     };
   }
@@ -70,6 +71,7 @@ function normalizeProfileResponse(data, role, storedUser) {
     phone: raw.phone || "",
     gender: raw.gender || "",
     role: raw.role || storedUser?.role || "user",
+    profileImageUrl: raw.profileImageUrl || raw.avatarUrl || "",
     originalData: raw,
   };
 }
@@ -160,4 +162,64 @@ export async function deleteMyProfile(password) {
   }
 
   return data;
+}
+
+export async function uploadMyProfileImage(file) {
+  const token = getToken();
+  const storedUser = getStoredUser();
+
+  if (!token) {
+    throw new Error("No auth token found.");
+  }
+
+  if (normalizeRole(storedUser?.role) !== "staff") {
+    throw new Error("Profile image upload is currently available for staff accounts only.");
+  }
+
+  const formData = new FormData();
+  formData.append("profileImage", file);
+
+  const response = await fetch(`${API_BASE_URL}/staff/me/profile-image`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to upload profile image.");
+  }
+
+  return normalizeProfileResponse(data, storedUser?.role, storedUser);
+}
+
+export async function removeMyProfileImage() {
+  const token = getToken();
+  const storedUser = getStoredUser();
+
+  if (!token) {
+    throw new Error("No auth token found.");
+  }
+
+  if (normalizeRole(storedUser?.role) !== "staff") {
+    throw new Error("Profile image removal is currently available for staff accounts only.");
+  }
+
+  const response = await fetch(`${API_BASE_URL}/staff/me/profile-image`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to remove profile image.");
+  }
+
+  return normalizeProfileResponse(data, storedUser?.role, storedUser);
 }
