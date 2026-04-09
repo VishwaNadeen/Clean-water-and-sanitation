@@ -5,6 +5,7 @@ import HomeRoutes from "./HomeRoutes";
 import ProfileRoutes from "./ProfileRoutes";
 import AdminRoutes from "./AdminRoutes";
 import StaffRoutes from "./StaffRoutes";
+import MapRoutes from "./MapRoutes";
 
 export default function AppRoutes() {
   return (
@@ -15,6 +16,7 @@ export default function AppRoutes() {
       {ProfileRoutes}
       {AdminRoutes}
       {StaffRoutes}
+      {MapRoutes}
     </Routes>
   );
 }
