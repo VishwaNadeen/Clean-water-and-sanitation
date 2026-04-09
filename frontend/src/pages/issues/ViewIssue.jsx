@@ -26,7 +26,16 @@ export default function ViewIssue() {
         setLoading(true);
         setError("");
 
-        const response = await fetch(`${API_BASE_URL}/issues/${id}`);
+        const token = getToken();
+        if (!token) {
+          throw new Error("Please log in first to view this issue.");
+        }
+
+        const response = await fetch(`${API_BASE_URL}/issues/${id}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
         const data = await response.json();
 
         if (!response.ok) {
