@@ -2,12 +2,12 @@ import { Outlet } from "react-router-dom";
 import Navbar from "../components/common/Navbar";
 import Footer from "../components/common/Footer";
 
-export default function MainLayout() {
+export default function MainLayout({ children }) {
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-white">
       <Navbar />
       <main className="flex-1">
-        <Outlet />
+        {children || <Outlet />}
       </main>
       <Footer />
     </div>

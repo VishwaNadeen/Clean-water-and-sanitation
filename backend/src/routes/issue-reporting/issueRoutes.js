@@ -7,6 +7,7 @@ import {
     getAllIssues,
     getIssueById,
     updateIssue,
+    cancelIssue,
     resolveIssue,
     updateIssueStatus,
     deleteIssue,
@@ -26,12 +27,6 @@ router.get("/user", protect, checkAccountStatus, getUserIssues);
 
 // Get all issues for admin - Must come BEFORE /:id route
 router.get("/admin", protect, checkAccountStatus, authorizeRoles("ADMIN"), getAllIssues);
-
-// Get single issue by ID  
-router.get("/:id", getIssueById);
-
-// Update issue (title, description, priority, etc.) - User can update own issues, Admin can update any
-router.put("/:id", protect, checkAccountStatus, updateIssue);
 
 // Search issue by issue number
 router.get("/search/:issueNumber", async (req, res) => {
@@ -111,6 +106,15 @@ router.get("/search/:issueNumber", async (req, res) => {
         });
     }
 });
+
+// Get single issue by ID
+router.get("/:id", protect, checkAccountStatus, getIssueById);
+
+// Update issue (title, description, priority, etc.) - User can update own issues, Admin can update any
+router.put("/:id", protect, checkAccountStatus, updateIssue);
+
+// Cancel own issue while still OPEN
+router.patch("/:id/cancel", protect, checkAccountStatus, cancelIssue);
 
 // Resolve issue with resolution images (up to 3 files) - Admin only
 router.patch("/:id/resolve", protect, checkAccountStatus, authorizeRoles("ADMIN"), upload.array('resolutionImages', 3), resolveIssue);

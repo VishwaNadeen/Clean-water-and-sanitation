@@ -1,10 +1,74 @@
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ProfileLayout from "../../components/profile/ProfileLayout";
 import useProfileData from "../../hooks/useProfileData";
+import {
+  removeMyProfileImage,
+  uploadMyProfileImage,
+} from "../../services/profileService";
+import { updateStoredUser } from "../../utils/auth";
 
 export default function Profile() {
   const navigate = useNavigate();
-  const { profile, loading, pageError, storedUser, token } = useProfileData();
+  const fileInputRef = useRef(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const { profile, setProfile, loading, pageError, setPageError, storedUser, token } =
+    useProfileData();
+
+  const profileImageSrc = profile?.profileImageUrl || "";
+  const profileImageInitial = String(
+    profile?.firstName || storedUser?.fullName || storedUser?.email || "U"
+  )
+    .trim()
+    .charAt(0)
+    .toUpperCase();
+
+  async function handleProfileImageChange(event) {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+      setPageError("");
+
+      const updatedProfile = await uploadMyProfileImage(file);
+      setProfile(updatedProfile);
+      updateStoredUser({
+        profileImageUrl: updatedProfile.profileImageUrl || "",
+      });
+    } catch (error) {
+      setPageError(error.message || "Failed to upload profile image.");
+    } finally {
+      setUploadingImage(false);
+      event.target.value = "";
+    }
+  }
+
+  async function handleRemoveProfileImage() {
+    const shouldRemove = window.confirm("Do you want to remove your profile photo?");
+
+    if (!shouldRemove) {
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+      setPageError("");
+
+      const updatedProfile = await removeMyProfileImage();
+      setProfile(updatedProfile);
+      updateStoredUser({
+        profileImageUrl: "",
+      });
+    } catch (error) {
+      setPageError(error.message || "Failed to remove profile image.");
+    } finally {
+      setUploadingImage(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -29,6 +93,54 @@ export default function Profile() {
           {pageError}
         </div>
       ) : null}
+
+      <div className="mb-6 flex flex-col gap-5 rounded-2xl border border-sky-200 bg-sky-50/60 p-5 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-4">
+          {profileImageSrc ? (
+            <img
+              src={profileImageSrc}
+              alt="Profile"
+              className="h-24 w-24 rounded-3xl border border-sky-200 object-cover shadow-[0_10px_24px_rgba(56,189,248,0.14)]"
+            />
+          ) : (
+            <div className="grid h-24 w-24 place-items-center rounded-3xl border border-sky-200 bg-gradient-to-br from-sky-100 to-blue-100 text-4xl font-semibold text-sky-900 shadow-[0_10px_24px_rgba(56,189,248,0.14)]">
+              {profileImageInitial}
+            </div>
+          )}
+
+          <div>
+            <p className="text-sm font-medium text-slate-500">Profile photo</p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleProfileImageChange}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadingImage}
+            className="rounded-xl border border-sky-300 bg-white px-4 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {uploadingImage ? "Working..." : profileImageSrc ? "Change" : "Upload"}
+          </button>
+          {profileImageSrc ? (
+            <button
+              type="button"
+              onClick={handleRemoveProfileImage}
+              disabled={uploadingImage}
+              className="rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              Remove
+            </button>
+          ) : null}
+        </div>
+      </div>
 
       <div className="flex items-center justify-between rounded-2xl border border-sky-200 bg-sky-50/70 p-4">
         <div>
