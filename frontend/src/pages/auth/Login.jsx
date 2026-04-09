@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useNavigate, useLocation } from "react-router-dom";
 import { loginUser } from "../../services/authService";
 import { setAuthSession, isLoggedIn, getStoredUser } from "../../utils/auth";
 
@@ -43,6 +43,9 @@ function EyeOffIcon() {
 
 export default function Login() {
   const navigate = useNavigate();
+  
+  const location  = useLocation();
+  const { message: loginMessage, redirect: redirectAfterLogin } = location.state || {};
 
   const [formData, setFormData] = useState({
     email: "",
@@ -66,7 +69,7 @@ export default function Login() {
       return <Navigate to="/staff/dashboard" replace />;
     }
 
-    return <Navigate to="/profile" replace />;
+    return <Navigate to={redirectAfterLogin || "/profile"} replace />;
   }
 
   function handleChange(event) {
@@ -138,7 +141,7 @@ export default function Login() {
       } else if (userRole === "staff") {
         navigate("/staff/dashboard", { replace: true });
       } else {
-        navigate("/profile", { replace: true });
+      navigate(redirectAfterLogin || "/profile", { replace: true });
       }
     } catch (error) {
       setSubmitError(error.message || "Login failed.");
@@ -178,6 +181,13 @@ export default function Login() {
               <p className="mt-2 text-sm text-slate-500">
                 Enter your email and password
               </p>
+
+              {loginMessage && (
+                <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-700 flex items-center gap-2">
+                  <span>⚠</span>
+                  <span>{loginMessage}</span>
+                </div>
+              )}
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">

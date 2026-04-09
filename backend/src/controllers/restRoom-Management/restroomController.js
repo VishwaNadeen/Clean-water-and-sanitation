@@ -1,4 +1,5 @@
 import Restroom from "../../models/restRoom-Management/Restroom.js";
+import { uploadRestroomImage, deleteRestroomImage } from "../../utils/restRoom-Management/restroomCloudinary.js";
 const ALLOWED_CONDITION = ["GOOD", "OK", "BAD", "OUT_OF_ORDER"];
 
 // post api/restroom Admin - dev
@@ -55,6 +56,16 @@ export const createRestroom = async (req, res, next) => {
             });
         }
 
+        // Handle image uploads to Cloudinary (optional — restroom can have no images)
+        let images = [];
+        if (req.files && req.files.length > 0) {
+            for (const file of req.files) {
+                // uploadRestroomImage returns { url, publicId }
+                const uploaded = await uploadRestroomImage(file.buffer, file.originalname);
+                images.push(uploaded);
+            }
+        }
+
         const restroom = await Restroom.create({
             name,
             city,
@@ -65,9 +76,11 @@ export const createRestroom = async (req, res, next) => {
                 type: "Point",
                 coordinates: [lngNum, latNum],
             },
+            images,  // will be [] if no files uploaded
         });
 
         return res.status(201).json(restroom);
+
     }catch(err) {
         next(err);
     }
@@ -112,7 +125,7 @@ export const getRestroomById = async (req, res, next) => {
 
 export const updateRestroom = async (req, res, next) => {
     try{
-        const { name, city, district, province, lat, lng, condition } = req.body;
+        const { name, city, district, province, lat, lng, condition, deleteImageIds } = req.body;
 
         //validate condition if provided
         if(condition && !ALLOWED_CONDITION.includes(condition)) {
@@ -126,11 +139,9 @@ export const updateRestroom = async (req, res, next) => {
         if (city !== undefined) update.city = city;
         if (district !== undefined) update.district = district;
         if (province !== undefined) update.province = province;
-
         if (condition !== undefined) update.condition = condition;
 
-        //VALIDATE LAT/LNG IF EITHER PROVIDED (REQUIRE BOTH)
-
+        // VALIDATE LAT/LNG IF EITHER PROVIDED (REQUIRE BOTH)
         const latProvided = lat !== undefined;
         const lngProvided = lng !== undefined;
         
@@ -156,40 +167,84 @@ export const updateRestroom = async (req, res, next) => {
             }
             if (lngNum < -180 || lngNum > 180) {
                 return res.status(400).json ({
-                    mesasge: "Invalid Longitude range"
+                    message: "Invalid Longitude range"
                 });
             }
             
             update.location = {
-                type: "Point" , 
+                type: "Point",
                 coordinates: [lngNum, latNum],
             };
         }
-            
-        const restroom = await Restroom.findByIdAndUpdate(req.params.id, update, {
-            new: true,
-            runValidators: true,
-        });
-        
-        if(!restroom) return res.status(404).json({ message: "Restroom not found "});
+
+        // Find the restroom first so we can manipulate its images array
+        const restroom = await Restroom.findById(req.params.id);
+        if (!restroom) return res.status(404).json({ message: "Restroom not found" });
+
+        // ── STEP 1: Delete specific images if admin requested removal ────────
+        // deleteImageIds is a comma-separated string of Cloudinary publicIds
+        // e.g. "restrooms/restroom_123_abc,restrooms/restroom_456_def"
+        if (deleteImageIds) {
+            const idsToDelete = deleteImageIds.split(",").map((id) => id.trim()).filter(Boolean);
+
+            for (const publicId of idsToDelete) {
+                // Delete from Cloudinary storage
+                await deleteRestroomImage(publicId).catch((err) =>
+                    console.warn("Could not delete image from Cloudinary:", err.message)
+                );
+            }
+
+            // Remove those entries from the restroom's images array in DB
+            restroom.images = restroom.images.filter(
+                (img) => !idsToDelete.includes(img.publicId)
+            );
+        }
+
+        // ── STEP 2: Upload and append any new images sent with the request ───
+        if (req.files && req.files.length > 0) {
+            for (const file of req.files) {
+                const uploaded = await uploadRestroomImage(file.buffer, file.originalname);
+                // Append new image to existing array (not replace)
+                restroom.images.push(uploaded);
+            }
+        }
+
+        // Apply the other field updates and save
+        Object.assign(restroom, update);
+        await restroom.save();
+
         res.json(restroom);
     }catch (err) {
         next(err);
     }
 };
 
+
 //DELETE /api/restrooms/:id admin - dev
 
 export const deleteRestroom = async (req, res, next) => {
     try {
-        const restroom = await Restroom.findByIdAndDelete(req.params.id);
-        if(!restroom) return res.status(404).json ({ message: "Restroom not found "});
-        res.json({ message: "Deleted successfully"});
+        const restroom = await Restroom.findById(req.params.id);
+        if (!restroom) return res.status(404).json({ message: "Restroom not found" });
 
-    }catch (err) {
+        // Delete all associated Cloudinary images before removing the document
+        // so we don't leave orphaned files in Cloudinary storage
+        if (restroom.images && restroom.images.length > 0) {
+            for (const img of restroom.images) {
+                await deleteRestroomImage(img.publicId).catch((err) =>
+                    console.warn("Could not delete image from Cloudinary:", err.message)
+                );
+            }
+        }
+
+        await Restroom.findByIdAndDelete(req.params.id);
+        res.json({ message: "Deleted successfully" });
+
+    } catch (err) {
         next(err);
     }
 };
+
 
 // GET /api/restrooms/nearby?lat=&lng=&radius=2000
 export const getNearbyRestrooms = async (req, res, next) => {
