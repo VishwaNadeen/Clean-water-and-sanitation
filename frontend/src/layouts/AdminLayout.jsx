@@ -161,10 +161,28 @@ function ChevronRightIcon() {
   );
 }
 
+function ChevronDownIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
 export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const [categoriesOpen, setCategoriesOpen] = useState(true);
   const textTransition =
     "overflow-hidden whitespace-nowrap transition-all duration-300 ease-out";
 
@@ -216,12 +234,25 @@ export default function AdminLayout() {
     },
     {
       label: "Categories",
-      path: "/admin/categories",
+      path: "/admin/categories/view",
       icon: <CategoriesIcon />,
+      children: [
+        {
+          label: "Create Category",
+          path: "/admin/categories/create",
+        },
+        {
+          label: "View Categories",
+          path: "/admin/categories/view",
+        },
+      ],
     },
   ];
 
   const isActive = (path) => location.pathname === path;
+  const isParentActive = (item) =>
+    item.children?.some((child) => location.pathname === child.path) ||
+    location.pathname === item.path;
 
   return (
     <div className="min-h-screen bg-slate-100">
@@ -269,28 +300,92 @@ export default function AdminLayout() {
             <ul className="space-y-2">
               {navItems.map((item) => (
                 <li key={item.path}>
-                  <Link
-                    to={item.path}
-                    title={collapsed ? item.label : undefined}
-                    className={`flex rounded-xl py-3 text-sm font-medium transition-all duration-300 ease-out hover:bg-blue-600 hover:text-white ${
-                      isActive(item.path) ? "bg-blue-600 text-white" : ""
-                    } ${
-                      collapsed
-                        ? "justify-center px-2"
-                        : "justify-start gap-3 px-4"
-                    }`}
-                  >
-                    <span className="shrink-0">{item.icon}</span>
-                    <span
-                      className={`${textTransition} ${
+                  {item.children ? (
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (collapsed) {
+                            navigate(item.path);
+                            return;
+                          }
+                          setCategoriesOpen((prev) => !prev);
+                        }}
+                        title={collapsed ? item.label : undefined}
+                        className={`flex w-full rounded-xl py-3 text-sm font-medium transition-all duration-300 ease-out hover:bg-blue-600 hover:text-white ${
+                          isParentActive(item) ? "bg-blue-600 text-white" : ""
+                        } ${
+                          collapsed
+                            ? "justify-center px-2"
+                            : "items-center justify-between px-4"
+                        }`}
+                      >
+                        <span className={`flex ${collapsed ? "" : "gap-3"}`}>
+                          <span className="shrink-0">{item.icon}</span>
+                          <span
+                            className={`${textTransition} ${
+                              collapsed
+                                ? "max-w-0 translate-x-2 opacity-0"
+                                : "max-w-[160px] translate-x-0 opacity-100"
+                            }`}
+                          >
+                            {item.label}
+                          </span>
+                        </span>
+                        {!collapsed ? (
+                          <span
+                            className={`transition-transform duration-300 ${
+                              categoriesOpen ? "rotate-0" : "-rotate-90"
+                            }`}
+                          >
+                            <ChevronDownIcon />
+                          </span>
+                        ) : null}
+                      </button>
+
+                      {!collapsed && categoriesOpen ? (
+                        <ul className="space-y-1 pl-6">
+                          {item.children.map((child) => (
+                            <li key={child.path}>
+                              <Link
+                                to={child.path}
+                                className={`block rounded-lg px-4 py-2.5 text-sm transition ${
+                                  isActive(child.path)
+                                    ? "bg-slate-800 text-white"
+                                    : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                                }`}
+                              >
+                                {child.label}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <Link
+                      to={item.path}
+                      title={collapsed ? item.label : undefined}
+                      className={`flex rounded-xl py-3 text-sm font-medium transition-all duration-300 ease-out hover:bg-blue-600 hover:text-white ${
+                        isActive(item.path) ? "bg-blue-600 text-white" : ""
+                      } ${
                         collapsed
-                          ? "max-w-0 translate-x-2 opacity-0"
-                          : "max-w-[160px] translate-x-0 opacity-100"
+                          ? "justify-center px-2"
+                          : "justify-start gap-3 px-4"
                       }`}
                     >
-                      {item.label}
-                    </span>
-                  </Link>
+                      <span className="shrink-0">{item.icon}</span>
+                      <span
+                        className={`${textTransition} ${
+                          collapsed
+                            ? "max-w-0 translate-x-2 opacity-0"
+                            : "max-w-[160px] translate-x-0 opacity-100"
+                        }`}
+                      >
+                        {item.label}
+                      </span>
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>
