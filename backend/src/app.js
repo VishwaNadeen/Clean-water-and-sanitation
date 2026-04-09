@@ -37,6 +37,7 @@ app.use("/api/restrooms", restroomRoutes);
 
 app.use("/api/issues", issueRoutes);
 app.use("/api/categories", issueCategoryRoutes);
+app.use("/api/locations", locationRoutes);
 
 app.use("/api/locations", locationRoutes);
 
