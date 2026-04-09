@@ -84,7 +84,7 @@ function RestroomsIcon() {
   );
 }
 
-function ComplainsIcon() {
+function ComplaintsIcon() {
   return (
     <svg
       aria-hidden="true"
@@ -99,6 +99,28 @@ function ComplainsIcon() {
       <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z" />
       <path d="M8 9h8" />
       <path d="M8 13h5" />
+    </svg>
+  );
+}
+
+function CategoriesIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 7h16" />
+      <path d="M4 12h16" />
+      <path d="M4 17h10" />
+      <path d="M6 5.5h.01" />
+      <path d="M6 10.5h.01" />
+      <path d="M6 15.5h.01" />
     </svg>
   );
 }
@@ -188,9 +210,14 @@ export default function AdminLayout() {
       icon: <RestroomsIcon />,
     },
     {
-      label: "Complains",
-      path: "/admin/complains",
-      icon: <ComplainsIcon />,
+      label: "Complaints",
+      path: "/admin/complaints",
+      icon: <ComplaintsIcon />,
+    },
+    {
+      label: "Categories",
+      path: "/admin/categories",
+      icon: <CategoriesIcon />,
     },
   ];
 
@@ -204,7 +231,7 @@ export default function AdminLayout() {
         }`}
       >
         {/* Sidebar */}
-        <aside className="hidden overflow-hidden bg-slate-900 text-white transition-all duration-500 ease-out lg:flex lg:flex-col">
+        <aside className="sticky top-0 hidden h-screen overflow-hidden bg-slate-900 text-white transition-all duration-500 ease-out lg:flex lg:flex-col">
           <div className="flex items-center justify-between border-b border-slate-800 px-4 py-5">
             <div
               className={`min-w-0 transition-all duration-300 ease-out ${
