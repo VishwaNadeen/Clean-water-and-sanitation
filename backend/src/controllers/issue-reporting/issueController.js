@@ -435,6 +435,13 @@ export const getIssueById = async (req, res) => {
             });
         }
 
+        if (req.user.role !== 'ADMIN' && issue.reportedBy?._id?.toString() !== req.user._id.toString()) {
+            return res.status(403).json({
+                success: false,
+                message: "Access denied. You can only view your own issues."
+            });
+        }
+
         // Add subcategory name and clean response
         let subCategoryName = 'Unknown Subcategory';
         if (issue.categoryId && issue.categoryId.subCategories) {

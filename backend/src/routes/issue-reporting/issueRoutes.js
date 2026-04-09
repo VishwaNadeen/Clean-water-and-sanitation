@@ -107,8 +107,8 @@ router.get("/search/:issueNumber", async (req, res) => {
     }
 });
 
-// Get single issue by ID  
-router.get("/:id", getIssueById);
+// Get single issue by ID
+router.get("/:id", protect, checkAccountStatus, getIssueById);
 
 // Update issue (title, description, priority, etc.) - User can update own issues, Admin can update any
 router.put("/:id", protect, checkAccountStatus, updateIssue);
