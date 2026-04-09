@@ -109,6 +109,9 @@ export default function Complaints() {
       setSuccessMessage("");
 
       const token = getToken();
+      if (!token) {
+        throw new Error("Please log in as admin first.");
+      }
       const response = await fetch(`${API_BASE_URL}/issues/${issueId}/status`, {
         method: "PATCH",
         headers: {
@@ -143,6 +146,9 @@ export default function Complaints() {
       setSuccessMessage("");
 
       const token = getToken();
+      if (!token) {
+        throw new Error("Please log in as admin first.");
+      }
       const formData = new FormData();
       formData.append("resolutionNote", resolutionNote.trim());
 
@@ -188,6 +194,9 @@ export default function Complaints() {
       setSuccessMessage("");
 
       const token = getToken();
+      if (!token) {
+        throw new Error("Please log in as admin first.");
+      }
       const response = await fetch(`${API_BASE_URL}/issues/${issueId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
