@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API_BASE_URL from "../../config/api";
 import { getToken } from "../../utils/auth";
@@ -7,6 +7,7 @@ const PRIORITIES = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 
 export default function CreateIssue() {
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
 
   const [formData, setFormData] = useState({
     categoryId: "",
@@ -334,6 +335,9 @@ export default function CreateIssue() {
       setCities([]);
       setRestrooms([]);
       setImages([]);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
 
       const issueId = data?.data?._id;
       if (issueId) {
@@ -507,6 +511,7 @@ export default function CreateIssue() {
 
               <Field label="Images">
                 <input
+                  ref={fileInputRef}
                   type="file"
                   accept="image/*"
                   multiple
