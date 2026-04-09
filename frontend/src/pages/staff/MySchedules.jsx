@@ -1,394 +1,262 @@
-import React, { useEffect, useState } from "react";
-import DashboardLayout from "../../components/staffManagement/DashboardLayout";
-import {
-  completeWork,
-  getMySchedules,
-  startWork,
-  uploadProof,
-} from "../../services/staffManagementService";
+import React, { useMemo, useState } from "react";
+import useMySchedules from "../../hooks/staffManagement/useMySchedules";
+import EmptyState from "../../components/staffManagement/staff/EmptyState";
+import ScheduleCard from "../../components/staffManagement/staff/ScheduleCard";
+import ScheduleFilters from "../../components/staffManagement/staff/ScheduleFilters";
 
-const statusToneMap = {
-  Assigned: "bg-sky-100 text-sky-700",
-  InProgress: "bg-amber-100 text-amber-700",
-  Completed: "bg-indigo-100 text-indigo-700",
-  Verified: "bg-emerald-100 text-emerald-700",
-  Rejected: "bg-rose-100 text-rose-700",
-  Cancelled: "bg-slate-100 text-slate-700",
+const statusStyles = {
+  Assigned: "bg-amber-100 text-amber-700 border border-amber-200",
+  InProgress: "bg-sky-100 text-sky-700 border border-sky-200",
+  Completed: "bg-violet-100 text-violet-700 border border-violet-200",
+  Verified: "bg-emerald-100 text-emerald-700 border border-emerald-200",
+  Rejected: "bg-rose-100 text-rose-700 border border-rose-200",
+  Cancelled: "bg-slate-100 text-slate-700 border border-slate-200",
 };
 
-export default function MySchedules() {
-  const [schedules, setSchedules] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedFiles, setSelectedFiles] = useState({});
-  const [formNotes, setFormNotes] = useState({});
+const formatGroupLabel = (dateValue) => {
+  const date = new Date(dateValue);
+  const today = new Date();
+  const tomorrow = new Date();
+  tomorrow.setDate(today.getDate() + 1);
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
 
-  useEffect(() => {
-    loadSchedules();
-  }, []);
-
-  const loadSchedules = async () => {
-    try {
-      const data = await getMySchedules();
-      setSchedules(data || []);
-    } catch (error) {
-      console.error("Failed to load schedules", error);
-      alert("Failed to load schedules");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleStartWork = async (id) => {
-    try {
-      await startWork(id);
-      await loadSchedules();
-      alert("Work started successfully");
-    } catch (error) {
-      console.error(error);
-      alert(error?.response?.data?.message || "Failed to start work");
-    }
-  };
-
-  const handleFileChange = (id, file) => {
-    setSelectedFiles((prev) => ({
-      ...prev,
-      [id]: file,
-    }));
-  };
-
-  const handleUploadProof = async (id) => {
-    const file = selectedFiles[id];
-    if (!file) {
-      alert("Please choose an image first");
-      return;
-    }
-
-    try {
-      await uploadProof(id, file);
-      await loadSchedules();
-      alert("Proof uploaded successfully");
-    } catch (error) {
-      console.error(error);
-      alert(error?.response?.data?.message || "Failed to upload proof");
-    }
-  };
-
-  const handleInputChange = (id, field, value) => {
-    setFormNotes((prev) => ({
-      ...prev,
-      [id]: {
-        ...prev[id],
-        [field]: value,
-      },
-    }));
-  };
-
-  const handleCompleteWork = async (id) => {
-    try {
-      const payload = {
-        staffNote: formNotes[id]?.staffNote || "",
-        materialsUsed: formNotes[id]?.materialsUsed || "",
-        issuesFound: formNotes[id]?.issuesFound || "",
-      };
-
-      await completeWork(id, payload);
-      await loadSchedules();
-      alert("Work completed successfully");
-    } catch (error) {
-      console.error(error);
-      alert(error?.response?.data?.message || "Failed to complete work");
-    }
-  };
-
-  if (loading) {
-    return (
-      <DashboardLayout
-        title="My Schedules"
-        subtitle="Start work, upload proof, and complete assigned tasks."
-      >
-        <div className="rounded-3xl border border-sky-100 bg-sky-50/70 px-6 py-8 text-sm font-medium text-slate-600">
-          Loading schedules...
-        </div>
-      </DashboardLayout>
-    );
+  if (date.toDateString() === today.toDateString()) {
+    return "Today";
   }
 
+  if (date.toDateString() === tomorrow.toDateString()) {
+    return "Tomorrow";
+  }
+
+  if (date.toDateString() === yesterday.toDateString()) {
+    return "Yesterday";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+};
+
+const MySchedules = () => {
+  const {
+    filteredSchedules,
+    loading,
+    busyAction,
+    filter,
+    setFilter,
+    timeFilter,
+    setTimeFilter,
+    searchTerm,
+    setSearchTerm,
+    proofFiles,
+    formState,
+    message,
+    loadSchedules,
+    handleStart,
+    handleRevertStart,
+    handleFileChange,
+    handleUploadProof,
+    handleFormChange,
+    handleComplete,
+  } = useMySchedules();
+  const [selectedScheduleId, setSelectedScheduleId] = useState("");
+
+  const selectedSchedule = useMemo(() => {
+    return filteredSchedules.find((schedule) => schedule._id === selectedScheduleId) || null;
+  }, [filteredSchedules, selectedScheduleId]);
+
+  const groupedSchedules = useMemo(() => {
+    const groups = new Map();
+
+    filteredSchedules.forEach((schedule) => {
+      const scheduleDate = new Date(schedule.date);
+      const key = Number.isNaN(scheduleDate.getTime())
+        ? "unknown"
+        : scheduleDate.toISOString().split("T")[0];
+
+      if (!groups.has(key)) {
+        groups.set(key, {
+          key,
+          label: Number.isNaN(scheduleDate.getTime()) ? "No Date" : formatGroupLabel(schedule.date),
+          dateValue: Number.isNaN(scheduleDate.getTime()) ? null : scheduleDate,
+          items: [],
+        });
+      }
+
+      groups.get(key).items.push(schedule);
+    });
+
+    return Array.from(groups.values()).sort((a, b) => {
+      if (!a.dateValue) return 1;
+      if (!b.dateValue) return -1;
+      return b.dateValue.getTime() - a.dateValue.getTime();
+    });
+  }, [filteredSchedules]);
+
   return (
-    <DashboardLayout
-      title="My Schedules"
-      subtitle="Start work, upload proof, and complete assigned tasks."
-    >
-      <div className="space-y-6">
-        <section className="rounded-[28px] border border-sky-100 bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.16),_transparent_35%),linear-gradient(135deg,_rgba(14,165,233,0.08),_rgba(255,255,255,0.96)_45%,_rgba(186,230,253,0.35))] p-6 shadow-[0_18px_40px_rgba(56,189,248,0.08)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-600">
-            Task Center
-          </p>
-          <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-900">
-            Manage your assigned work
-          </h2>
-          <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
-            Start active jobs, upload proof images, and complete your schedule
-            updates from one workspace.
-          </p>
-        </section>
+    <div className="min-h-full bg-gradient-to-br from-blue-50 via-white to-blue-100 px-4 pb-6 pt-2 md:px-6 md:pb-8 md:pt-3">
+      <div className="mx-auto max-w-7xl">
+        <ScheduleFilters
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          filter={filter}
+          setFilter={setFilter}
+          timeFilter={timeFilter}
+          setTimeFilter={setTimeFilter}
+          onRefresh={loadSchedules}
+        />
 
-        {schedules.length === 0 ? (
-          <div className="rounded-[28px] border border-dashed border-sky-200 bg-sky-50/70 px-6 py-12 text-center text-sm font-medium text-slate-500">
-            No schedules assigned yet.
-          </div>
-        ) : (
-          <div className="grid gap-5">
-            {schedules.map((item) => {
-              const hasProof = item.proofImages && item.proofImages.length > 0;
-
-              return (
-                <article
-                  key={item._id}
-                  className="rounded-[28px] border border-slate-100 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.06)]"
-                >
-                  <div className="flex flex-col gap-5 xl:grid xl:grid-cols-[1.2fr_0.8fr]">
-                    <div>
-                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                        <div>
-                          <h3 className="text-2xl font-bold text-slate-900">
-                            {item.title}
-                          </h3>
-                          <p className="mt-1 text-sm text-slate-500">
-                            {item.taskType || "General task"} in{" "}
-                            {item.restroomLabel || "Unassigned restroom"}
-                          </p>
-                        </div>
-                        <StatusBadge status={item.status} />
-                      </div>
-
-                      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                        <DataTile
-                          label="Date"
-                          value={new Date(item.date).toLocaleDateString()}
-                        />
-                        <DataTile
-                          label="Time"
-                          value={`${item.startTime} - ${item.endTime}`}
-                        />
-                        <DataTile
-                          label="Manager Note"
-                          value={item.managerNote || "No note"}
-                        />
-                        <DataTile
-                          label="Review Note"
-                          value={item.managerReviewNote || "No review yet"}
-                        />
-                        <DataTile
-                          label="Task Type"
-                          value={item.taskType || "Not specified"}
-                        />
-                        <DataTile
-                          label="Location"
-                          value={item.restroomLabel || "N/A"}
-                        />
-                      </div>
-
-                      {item.proofImages?.length > 0 ? (
-                        <div className="mt-5">
-                          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-                            Uploaded Proof
-                          </p>
-                          <div className="mt-3 flex flex-wrap gap-3">
-                            {item.proofImages.map((img, index) => (
-                              <img
-                                key={index}
-                                src={img.url}
-                                alt="proof"
-                                className="h-28 w-28 rounded-2xl border border-slate-200 object-cover"
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      ) : null}
-                    </div>
-
-                    <div className="rounded-[24px] border border-sky-100 bg-sky-50/70 p-5">
-                      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-                        Actions
-                      </p>
-
-                      {item.status === "Assigned" ? (
-                        <button
-                          className="mt-4 w-full rounded-2xl bg-gradient-to-r from-sky-500 to-blue-500 px-4 py-3 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(59,130,246,0.24)] transition hover:-translate-y-0.5"
-                          onClick={() => handleStartWork(item._id)}
-                        >
-                          Start Work
-                        </button>
-                      ) : null}
-
-                      {item.status === "InProgress" ? (
-                        <div className="mt-4 space-y-4">
-                          <div>
-                            <label className="mb-2 block text-sm font-medium text-slate-700">
-                              Upload Proof Image
-                            </label>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) =>
-                                handleFileChange(item._id, e.target.files[0])
-                              }
-                              className="block w-full rounded-2xl border border-sky-200 bg-white px-3 py-3 text-sm text-slate-700"
-                            />
-                            <button
-                              className="mt-3 w-full rounded-2xl border border-sky-300 bg-white px-4 py-3 text-sm font-semibold text-sky-700 transition hover:bg-sky-100"
-                              onClick={() => handleUploadProof(item._id)}
-                            >
-                              Upload Proof
-                            </button>
-                          </div>
-
-                          <div>
-                            <label className="mb-2 block text-sm font-medium text-slate-700">
-                              Staff Note
-                            </label>
-                            <textarea
-                              rows="3"
-                              value={formNotes[item._id]?.staffNote || ""}
-                              onChange={(e) =>
-                                handleInputChange(
-                                  item._id,
-                                  "staffNote",
-                                  e.target.value
-                                )
-                              }
-                              className="w-full rounded-2xl border border-sky-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none focus:border-sky-400"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="mb-2 block text-sm font-medium text-slate-700">
-                              Materials Used
-                            </label>
-                            <textarea
-                              rows="3"
-                              value={formNotes[item._id]?.materialsUsed || ""}
-                              onChange={(e) =>
-                                handleInputChange(
-                                  item._id,
-                                  "materialsUsed",
-                                  e.target.value
-                                )
-                              }
-                              className="w-full rounded-2xl border border-sky-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none focus:border-sky-400"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="mb-2 block text-sm font-medium text-slate-700">
-                              Issues Found
-                            </label>
-                            <textarea
-                              rows="3"
-                              value={formNotes[item._id]?.issuesFound || ""}
-                              onChange={(e) =>
-                                handleInputChange(
-                                  item._id,
-                                  "issuesFound",
-                                  e.target.value
-                                )
-                              }
-                              className="w-full rounded-2xl border border-sky-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none focus:border-sky-400"
-                            />
-                          </div>
-
-                          <button
-                            className={`w-full rounded-2xl px-4 py-3 text-sm font-semibold text-white transition ${
-                              hasProof
-                                ? "bg-gradient-to-r from-emerald-500 to-green-500 shadow-[0_10px_24px_rgba(16,185,129,0.24)] hover:-translate-y-0.5"
-                                : "cursor-not-allowed bg-slate-300"
-                            }`}
-                            onClick={() => handleCompleteWork(item._id)}
-                            disabled={!hasProof}
-                          >
-                            Complete Work
-                          </button>
-
-                          {!hasProof ? (
-                            <p className="text-sm text-rose-500">
-                              Upload a proof image before completing this task.
-                            </p>
-                          ) : null}
-                        </div>
-                      ) : null}
-
-                      {item.status === "Completed" ? (
-                        <ActionNotice
-                          tone="amber"
-                          message="Waiting for manager review."
-                        />
-                      ) : null}
-
-                      {item.status === "Verified" ? (
-                        <ActionNotice
-                          tone="emerald"
-                          message="Approved and verified."
-                        />
-                      ) : null}
-
-                      {item.status === "Rejected" ? (
-                        <ActionNotice
-                          tone="rose"
-                          message="Rejected by manager."
-                        />
-                      ) : null}
-
-                      {item.status === "Cancelled" ? (
-                        <ActionNotice tone="slate" message="This task was cancelled." />
-                      ) : null}
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
+        {message.text && (
+          <div
+            className={`mt-5 rounded-2xl px-4 py-3 text-sm font-medium shadow-sm ${
+              message.type === "success"
+                ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+                : "border border-rose-200 bg-rose-50 text-rose-700"
+            }`}
+          >
+            {message.text}
           </div>
         )}
+
+        <div className="mt-6">
+          {loading ? (
+            <div className="rounded-3xl border border-blue-100 bg-white p-10 text-center shadow-sm">
+              <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-blue-200 border-t-blue-700" />
+              <p className="mt-4 text-sm font-medium text-slate-600">Loading schedules...</p>
+            </div>
+          ) : filteredSchedules.length === 0 ? (
+            <EmptyState
+              title="No schedules found"
+              description="Try changing the search, status, or time filter."
+              buttonText="Refresh"
+              onReload={loadSchedules}
+            />
+          ) : (
+            <div className="space-y-6">
+              {groupedSchedules.map((group) => (
+                <section
+                  key={group.key}
+                  className="rounded-[28px] border border-blue-100 bg-white p-5 shadow-sm"
+                >
+                  <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-800">{group.label}</h3>
+                      <p className="mt-1 text-sm text-slate-500">
+                        {group.items.length} schedule{group.items.length > 1 ? "s" : ""} found
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 space-y-3">
+                    {group.items.map((schedule) => {
+                      const isSelected = schedule._id === selectedScheduleId;
+
+                      return (
+                        <button
+                          key={schedule._id}
+                          type="button"
+                          onClick={() => setSelectedScheduleId(schedule._id)}
+                          className={`w-full rounded-2xl border p-4 text-left transition ${
+                            isSelected
+                              ? "border-blue-300 bg-blue-50/70 shadow-sm"
+                              : "border-slate-200 bg-white hover:border-blue-200 hover:bg-slate-50"
+                          }`}
+                        >
+                          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-3">
+                                <h4 className="text-lg font-semibold text-slate-800">
+                                  {schedule.title || "Untitled"}
+                                </h4>
+                                <span
+                                  className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${
+                                    statusStyles[schedule.status] ||
+                                    "border border-slate-200 bg-slate-100 text-slate-700"
+                                  }`}
+                                >
+                                  {schedule.status}
+                                </span>
+                              </div>
+
+                              <p className="mt-2 text-sm text-slate-600">
+                                {schedule.taskType || "Task"}
+                                {schedule.restroomLabel ? ` - ${schedule.restroomLabel}` : ""}
+                              </p>
+                            </div>
+
+                            <div className="grid gap-3 text-sm text-slate-600 sm:grid-cols-2 lg:min-w-[280px]">
+                              <div className="rounded-xl bg-blue-50 px-3 py-2">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+                                  Date
+                                </p>
+                                <p className="mt-1 font-medium text-slate-700">
+                                  {schedule.date
+                                    ? new Date(schedule.date).toLocaleDateString()
+                                    : "-"}
+                                </p>
+                              </div>
+                              <div className="rounded-xl bg-blue-50 px-3 py-2">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+                                  Time
+                                </p>
+                                <p className="mt-1 font-medium text-slate-700">
+                                  {schedule.startTime || "--"} - {schedule.endTime || "--"}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    </DashboardLayout>
-  );
-}
 
-function StatusBadge({ status }) {
-  return (
-    <span
-      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-        statusToneMap[status] || "bg-slate-100 text-slate-700"
-      }`}
-    >
-      {status || "Unknown"}
-    </span>
-  );
-}
+      {selectedSchedule ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
+          <div className="relative max-h-[90vh] w-full max-w-6xl overflow-y-auto rounded-[28px] bg-white shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white/95 px-5 py-4 backdrop-blur">
+              <div>
+                <h3 className="text-lg font-bold text-slate-800">Schedule Details</h3>
+                <p className="text-sm text-slate-500">Full information for the selected schedule.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedScheduleId("")}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Close
+              </button>
+            </div>
 
-function DataTile({ label, value }) {
-  return (
-    <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-        {label}
-      </p>
-      <p className="mt-2 text-sm font-semibold text-slate-800">{value}</p>
+            <div className="p-4 md:p-5">
+              <ScheduleCard
+                schedule={selectedSchedule}
+                formState={formState}
+                proofFile={proofFiles[selectedSchedule._id]}
+                busyAction={busyAction}
+                embedded
+                onStart={handleStart}
+                onRevertStart={handleRevertStart}
+                onFileChange={handleFileChange}
+                onUploadProof={handleUploadProof}
+                onFormChange={handleFormChange}
+                onComplete={handleComplete}
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
-}
+};
 
-function ActionNotice({ tone, message }) {
-  const toneClass =
-    tone === "amber"
-      ? "border-amber-200 bg-amber-50 text-amber-700"
-      : tone === "emerald"
-        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-        : tone === "rose"
-          ? "border-rose-200 bg-rose-50 text-rose-700"
-          : "border-slate-200 bg-slate-50 text-slate-700";
-
-  return (
-    <div className={`mt-4 rounded-2xl border px-4 py-3 text-sm font-semibold ${toneClass}`}>
-      {message}
-    </div>
-  );
-}
+export default MySchedules;

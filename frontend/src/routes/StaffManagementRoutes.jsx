@@ -4,8 +4,12 @@ import AdminDashboard from "../pages/admin/AdminDashboard.jsx";
 import StaffList from "../pages/admin/StaffList.jsx";
 import Schedules from "../pages/admin/Schedule.jsx";
 import Issues from "../pages/admin/Issues.jsx";
+import StaffManagementHome from "../pages/admin/staff-Management/StaffManagementHome.jsx";
+import ManageSchedules from "../pages/admin/staff-Management/ManageSchedules.jsx";
+import AssignIssues from "../pages/admin/staff-Management/AssignIssues.jsx";
 import StaffDashboard from "../pages/staff/Dashboard.jsx";
 import MySchedules from "../pages/staff/MySchedules.jsx";
+import WorkSummary from "../pages/staffManagement/staff/WorkSummary";
 
 const staffManagementRoutes = [
   {
@@ -14,6 +18,36 @@ const staffManagementRoutes = [
       <ProtectedRoute>
         <MainLayout>
           <AdminDashboard />
+        </MainLayout>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/admin/staff",
+    element: (
+      <ProtectedRoute>
+        <MainLayout>
+          <StaffManagementHome />
+        </MainLayout>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/admin/staff/schedules",
+    element: (
+      <ProtectedRoute>
+        <MainLayout>
+          <ManageSchedules />
+        </MainLayout>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/admin/staff/issues",
+    element: (
+      <ProtectedRoute>
+        <MainLayout>
+          <AssignIssues />
         </MainLayout>
       </ProtectedRoute>
     ),
@@ -68,6 +102,16 @@ const staffManagementRoutes = [
       </ProtectedRoute>
     ),
   },
+  {
+    path: "/staff-management/staff/work-summary",
+    element: (
+      <ProtectedRoute>
+        <MainLayout>
+          <WorkSummary />
+        </MainLayout>
+      </ProtectedRoute>
+    ),
+  }
 ];
 
 export default staffManagementRoutes;

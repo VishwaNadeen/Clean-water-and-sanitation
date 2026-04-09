@@ -19,10 +19,9 @@ export default function AdminLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100">
-      <div className="grid min-h-screen lg:grid-cols-[260px_1fr]">
-        {/* ✅ SIDEBAR (NOW GLOBAL) */}
-        <aside className="hidden lg:flex flex-col bg-slate-900 text-white">
+    <div className="h-screen overflow-hidden bg-slate-100">
+      <div className="grid h-screen lg:grid-cols-[260px_1fr]">
+        <aside className="hidden h-screen overflow-hidden bg-slate-900 text-white lg:flex lg:flex-col">
           <div className="border-b border-slate-800 px-6 py-6">
             <h1 className="text-2xl font-bold">Admin Panel</h1>
             <p className="mt-2 text-sm text-slate-400">
@@ -30,7 +29,7 @@ export default function AdminLayout() {
             </p>
           </div>
 
-          <nav className="flex-1 px-4 py-6">
+          <nav className="flex-1 overflow-y-auto px-4 py-6">
             <ul className="space-y-2">
               <li>
                 <Link
@@ -79,7 +78,6 @@ export default function AdminLayout() {
             </ul>
           </nav>
 
-          {/* User info */}
           <div className="border-t border-slate-800 px-6 py-5">
             <p className="text-sm text-slate-400">Logged in as</p>
             <p className="mt-1 font-semibold">{user?.username || "Admin"}</p>
@@ -94,15 +92,12 @@ export default function AdminLayout() {
           </div>
         </aside>
 
-        {/* ✅ PAGE CONTENT (CHANGES HERE) */}
-        <section className="flex flex-col min-h-screen">
+        <section className="flex h-screen min-w-0 flex-col overflow-hidden">
           <header className="border-b border-slate-200 bg-white px-6 py-5 shadow-sm">
-            <h2 className="text-2xl font-bold text-slate-800">
-              Admin Panel
-            </h2>
+            <h2 className="text-2xl font-bold text-slate-800">Admin Panel</h2>
           </header>
 
-          <main className="flex-1 p-6">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden p-6">
             <Outlet />
           </main>
         </section>
