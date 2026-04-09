@@ -41,6 +41,18 @@ export default function CategoryList({
     });
   }
 
+  async function handleSaveSubcategory(categoryId, subCategoryId) {
+    const success = await updateSubcategory(
+      categoryId,
+      subCategoryId,
+      editingSubForm
+    );
+
+    if (success) {
+      cancelSubcategoryEdit();
+    }
+  }
+
   return (
     <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200">
       <div className="overflow-x-auto">
@@ -260,8 +272,9 @@ export default function CategoryList({
                                           <button
                                             type="button"
                                             onClick={() =>
-                                              updateSubcategory(category._id, subcategory._id, editingSubForm).then(
-                                                () => cancelSubcategoryEdit()
+                                              handleSaveSubcategory(
+                                                category._id,
+                                                subcategory._id
                                               )
                                             }
                                             disabled={saving}

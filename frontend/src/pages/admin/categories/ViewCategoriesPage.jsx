@@ -136,8 +136,10 @@ export default function ViewCategoriesPage() {
 
       setSuccessMessage(data?.message || "Subcategory updated successfully.");
       await loadCategories();
+      return true;
     } catch (updateError) {
       setError(updateError.message || "Failed to update subcategory.");
+      return false;
     } finally {
       setSaving(false);
     }
