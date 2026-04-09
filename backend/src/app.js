@@ -14,6 +14,7 @@ import restroomRoutes from "./routes/restRoom-Management/restroomRoutes.js";
 
 import issueRoutes from "./routes/issue-reporting/issueRoutes.js";
 import issueCategoryRoutes from "./routes/issue-reporting/issueCategoryRoutes.js";
+import locationRoutes from "./routes/issue-reporting/locationRoutes.js";
 
 const app = express();
 
@@ -35,6 +36,7 @@ app.use("/api/restrooms", restroomRoutes);
 
 app.use("/api/issues", issueRoutes);
 app.use("/api/categories", issueCategoryRoutes);
+app.use("/api/locations", locationRoutes);
 
 // 404
 app.use((req, res) => {
