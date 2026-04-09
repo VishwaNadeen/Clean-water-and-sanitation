@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import DashboardLayout from "../../components/staffManagement/DashboardLayout";
-import { getManagerStaff } from "../../services/staffManagementService";
+import DashboardLayout from "../../../components/staffManagement/DashboardLayout";
+import { getManagerStaff } from "../../../services/staffManagementService";
 
 const pageStyle = {
   padding: "24px",

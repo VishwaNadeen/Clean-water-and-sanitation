@@ -8,6 +8,7 @@ import {
 } from "../../services/staffManagementService";
 
 const ACTIVE_STATUSES = ["Assigned", "InProgress"];
+const TOAST_DURATION_MS = 5000;
 
 const getScheduleDateTime = (schedule) => {
   const date = new Date(schedule?.date);
@@ -67,7 +68,7 @@ const useMySchedules = () => {
     setMessage({ type, text });
     setTimeout(() => {
       setMessage({ type: "", text: "" });
-    }, 3000);
+    }, TOAST_DURATION_MS);
   };
 
   const loadSchedules = async () => {

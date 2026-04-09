@@ -4,9 +4,7 @@ import RequireStaff from "../components/auth/RequireStaff";
 import Dashboard from "../pages/staff/Dashboard";
 import WorkSummary from "../pages/staff/WorkSummary";
 import MySchedules from "../pages/staff/MySchedules";
-import Profile from "../pages/profile/Profile.jsx";
-import EditProfile from "../pages/profile/EditProfile.jsx";
-import DeleteProfile from "../pages/profile/DeleteProfile.jsx";
+import Profile from "../pages/staff/Profile.jsx";
 
 const StaffRoutes = (
   <Route
@@ -16,6 +14,7 @@ const StaffRoutes = (
       </RequireStaff>
     }
   >
+    <Route path="/staff" element={<Navigate to="/staff/dashboard" replace />} />
     <Route path="/staff/dashboard" element={<Dashboard />} />
     <Route path="/staff/work-summary" element={<WorkSummary />} />
     <Route
@@ -24,8 +23,9 @@ const StaffRoutes = (
     />
     <Route path="/staff/my-schedules" element={<MySchedules />} />
     <Route path="/staff/profile" element={<Profile />} />
-    <Route path="/staff/profile/edit" element={<EditProfile />} />
-    <Route path="/staff/profile/delete" element={<DeleteProfile />} />
+    <Route path="/staff/profile/edit" element={<Navigate to="/staff/profile" replace />} />
+    <Route path="/staff/profile/password" element={<Navigate to="/staff/profile" replace />} />
+    <Route path="/staff/profile/delete" element={<Navigate to="/staff/profile" replace />} />
   </Route>
 );
 

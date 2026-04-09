@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import FloatingToast from "../../../components/common/FloatingToast";
 import API_BASE_URL from "../../../config/api";
 import {
   approveSchedule,
@@ -37,6 +38,7 @@ const statusStyle = {
 
 const timeTabs = ["Today", "This Week", "This Month", "All"];
 const taskTypeOptions = ["All", "Cleaning", "Maintenance", "Inspection"];
+const TOAST_DURATION_MS = 5000;
 
 const getStartOfWeek = (date) => {
   const value = new Date(date);
@@ -174,7 +176,7 @@ export default function ManageSchedules() {
 
     const timeoutId = window.setTimeout(() => {
       setToast(null);
-    }, 3000);
+    }, TOAST_DURATION_MS);
 
     return () => window.clearTimeout(timeoutId);
   }, [toast]);
@@ -397,7 +399,7 @@ export default function ManageSchedules() {
 
   return (
     <div className="space-y-6">
-      {toast ? <ToastMessage toast={toast} onClose={() => setToast(null)} /> : null}
+      {toast ? <FloatingToast toast={toast} onClose={() => setToast(null)} /> : null}
 
       <div>
         <Link
@@ -870,31 +872,3 @@ export default function ManageSchedules() {
   );
 }
 
-function ToastMessage({ toast, onClose }) {
-  const tone =
-    toast.type === "success"
-      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-      : "border-rose-200 bg-rose-50 text-rose-700";
-
-  return (
-    <div className="fixed right-6 top-6 z-50 max-w-sm">
-      <div className={`rounded-2xl border px-4 py-3 shadow-lg ${tone}`}>
-        <div className="flex items-start gap-3">
-          <div className="flex-1">
-            <p className="text-sm font-semibold">
-              {toast.type === "success" ? "Success" : "Error"}
-            </p>
-            <p className="mt-1 text-sm">{toast.text}</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-sm font-semibold opacity-70 transition hover:opacity-100"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}

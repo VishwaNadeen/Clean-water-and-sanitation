@@ -5,6 +5,7 @@ import cloudinary from "../../config/cloudinary.js";
 
 import Staff from "../../models/Staff-Management/StaffModel.js";
 import Login from "../../models/user-Management/logInModel.js";
+import { sendEmail } from "../../services/sendEmail.js";
 import { uploadBufferToCloudinary } from "../../utils/staff-Management/Staffcloudinary.js";
 
 /* ---------------------------------------------
@@ -59,7 +60,6 @@ const staffCreateSchema = z.object({
   phone: z.coerce.number(),
 
   email: z.string().trim().toLowerCase().email("Invalid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
 
   role: z.enum(["Cleaner", "Supervisor", "Technician"]),
   status: z.enum(["Active", "Inactive", "OnLeave"]).optional(),
@@ -105,6 +105,27 @@ const deleteRequestSchema = z.object({
   reason: z.string().trim().min(3, "Reason is too short").max(300).optional(),
 });
 
+async function sendStaffRegistrationEmail({ email, fullName, initialPassword, role }) {
+  await sendEmail({
+    to: email,
+    subject: "Your Staff Account Has Been Created",
+    text: `Hello ${fullName}, your staff account has been created. Role: ${role}. Login email: ${email}. Temporary password: ${initialPassword}. Please change it after your first login.`,
+    html: `
+      <div style="font-family: Arial, sans-serif; color: #1e293b; line-height: 1.6;">
+        <h2 style="margin-bottom: 12px;">Welcome to Clean Water & Sanitation</h2>
+        <p>Hello ${fullName},</p>
+        <p>Your staff account has been created successfully.</p>
+        <p><strong>Role:</strong> ${role}</p>
+        <p><strong>Login email:</strong> ${email}</p>
+        <p><strong>Temporary password:</strong> ${initialPassword}</p>
+        <p>For your first login, please use your NIC number as the password, then change it after signing in.</p>
+      </div>
+    `,
+  });
+
+  return true;
+}
+
 /* ===================== CREATE STAFF ===================== */
 export async function createStaff(req, res) {
   const parsed = staffCreateSchema.safeParse(req.body);
@@ -117,12 +138,15 @@ export async function createStaff(req, res) {
   }
 
   const staffPayload = parsed.data;
+  const initialPassword = staffPayload.nic.trim();
   const { firstName, lastName } = splitFullName(staffPayload.fullName);
 
   try {
     const staff = await Staff.create({
       ...staffPayload,
       email: staffPayload.email.toLowerCase().trim(),
+      password: initialPassword,
+      mustChangePassword: true,
     });
 
     const staffWithPw = await Staff.findById(staff._id).select("+password");
@@ -139,7 +163,26 @@ export async function createStaff(req, res) {
       role: "STAFF",
     });
 
-    return res.status(201).json({ message: "Staff created", staff });
+    let emailSent = false;
+
+    try {
+      emailSent = await sendStaffRegistrationEmail({
+        email: staff.email,
+        fullName: staff.fullName,
+        initialPassword,
+        role: staff.role,
+      });
+    } catch (emailError) {
+      console.error("Staff registration email failed:", emailError.message);
+    }
+
+    return res.status(201).json({
+      message: emailSent
+        ? "Staff created and registration email sent"
+        : "Staff created, but registration email could not be sent",
+      staff,
+      emailSent,
+    });
   } catch (err) {
     if (err?.code === 11000) {
       const keys = err?.keyPattern || err?.keyValue || {};
@@ -333,6 +376,7 @@ export async function updateMyStaffPassword(req, res) {
     if (!ok) return res.status(401).json({ message: "Current password is incorrect" });
 
     staff.password = newPassword;
+    staff.mustChangePassword = false;
     await staff.save();
 
     await Login.updateOne({ userId: staff._id }, { $set: { password: staff.password } });
@@ -369,6 +413,7 @@ export async function updateStaffPassword(req, res) {
     if (!ok) return res.status(401).json({ message: "Current password is incorrect" });
 
     staff.password = newPassword;
+    staff.mustChangePassword = false;
     await staff.save();
 
     await Login.updateOne({ userId: staff._id }, { $set: { password: staff.password } });

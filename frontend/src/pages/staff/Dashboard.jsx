@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import FloatingToast from "../../components/common/FloatingToast";
 import useMySchedules from "../../hooks/staffManagement/useMySchedules";
+import { getStoredUser } from "../../utils/auth";
 import EmptyState from "../../components/staffManagement/staff/EmptyState";
 import SchedulePreviewCard from "../../components/staffManagement/staff/SchedulePreviewCard";
 import StatCard from "../../components/staffManagement/staff/StatCard";
@@ -19,6 +21,8 @@ const StaffDashboard = () => {
   } =
     useMySchedules();
   const [dismissedFeedbackIds, setDismissedFeedbackIds] = useState([]);
+  const storedUser = getStoredUser();
+  const mustChangePassword = Boolean(storedUser?.mustChangePassword);
 
   useEffect(() => {
     try {
@@ -74,17 +78,28 @@ const StaffDashboard = () => {
           </div>
         </div>
 
-        {message.text && (
-          <div
-            className={`mt-5 rounded-2xl px-4 py-3 text-sm font-medium shadow-sm ${
-              message.type === "success"
-                ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
-                : "border border-rose-200 bg-rose-50 text-rose-700"
-            }`}
-          >
-            {message.text}
+        {mustChangePassword ? (
+          <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-amber-800">
+                  Change your temporary password
+                </p>
+                <p className="mt-1 text-sm text-amber-700">
+                  This is your first staff login. Please change the NIC-based temporary password to secure your account.
+                </p>
+              </div>
+              <Link
+                to="/staff/profile/password"
+                className="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-600"
+              >
+                Change Password
+              </Link>
+            </div>
           </div>
-        )}
+        ) : null}
+
+        {message.text ? <FloatingToast toast={message} /> : null}
 
         <div className="mt-6 rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
           <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">

@@ -33,8 +33,8 @@ router.delete("/me/profile-image", removeMyStaffProfileImage);
 router.patch("/me/password", updateMyStaffPassword);
 router.post("/me/delete-request", requestMyDeleteProfile);
 
-// Create staff (keep as-is)
-router.post("/", createStaff, authorizeRoles("ADMIN"));
+// Create staff
+router.post("/", authorizeRoles("ADMIN"), createStaff);
 
 // ✅ ADMIN ONLY: get all staff + search
 router.get("/", authorizeRoles("ADMIN"), listStaff);

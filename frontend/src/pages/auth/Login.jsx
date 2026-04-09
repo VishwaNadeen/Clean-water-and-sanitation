@@ -129,6 +129,7 @@ export default function Login() {
         fullName: data?.fullName || data?.username || "User",
         email: data?.email || formData.email.trim().toLowerCase(),
         role: userRole,
+        mustChangePassword: Boolean(data?.mustChangePassword),
       };
 
       setAuthSession({

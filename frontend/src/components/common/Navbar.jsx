@@ -13,9 +13,10 @@ const NAVBAR_LOGO_URL =
 
 export default function Navbar() {
   const navigate = useNavigate();
+  const storedUser = getStoredUser();
   const [loggedIn, setLoggedIn] = useState(isLoggedIn());
   const [profileImageUrl, setProfileImageUrl] = useState(
-    getStoredUser()?.profileImageUrl || ""
+    storedUser?.profileImageUrl || ""
   );
   const [scrolled, setScrolled] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -122,6 +123,10 @@ export default function Navbar() {
     { to: "/about", label: "About Us" },
     { to: "/contact", label: "Contact Us" },
   ];
+  const profilePath =
+    String(storedUser?.role || "").toLowerCase() === "staff"
+      ? "/staff/profile"
+      : "/profile";
 
   return (
     <>
@@ -325,7 +330,7 @@ export default function Navbar() {
                           role="menuitem"
                           onClick={() => {
                             setProfileMenuOpen(false);
-                            navigate("/profile");
+                            navigate(profilePath);
                           }}
                         >
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">

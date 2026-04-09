@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import FloatingToast from "../../components/common/FloatingToast";
 import useMySchedules from "../../hooks/staffManagement/useMySchedules";
 import SummaryStatCard from "../../components/staffManagement/staff/SummaryStatCard";
 import EmptyState from "../../components/staffManagement/staff/EmptyState";
@@ -133,17 +134,7 @@ const WorkSummary = () => {
           </p>
         </div>
 
-        {message.text && (
-          <div
-            className={`mt-5 rounded-2xl px-4 py-3 text-sm font-medium shadow-sm ${
-              message.type === "success"
-                ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
-                : "border border-rose-200 bg-rose-50 text-rose-700"
-            }`}
-          >
-            {message.text}
-          </div>
-        )}
+        {message.text ? <FloatingToast toast={message} /> : null}
 
         <div className="mt-6 rounded-3xl border border-blue-100 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">

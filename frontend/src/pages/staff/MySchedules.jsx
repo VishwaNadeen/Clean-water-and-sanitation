@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import FloatingToast from "../../components/common/FloatingToast";
 import useMySchedules from "../../hooks/staffManagement/useMySchedules";
 import EmptyState from "../../components/staffManagement/staff/EmptyState";
 import ScheduleCard from "../../components/staffManagement/staff/ScheduleCard";
@@ -110,17 +111,7 @@ const MySchedules = () => {
           onRefresh={loadSchedules}
         />
 
-        {message.text && (
-          <div
-            className={`mt-5 rounded-2xl px-4 py-3 text-sm font-medium shadow-sm ${
-              message.type === "success"
-                ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
-                : "border border-rose-200 bg-rose-50 text-rose-700"
-            }`}
-          >
-            {message.text}
-          </div>
-        )}
+        {message.text ? <FloatingToast toast={message} /> : null}
 
         <div className="mt-6">
           {loading ? (

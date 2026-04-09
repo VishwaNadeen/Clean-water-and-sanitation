@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import FloatingToast from "../../../components/common/FloatingToast";
 import API_BASE_URL from "../../../config/api";
 import staffApi, {
   getAllSchedules,
@@ -15,8 +16,11 @@ const overviewCardStyles = {
   tasks: "from-indigo-500 to-blue-600",
   issues: "from-rose-500 to-red-500",
 };
+const TOAST_DURATION_MS = 5000;
 
 export default function StaffManagementHome() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [staffMembers, setStaffMembers] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [issues, setIssues] = useState([]);
@@ -25,13 +29,32 @@ export default function StaffManagementHome() {
   const [roleFilter, setRoleFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [toast, setToast] = useState(null);
+
+  useEffect(() => {
+    const nextToast = location.state?.toast;
+
+    if (!nextToast) {
+      return;
+    }
+
+    setToast(nextToast);
+
+    const timer = window.setTimeout(() => {
+      setToast(null);
+    }, TOAST_DURATION_MS);
+
+    navigate(location.pathname, { replace: true, state: {} });
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [location.pathname, location.state, navigate]);
 
   useEffect(() => {
     async function loadDashboardData() {
       try {
         setLoading(true);
-        setError("");
 
         const [staffResult, scheduleResult, issueResult] = await Promise.allSettled([
           getManagerStaff(),
@@ -60,13 +83,18 @@ export default function StaffManagementHome() {
         setIssues(nextIssues);
 
         if (staffResult.status === "rejected") {
-          setError(
-            staffResult.reason?.response?.data?.message ||
+          setToast({
+            type: "error",
+            text:
+              staffResult.reason?.response?.data?.message ||
               staffResult.reason?.message ||
-              "Failed to load staff members from database."
-          );
+              "Failed to load staff members from database.",
+          });
         } else if (scheduleResult.status === "rejected" || issueResult.status === "rejected") {
-          setError("Some dashboard sections could not be loaded, but staff data is shown.");
+          setToast({
+            type: "error",
+            text: "Some dashboard sections could not be loaded, but staff data is shown.",
+          });
         }
       } finally {
         setLoading(false);
@@ -207,12 +235,7 @@ export default function StaffManagementHome() {
         onClose={() => setSelectedStaff(null)}
       />
      
-
-      {error ? (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
-          {error}
-        </div>
-      ) : null}
+      {toast ? <FloatingToast toast={toast} onClose={() => setToast(null)} /> : null}
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {overviewStats.map((item) => (
@@ -267,10 +290,6 @@ export default function StaffManagementHome() {
       <section>
         <div className="rounded-[30px] border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-              <p className="max-w-2xl text-sm font-semibold text-slate-700">
-                Search staff members, filter by role or status, and review current assignments from one table.
-              </p>
-
             <div className="flex flex-col gap-3 md:flex-row">
               <input
                 type="text"
@@ -304,6 +323,13 @@ export default function StaffManagementHome() {
                 ))}
               </select>
             </div>
+
+            <Link
+              to="/admin/register-staff"
+              className="inline-flex items-center justify-center rounded-xl bg-blue-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-800"
+            >
+              Add Staff Member
+            </Link>
           </div>
 
           <div className="mt-6 overflow-hidden rounded-2xl border border-slate-100">
@@ -419,7 +445,7 @@ export default function StaffManagementHome() {
 function StaffActionModal({ staff, onClose }) {
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(false);
-  const [profileError, setProfileError] = useState("");
+  const [profileToast, setProfileToast] = useState(null);
   const [imageFailed, setImageFailed] = useState(false);
 
   const resolvedProfile = profile || staff || {};
@@ -436,13 +462,15 @@ function StaffActionModal({ staff, onClose }) {
 
     try {
       setProfileLoading(true);
-      setProfileError("");
+      setProfileToast(null);
       const data = await getStaffProfile(staff._id);
       setProfile(data);
     } catch (error) {
-      setProfileError(
-        error?.response?.data?.message || error?.message || "Failed to load staff profile."
-      );
+      setProfileToast({
+        type: "error",
+        text:
+          error?.response?.data?.message || error?.message || "Failed to load staff profile.",
+      });
     } finally {
       setProfileLoading(false);
     }
@@ -451,7 +479,7 @@ function StaffActionModal({ staff, onClose }) {
   useEffect(() => {
     setProfile(null);
     setProfileLoading(false);
-    setProfileError("");
+    setProfileToast(null);
     setImageFailed(false);
 
     if (staff?._id) {
@@ -512,10 +540,8 @@ function StaffActionModal({ staff, onClose }) {
           </div>
 
           <div className="max-h-[calc(100vh-10rem)] overflow-y-auto px-6 py-6">
-            {profileError ? (
-              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                {profileError}
-              </div>
+            {profileToast ? (
+              <FloatingToast toast={profileToast} onClose={() => setProfileToast(null)} />
             ) : null}
 
             {profileLoading ? (

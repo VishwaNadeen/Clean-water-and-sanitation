@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import FloatingToast from "../../../components/common/FloatingToast";
 import {
   assignIssueToStaff,
   getManagerStaff,
 } from "../../../services/staffManagementService";
+
+const TOAST_DURATION_MS = 5000;
 
 const AssignIssues = () => {
   const [staffMembers, setStaffMembers] = useState([]);
@@ -20,7 +23,19 @@ const AssignIssues = () => {
     managerNote: "",
   });
 
-  const [message, setMessage] = useState("");
+  const [toast, setToast] = useState(null);
+
+  useEffect(() => {
+    if (!toast) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setToast(null);
+    }, TOAST_DURATION_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [toast]);
 
   useEffect(() => {
     async function loadStaffMembers() {
@@ -28,7 +43,10 @@ const AssignIssues = () => {
         const data = await getManagerStaff();
         setStaffMembers(Array.isArray(data) ? data : []);
       } catch (error) {
-        setMessage(error?.response?.data?.message || "Failed to load staff members");
+        setToast({
+          type: "error",
+          text: error?.response?.data?.message || "Failed to load staff members",
+        });
       }
     }
 
@@ -51,7 +69,7 @@ const AssignIssues = () => {
         managerNote: form.managerNote,
       });
 
-      setMessage("Issue assigned successfully");
+      setToast({ type: "success", text: "Issue assigned successfully" });
 
       setForm({
         issueId: "",
@@ -66,7 +84,10 @@ const AssignIssues = () => {
         managerNote: "",
       });
     } catch (error) {
-      setMessage(error?.response?.data?.message || "Failed to assign issue");
+      setToast({
+        type: "error",
+        text: error?.response?.data?.message || "Failed to assign issue",
+      });
     }
   };
 
@@ -88,11 +109,7 @@ const AssignIssues = () => {
           Link an open issue with a schedule and assign it to a staff member.
         </p>
 
-        {message && (
-          <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-blue-700">
-            {message}
-          </div>
-        )}
+        {toast ? <FloatingToast toast={toast} onClose={() => setToast(null)} /> : null}
 
         <form onSubmit={handleSubmit} className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
           <input
