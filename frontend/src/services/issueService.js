@@ -91,7 +91,12 @@ export async function getMyIssues(params = {}) {
     headers: getAuthHeaders(),
   });
 
-  return parseResponse(response, "Failed to fetch your issues.");
+  const data = await parseResponse(response, "Failed to fetch your issues.");
+
+  return {
+    issues: data?.data?.issues || [],
+    pagination: data?.data?.pagination || null,
+  };
 }
 
 export async function getAllIssues(params = {}) {
