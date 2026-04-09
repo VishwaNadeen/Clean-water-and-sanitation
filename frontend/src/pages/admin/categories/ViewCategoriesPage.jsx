@@ -4,6 +4,7 @@ import { getToken } from "../../../utils/auth";
 import CategoryList from "./CategoryList";
 
 export default function ViewCategoriesPage() {
+  const ITEMS_PER_PAGE = 5;
   const [categories, setCategories] = useState([]);
   const [editingId, setEditingId] = useState("");
   const [editingForm, setEditingForm] = useState({
@@ -16,6 +17,7 @@ export default function ViewCategoriesPage() {
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     loadCategories();
@@ -113,6 +115,34 @@ export default function ViewCategoriesPage() {
     }
   }
 
+  async function updateSubcategory(categoryId, subCategoryId, payload) {
+    try {
+      setSaving(true);
+      setError("");
+      setSuccessMessage("");
+
+      const response = await fetch(
+        `${API_BASE_URL}/categories/${categoryId}/subcategories/${subCategoryId}`,
+        {
+          method: "PUT",
+          headers: jsonHeaders(),
+          body: JSON.stringify(payload),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to update subcategory.");
+      }
+
+      setSuccessMessage(data?.message || "Subcategory updated successfully.");
+      await loadCategories();
+    } catch (updateError) {
+      setError(updateError.message || "Failed to update subcategory.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function startEdit(category) {
     setEditingId(category._id);
     setEditingForm({
@@ -141,6 +171,16 @@ export default function ViewCategoriesPage() {
     });
   }, [categories, search]);
 
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredCategories.length / ITEMS_PER_PAGE)
+  );
+
+  const paginatedCategories = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredCategories.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredCategories, currentPage, ITEMS_PER_PAGE]);
+
   const stats = useMemo(() => {
     const subCount = categories.reduce(
       (total, category) => total + (category.subCategories?.length || 0),
@@ -155,24 +195,24 @@ export default function ViewCategoriesPage() {
     };
   }, [categories, filteredCategories.length]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   return (
     <div className="space-y-6">
       <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800">View Categories</h1>
-            <p className="mt-1 text-sm text-slate-500">
-              Search, review, edit, and remove existing categories and subcategories.
-            </p>
-          </div>
-
-          <input
-            type="text"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search by category or subcategory..."
-            className="w-full rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 sm:w-80"
-          />
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">View Categories</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Review category records, update details, and manage subcategories from one place.
+          </p>
         </div>
       </div>
 
@@ -181,6 +221,16 @@ export default function ViewCategoriesPage() {
         <StatCard label="Active" value={stats.active} color="text-green-600" />
         <StatCard label="Subcategories" value={stats.subcategories} color="text-blue-600" />
         <StatCard label="Search Results" value={stats.filtered} color="text-blue-600" />
+      </div>
+
+      <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <input
+          type="text"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search by category or subcategory..."
+          className="w-full rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 md:max-w-md"
+        />
       </div>
 
       {successMessage ? (
@@ -201,7 +251,7 @@ export default function ViewCategoriesPage() {
           </p>
           <h2 className="mt-1 text-xl font-semibold text-slate-800">View And Manage</h2>
           <p className="mt-1 text-sm text-slate-500">
-            Keep the category list clean by editing records and removing items that are no longer needed.
+            Use this table to edit category details and manage the subcategories under each category.
           </p>
         </div>
 
@@ -226,18 +276,48 @@ export default function ViewCategoriesPage() {
               No categories found for the current search.
             </div>
           ) : (
-            <CategoryList
-              categories={filteredCategories}
-              editingId={editingId}
-              editingForm={editingForm}
-              setEditingForm={setEditingForm}
-              saving={saving}
-              startEdit={startEdit}
-              updateCategory={updateCategory}
-              deleteCategory={deleteCategory}
-              deleteSubcategory={deleteSubcategory}
-              setEditingId={setEditingId}
-            />
+            <>
+              <CategoryList
+                categories={paginatedCategories}
+                editingId={editingId}
+                editingForm={editingForm}
+                setEditingForm={setEditingForm}
+                saving={saving}
+                startEdit={startEdit}
+                updateCategory={updateCategory}
+                updateSubcategory={updateSubcategory}
+                deleteCategory={deleteCategory}
+                deleteSubcategory={deleteSubcategory}
+                setEditingId={setEditingId}
+              />
+
+              <div className="mt-6 flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-slate-500">
+                  Page {currentPage} of {totalPages}
+                </p>
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    disabled={currentPage <= 1}
+                    className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                    }
+                    disabled={currentPage >= totalPages}
+                    className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </>
           )}
         </div>
       </section>
