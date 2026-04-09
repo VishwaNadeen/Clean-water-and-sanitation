@@ -68,7 +68,11 @@ export default function UpdateIssue() {
         }
 
         const [issueRes, categoryRes, provinceRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/issues/${id}`),
+          fetch(`${API_BASE_URL}/issues/${id}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }),
           fetch(`${API_BASE_URL}/categories/dropdown`),
           fetch(`${API_BASE_URL}/locations/provinces`),
         ]);
