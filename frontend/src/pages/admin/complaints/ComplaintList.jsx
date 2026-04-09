@@ -157,10 +157,15 @@ export default function Complaints() {
         throw new Error(data?.message || "Failed to resolve complaint.");
       }
 
+      const resolvedIssue =
+        data?.data?.issue || data?.data || data?.issue || null;
+
       syncIssue(issueId, {
-        status: "RESOLVED",
-        resolutionNote: resolutionNote.trim(),
-        resolvedAt: new Date().toISOString(),
+        status: resolvedIssue?.status || "RESOLVED",
+        resolutionNote: resolvedIssue?.resolutionNote || resolutionNote.trim(),
+        resolvedAt: resolvedIssue?.resolvedAt || null,
+        resolutionImages:
+          resolvedIssue?.resolutionImages || resolvedIssue?.images || [],
       });
       setResolutionNote("");
       setSuccessMessage(data?.message || "Complaint resolved successfully.");
