@@ -15,6 +15,31 @@ const generateToken = (loginId, role, profileId) => {
   );
 };
 
+const createTransporter = () =>
+  nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+
+const sendEmailVerificationOtp = async (email, otp) => {
+  const transporter = createTransporter();
+
+  await transporter.sendMail({
+    from: `"Clean Water & Sanitation" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: "Verify Your Email - OTP",
+    html: `
+      <h3>Email Verification</h3>
+      <p>Your OTP code is:</p>
+      <h2>${otp}</h2>
+      <p>This OTP is valid for 10 minutes.</p>
+    `,
+  });
+};
+
 // Login (checks Login + User, and Login + Staff)
 export const loginUser = async (req, res, next) => {
   try {
@@ -149,6 +174,46 @@ export const verifyEmailOtp = async (req, res, next) => {
   }
 };
 
+export const resendEmailOtp = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      res.status(400);
+      throw new Error("Email is required.");
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const user = await User.findOne({ email: normalizedEmail }).select(
+      "+emailOtpHash +emailOtpExpires"
+    );
+
+    if (!user) {
+      res.status(404);
+      throw new Error("User not found.");
+    }
+
+    if (user.isEmailVerified) {
+      res.status(400);
+      throw new Error("Email is already verified.");
+    }
+
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    const otpHash = await bcrypt.hash(otp, 10);
+
+    user.emailOtpHash = otpHash;
+    user.emailOtpExpires = new Date(Date.now() + 10 * 60 * 1000);
+    await user.save();
+
+    await sendEmailVerificationOtp(normalizedEmail, otp);
+
+    res.json({ message: "OTP resent successfully." });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const logoutUser = async (req, res, next) => {
   try {
     if (!req.user?._id) {
@@ -168,13 +233,7 @@ export const logoutUser = async (req, res, next) => {
 
 // Helper
 const sendResetOtpEmail = async (email, otp) => {
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-  });
+  const transporter = createTransporter();
 
   await transporter.sendMail({
     from: `"Clean Water & Sanitation" <${process.env.EMAIL_USER}>`,
