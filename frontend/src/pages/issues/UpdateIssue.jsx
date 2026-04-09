@@ -326,13 +326,11 @@ export default function UpdateIssue() {
       const successText = data?.message || "Issue updated successfully.";
       setSuccessMessage(successText);
 
-      setTimeout(() => {
-        navigate(`/issues/me/${id}`, {
-          state: {
-            successMessage: successText,
-          },
-        });
-      }, 700);
+      navigate(`/issues/me/${id}`, {
+        state: {
+          successMessage: successText,
+        },
+      });
     } catch (submitError) {
       setError(submitError.message || "Failed to update issue.");
     } finally {

@@ -337,13 +337,11 @@ export default function CreateIssue() {
 
       const issueId = data?.data?._id;
       if (issueId) {
-        setTimeout(() => {
-          navigate(`/issues/me/${issueId}`, {
-            state: {
-              successMessage: successText,
-            },
-          });
-        }, 900);
+        navigate(`/issues/me/${issueId}`, {
+          state: {
+            successMessage: successText,
+          },
+        });
       }
     } catch (submitError) {
       setError(submitError.message || "Failed to create issue.");
