@@ -17,6 +17,10 @@ export default function ReadIssues() {
   const [searchInput, setSearchInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const pageNumbers = buildPageNumbers(
+    pagination?.currentPage || 1,
+    pagination?.totalPages || 1
+  );
 
   useEffect(() => {
     async function loadIssues() {
@@ -282,13 +286,13 @@ export default function ReadIssues() {
                 ))}
               </div>
 
-              {pagination && pagination.totalPages > 1 && (
+              {pagination && (
                 <div className="flex flex-col gap-4 rounded-2xl border border-sky-100 bg-sky-50/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-sm text-slate-600">
                     Page {pagination.currentPage} of {pagination.totalPages}
                   </p>
 
-                  <div className="flex gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
                       disabled={pagination.currentPage <= 1}
@@ -297,6 +301,35 @@ export default function ReadIssues() {
                     >
                       Previous
                     </button>
+
+                    {pageNumbers.map((pageNumber, index) => {
+                      const previousPage = pageNumbers[index - 1];
+                      const showGap =
+                        typeof previousPage === "number" &&
+                        pageNumber - previousPage > 1;
+
+                      return (
+                        <div key={pageNumber} className="flex items-center gap-2">
+                          {showGap ? (
+                            <span className="px-1 text-sm font-medium text-slate-400">
+                              ...
+                            </span>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => changePage(pageNumber)}
+                            className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                              pageNumber === pagination.currentPage
+                                ? "border border-sky-300 bg-gradient-to-r from-sky-500 to-blue-500 text-white shadow-[0_10px_24px_rgba(56,189,248,0.22)]"
+                                : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                            }`}
+                          >
+                            {pageNumber}
+                          </button>
+                        </div>
+                      );
+                    })}
+
                     <button
                       type="button"
                       disabled={pagination.currentPage >= pagination.totalPages}
@@ -340,6 +373,29 @@ function Badge({ color, children }) {
       {children}
     </span>
   );
+}
+
+function buildPageNumbers(currentPage, totalPages) {
+  if (totalPages <= 1) return [1];
+
+  const pages = new Set([1, totalPages, currentPage]);
+
+  if (currentPage - 1 > 1) pages.add(currentPage - 1);
+  if (currentPage + 1 < totalPages) pages.add(currentPage + 1);
+
+  if (currentPage <= 2) {
+    pages.add(2);
+    if (totalPages >= 3) pages.add(3);
+  }
+
+  if (currentPage >= totalPages - 1) {
+    if (totalPages - 1 > 1) pages.add(totalPages - 1);
+    if (totalPages - 2 > 1) pages.add(totalPages - 2);
+  }
+
+  return Array.from(pages)
+    .filter((page) => page >= 1 && page <= totalPages)
+    .sort((a, b) => a - b);
 }
 
 function ComplaintProgress({ status }) {

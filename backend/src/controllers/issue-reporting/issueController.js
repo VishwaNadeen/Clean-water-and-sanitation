@@ -7,6 +7,7 @@ import WorkSchedule from "../../models/Staff-Management/WorkScheduleModel.js";
 import { uploadToCloudinary } from "../../utils/issue-reporting/cloudinary.js";
 import mongoose from "mongoose";
 
+const IN_PROGRESS_WORK_STATUSES = ["InProgress"];
 const RESOLVED_WORK_STATUSES = ["Completed", "Verified"];
 
 const extractWorkResolutionNote = (schedule) => {
@@ -38,7 +39,7 @@ const syncIssuesFromWorkSchedules = async (issues) => {
 
     const schedules = await WorkSchedule.find({
         issueId: { $in: issueIds },
-        status: { $in: RESOLVED_WORK_STATUSES }
+        status: { $in: [...IN_PROGRESS_WORK_STATUSES, ...RESOLVED_WORK_STATUSES] }
     })
         .select("issueId status completedAt verifiedAt staffNote issuesFound materialsUsed")
         .sort({ verifiedAt: -1, completedAt: -1, updatedAt: -1 })
@@ -48,21 +49,39 @@ const syncIssuesFromWorkSchedules = async (issues) => {
         return;
     }
 
-    const latestResolvedScheduleByIssue = new Map();
+    const latestScheduleByIssue = new Map();
     for (const schedule of schedules) {
         const key = schedule.issueId?.toString();
-        if (!key || latestResolvedScheduleByIssue.has(key)) {
+        if (!key || latestScheduleByIssue.has(key)) {
             continue;
         }
-        latestResolvedScheduleByIssue.set(key, schedule);
+        latestScheduleByIssue.set(key, schedule);
     }
 
     const bulkUpdates = [];
 
     for (const issue of issueList) {
         const issueId = issue?._id?.toString();
-        const schedule = issueId ? latestResolvedScheduleByIssue.get(issueId) : null;
+        const schedule = issueId ? latestScheduleByIssue.get(issueId) : null;
         if (!schedule) {
+            continue;
+        }
+
+        if (IN_PROGRESS_WORK_STATUSES.includes(schedule.status)) {
+            if (issue.status !== "IN_PROGRESS") {
+                bulkUpdates.push({
+                    updateOne: {
+                        filter: { _id: issue._id },
+                        update: {
+                            $set: {
+                                status: "IN_PROGRESS"
+                            }
+                        }
+                    }
+                });
+            }
+
+            issue.status = "IN_PROGRESS";
             continue;
         }
 

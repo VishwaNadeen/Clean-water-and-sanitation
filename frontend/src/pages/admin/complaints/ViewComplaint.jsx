@@ -95,7 +95,8 @@ export default function ViewComplaint({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-8 lg:left-[260px]">
-      <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-slate-200">
+      <div className="w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-200">
+        <div className="max-h-[90vh] overflow-y-auto p-6">
         <div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-5">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.3px] text-blue-600">
@@ -246,6 +247,7 @@ export default function ViewComplaint({
               </button>
             </div>
           </div>
+        </div>
         </div>
       </div>
     </div>
