@@ -339,6 +339,17 @@ function StaffActionModal({ staff, onClose }) {
   const resolvedProfile = profile || staff || {};
   const displayStatus =
     staff?.activityStatus || resolvedProfile.activityStatus || resolvedProfile.status || "Unknown";
+  const normalizedStatus = String(
+    resolvedProfile.status || staff?.status || ""
+  ).toLowerCase();
+  const isOnLeave =
+    normalizedStatus === "onleave" || String(displayStatus).toLowerCase() === "on leave";
+  const isInactive =
+    normalizedStatus === "inactive" || String(displayStatus).toLowerCase() === "inactive";
+  const canAssignActions = !isOnLeave && !isInactive;
+  const unavailableAssignMessage = isOnLeave
+    ? "Cannot assign: this staff member is On Leave."
+    : "Cannot assign: this staff member is Inactive.";
   const profileImageSrc = imageFailed
     ? ""
     : getProfileImageSrc(profile?.profileImageUrl || staff?.profileImageUrl);
@@ -521,20 +532,50 @@ function StaffActionModal({ staff, onClose }) {
                     >
                       Refresh Profile
                     </button>
-                    <Link
-                      to="/admin/staff/schedules"
-                      onClick={onClose}
-                      className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
-                    >
-                      Assign Work
-                    </Link>
-                    <Link
-                      to="/admin/staff/issues"
-                      onClick={onClose}
-                      className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm font-semibold text-amber-700 transition hover:bg-amber-100"
-                    >
-                      Assign Issue
-                    </Link>
+                    {canAssignActions ? (
+                      <Link
+                        to="/admin/staff/schedules"
+                        onClick={onClose}
+                        className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                      >
+                        Assign Work
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setProfileToast({
+                            type: "error",
+                            text: unavailableAssignMessage,
+                          })
+                        }
+                        className="rounded-2xl border border-slate-200 bg-slate-100 px-4 py-4 text-sm font-semibold text-slate-500"
+                      >
+                        Assign Work
+                      </button>
+                    )}
+                    {canAssignActions ? (
+                      <Link
+                        to="/admin/staff/issues"
+                        onClick={onClose}
+                        className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm font-semibold text-amber-700 transition hover:bg-amber-100"
+                      >
+                        Assign Issue
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setProfileToast({
+                            type: "error",
+                            text: unavailableAssignMessage,
+                          })
+                        }
+                        className="rounded-2xl border border-slate-200 bg-slate-100 px-4 py-4 text-sm font-semibold text-slate-500"
+                      >
+                        Assign Issue
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

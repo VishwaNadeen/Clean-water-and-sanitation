@@ -525,7 +525,10 @@ function StaffActionModal({ staff, onClose }) {
     normalizedStatus === "onleave" || String(displayStatus).toLowerCase() === "on leave";
   const isInactive =
     normalizedStatus === "inactive" || String(displayStatus).toLowerCase() === "inactive";
-  const canAssignWork = !isOnLeave && !isInactive;
+  const canAssignActions = !isOnLeave && !isInactive;
+  const unavailableAssignMessage = isOnLeave
+    ? "Cannot assign: this staff member is On Leave."
+    : "Cannot assign: this staff member is Inactive.";
   const profileImageSrc = imageFailed
     ? ""
     : getProfileImageSrc(profile?.profileImageUrl || staff?.profileImageUrl);
@@ -708,7 +711,7 @@ function StaffActionModal({ staff, onClose }) {
                     >
                       Refresh Profile
                     </button>
-                    {canAssignWork ? (
+                    {canAssignActions ? (
                       <Link
                         to="/admin/staff/schedules"
                         state={{
@@ -737,9 +740,7 @@ function StaffActionModal({ staff, onClose }) {
                         onClick={() =>
                           setProfileToast({
                             type: "error",
-                            text: isOnLeave
-                              ? "Cannot assign work: this staff member is On Leave."
-                              : "Cannot assign work: this staff member is Inactive.",
+                            text: unavailableAssignMessage,
                           })
                         }
                         className="rounded-2xl border border-slate-200 bg-slate-100 px-4 py-4 text-sm font-semibold text-slate-500"
@@ -747,13 +748,28 @@ function StaffActionModal({ staff, onClose }) {
                         Assign Work
                       </button>
                     )}
-                    <Link
-                      to="/admin/staff/issues"
-                      onClick={onClose}
-                      className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm font-semibold text-amber-700 transition hover:bg-amber-100"
-                    >
-                      Assign Issue
-                    </Link>
+                    {canAssignActions ? (
+                      <Link
+                        to="/admin/staff/issues"
+                        onClick={onClose}
+                        className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm font-semibold text-amber-700 transition hover:bg-amber-100"
+                      >
+                        Assign Issue
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setProfileToast({
+                            type: "error",
+                            text: unavailableAssignMessage,
+                          })
+                        }
+                        className="rounded-2xl border border-slate-200 bg-slate-100 px-4 py-4 text-sm font-semibold text-slate-500"
+                      >
+                        Assign Issue
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
