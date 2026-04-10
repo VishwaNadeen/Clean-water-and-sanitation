@@ -622,7 +622,7 @@ export async function uploadMyStaffProfileImage(req, res) {
     }
 
     let result;
-    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_SECRET) {
+    if (process.env.CLOUDINARY_NAME && process.env.CLOUDINARY_SECRET_KEY) {
       try {
         result = await uploadBufferToCloudinary(req.file.buffer, "staff-profile-images");
       } catch (cloudinaryError) {

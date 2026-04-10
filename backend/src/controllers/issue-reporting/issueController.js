@@ -199,9 +199,9 @@ export const createIssue = async (req, res) => {
                     message: uploadError.message,
                     stack: uploadError.stack,
                     cloudinaryConfig: {
-                        cloud_name: process.env.CLOUDINARY_CLOUD_NAME ? 'SET' : 'NOT SET',
+                        cloud_name: process.env.CLOUDINARY_NAME ? 'SET' : 'NOT SET',
                         api_key: process.env.CLOUDINARY_API_KEY ? 'SET' : 'NOT SET', 
-                        api_secret: process.env.CLOUDINARY_API_SECRET ? 'SET' : 'NOT SET'
+                        api_secret: process.env.CLOUDINARY_SECRET_KEY ? 'SET' : 'NOT SET'
                     }
                 });
                 return res.status(500).json({

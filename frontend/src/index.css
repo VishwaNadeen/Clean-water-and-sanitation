@@ -4,7 +4,13 @@
 html, body, #root { height: 100%; }
 body { margin: 0; }
 
-.staff-password-input::-ms-reveal,
-.staff-password-input::-ms-clear {
+html, body {
+  overflow-x: hidden;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
   display: none;
 }

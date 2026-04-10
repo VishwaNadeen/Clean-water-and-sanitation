@@ -101,7 +101,7 @@ export default function UpdateIssue() {
 
         const issue = issueData?.data;
         setCategories(categoryData?.data || []);
-        setProvinces(provinceData?.data || []);
+        setProvinces(Array.isArray(provinceData) ? provinceData : provinceData?.data || []);
         setExistingImages(issue?.images || []);
         setStatus(issue?.status || "");
 
@@ -140,7 +140,7 @@ export default function UpdateIssue() {
     async function loadDistricts() {
       try {
         const response = await fetch(
-          `${API_BASE_URL}/locations/provinces/${formData.provinceId}/districts`
+          `${API_BASE_URL}/locations/districts?provinceId=${formData.provinceId}`
         );
         const data = await response.json();
 
@@ -148,7 +148,7 @@ export default function UpdateIssue() {
           throw new Error(data?.message || "Failed to load districts.");
         }
 
-        setDistricts(data?.data || []);
+        setDistricts(Array.isArray(data) ? data : data?.data || []);
       } catch (loadError) {
         setError(loadError.message || "Failed to load districts.");
         setDistricts([]);
@@ -168,7 +168,7 @@ export default function UpdateIssue() {
     async function loadCities() {
       try {
         const response = await fetch(
-          `${API_BASE_URL}/locations/districts/${formData.districtId}/cities`
+          `${API_BASE_URL}/locations/cities?districtId=${formData.districtId}`
         );
         const data = await response.json();
 
@@ -176,7 +176,7 @@ export default function UpdateIssue() {
           throw new Error(data?.message || "Failed to load cities.");
         }
 
-        setCities(data?.data || []);
+        setCities(Array.isArray(data) ? data : data?.data || []);
       } catch (loadError) {
         setError(loadError.message || "Failed to load cities.");
         setCities([]);
