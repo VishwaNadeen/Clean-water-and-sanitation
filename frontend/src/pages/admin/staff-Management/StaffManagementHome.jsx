@@ -367,12 +367,6 @@ export default function StaffManagementHome() {
               </select>
             </div>
 
-            <Link
-              to="/admin/register-staff"
-              className="inline-flex items-center justify-center rounded-xl bg-blue-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-800"
-            >
-              Add Staff Member
-            </Link>
           </div>
 
           <div className="mt-6 overflow-hidden rounded-2xl border border-slate-100">

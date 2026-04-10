@@ -188,7 +188,7 @@ export default function StaffLayout() {
             </button>
           </div>
 
-          <nav className="flex-1 space-y-2 overflow-y-auto px-2 py-6">
+          <nav className="no-scrollbar flex-1 space-y-2 overflow-y-auto px-2 py-6">
             {navItems.map((item) => (
               <NavLink
                 key={item.path}
@@ -258,7 +258,7 @@ export default function StaffLayout() {
             </div>
           </header>
 
-          <main className="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 pt-2 md:px-6 md:pb-6 md:pt-3">
+          <main className="no-scrollbar flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 pt-2 md:px-6 md:pb-6 md:pt-3">
             <Outlet />
           </main>
         </div>
