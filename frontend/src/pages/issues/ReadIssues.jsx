@@ -284,7 +284,7 @@ export default function ReadIssues() {
                 ))}
               </div>
 
-              {pagination && (
+              {pagination && pagination.totalPages > 1 && (
                 <div className="flex flex-col gap-4 rounded-2xl border border-sky-100 bg-sky-50/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-sm text-slate-600">
                     Page {pagination.currentPage} of {pagination.totalPages}
