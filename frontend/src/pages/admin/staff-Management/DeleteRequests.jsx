@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import FloatingToast from "../../../components/common/FloatingToast";
+import ConfirmDialog from "../../../components/common/ConfirmDialog";
 import API_BASE_URL from "../../../config/api";
 import {
   approveStaffDeleteRequest,
@@ -19,6 +20,7 @@ export default function DeleteRequests() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
   const [deleteActionId, setDeleteActionId] = useState("");
+  const [confirmDeleteStaff, setConfirmDeleteStaff] = useState(null);
 
   const loadDeleteRequests = useCallback(async () => {
     try {
@@ -59,6 +61,20 @@ export default function DeleteRequests() {
   }, [location.pathname, location.state, navigate]);
 
   useEffect(() => {
+    if (!toast) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setToast(null);
+    }, TOAST_DURATION_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [toast]);
+
+  useEffect(() => {
     loadDeleteRequests();
 
     const handleRefresh = () => {
@@ -92,22 +108,19 @@ export default function DeleteRequests() {
       });
   }, [staffMembers]);
 
-  const handleApproveDeleteRequest = async (staff) => {
-    const displayName = staff.fullName || staff.name || "this staff member";
-    const confirmed = window.confirm(`Delete ${displayName} permanently? This action cannot be undone.`);
-
-    if (!confirmed) {
-      return;
-    }
-
+  const runApproveDeleteRequest = async (staff) => {
     try {
       setDeleteActionId(staff._id);
       const result = await approveStaffDeleteRequest(staff._id);
       setStaffMembers((prev) => prev.filter((item) => item._id !== staff._id));
       setSelectedStaff((prev) => (prev?._id === staff._id ? null : prev));
+      const apiMessage = String(result?.message || "");
+      const normalizedMessage = apiMessage
+        ? apiMessage.replace(/admin/gi, "manager")
+        : "Staff member deleted by manager and notification email sent.";
       setToast({
         type: "success",
-        text: result?.message || "Staff member deleted successfully.",
+        text: normalizedMessage,
       });
     } catch (error) {
       setToast({
@@ -119,7 +132,12 @@ export default function DeleteRequests() {
       });
     } finally {
       setDeleteActionId("");
+      setConfirmDeleteStaff(null);
     }
+  };
+
+  const handleApproveDeleteRequest = (staff) => {
+    setConfirmDeleteStaff(staff);
   };
 
   const handleRejectDeleteRequest = async (staff) => {
@@ -137,7 +155,7 @@ export default function DeleteRequests() {
                 reason: staff.deleteRequest?.reason || "",
                 requestedAt: staff.deleteRequest?.requestedAt || "",
                 requestedBy: staff.deleteRequest?.requestedBy || "",
-                adminResponse: "Your profile deletion request was reviewed and rejected by admin.",
+                adminResponse: "Your profile deletion request was reviewed and rejected by manager.",
                 reviewedAt: new Date().toISOString(),
               },
             };
@@ -167,6 +185,29 @@ export default function DeleteRequests() {
 
   return (
     <div className="space-y-6">
+      <ConfirmDialog
+        open={Boolean(confirmDeleteStaff)}
+        title="Approve profile deletion?"
+        message={`Delete ${
+          confirmDeleteStaff?.fullName || confirmDeleteStaff?.name || "this staff member"
+        } permanently? This action cannot be undone.`}
+        confirmText={
+          deleteActionId && confirmDeleteStaff?._id === deleteActionId
+            ? "Deleting..."
+            : "Delete Permanently"
+        }
+        cancelText="Cancel"
+        tone="danger"
+        onCancel={() => {
+          if (!deleteActionId) setConfirmDeleteStaff(null);
+        }}
+        onConfirm={() => {
+          if (confirmDeleteStaff && !deleteActionId) {
+            runApproveDeleteRequest(confirmDeleteStaff);
+          }
+        }}
+      />
+
       <StaffActionModal
         staff={selectedStaff}
         onClose={() => setSelectedStaff(null)}
@@ -333,6 +374,20 @@ function StaffActionModal({ staff, onClose }) {
       handleViewProfile();
     }
   }, [staff?._id]);
+
+  useEffect(() => {
+    if (!profileToast) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setProfileToast(null);
+    }, TOAST_DURATION_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [profileToast]);
 
   if (!staff) {
     return null;

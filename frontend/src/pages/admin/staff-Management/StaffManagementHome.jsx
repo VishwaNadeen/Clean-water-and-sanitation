@@ -18,6 +18,14 @@ const overviewCardStyles = {
 };
 const TOAST_DURATION_MS = 5000;
 
+function formatStaffStatus(status) {
+  const normalized = String(status || "").toLowerCase();
+  if (normalized === "onleave") return "On Leave";
+  if (normalized === "inactive") return "Inactive";
+  if (normalized === "active") return "Active";
+  return status || "Unknown";
+}
+
 export default function StaffManagementHome() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -104,6 +112,20 @@ export default function StaffManagementHome() {
   }, [location.pathname, location.state, navigate]);
 
   useEffect(() => {
+    if (!toast) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setToast(null);
+    }, TOAST_DURATION_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [toast]);
+
+  useEffect(() => {
     loadDashboardData();
 
     const handleRefresh = () => {
@@ -145,13 +167,16 @@ export default function StaffManagementHome() {
         ) || null;
 
       const normalizedStatus = String(staff.status || "").toLowerCase();
-      const activityStatus = currentAssignment
-        ? "Busy"
-        : normalizedStatus === "active"
-          ? "Active"
-          : normalizedStatus === "inactive" || normalizedStatus === "onleave"
-            ? "Off Duty"
-            : staff.status || "Unknown";
+      const activityStatus =
+        normalizedStatus === "onleave"
+          ? "On Leave"
+          : normalizedStatus === "inactive"
+            ? "Inactive"
+            : currentAssignment
+              ? "Busy"
+              : normalizedStatus === "active"
+                ? "Active"
+                : formatStaffStatus(staff.status);
 
       return {
         ...staff,
@@ -204,8 +229,8 @@ export default function StaffManagementHome() {
     const busyStaff = staffRows.filter(
       (staff) => staff.activityStatus === "Busy"
     ).length;
-    const offDutyStaff = staffRows.filter(
-      (staff) => staff.activityStatus === "Off Duty"
+    const offDutyStaff = staffRows.filter((staff) =>
+      ["On Leave", "Inactive"].includes(staff.activityStatus)
     ).length;
     const totalAssignedTasks = schedules.filter(
       (item) => item.status !== "Cancelled"
@@ -231,9 +256,9 @@ export default function StaffManagementHome() {
       },
       {
         key: "offDuty",
-        label: "Off Duty Staff",
+        label: "Unavailable Staff",
         value: offDutyStaff,
-        note: "Inactive or not available",
+        note: "On leave or inactive",
       },
       {
         key: "tasks",
@@ -255,7 +280,7 @@ export default function StaffManagementHome() {
     return ["All", ...values];
   }, [staffRows]);
 
-  const statusOptions = ["All", "Active", "Busy", "Off Duty", "Unknown"];
+  const statusOptions = ["All", "Active", "Busy", "On Leave", "Inactive", "Unknown"];
   const pendingDeleteRequestsCount = staffRows.filter(
     (staff) => Boolean(staff.deleteRequest?.requested)
   ).length;
@@ -490,7 +515,17 @@ function StaffActionModal({ staff, onClose }) {
 
   const resolvedProfile = profile || staff || {};
   const displayStatus =
-    staff?.activityStatus || resolvedProfile.activityStatus || resolvedProfile.status || "Unknown";
+    staff?.activityStatus ||
+    resolvedProfile.activityStatus ||
+    formatStaffStatus(resolvedProfile.status);
+  const normalizedStatus = String(
+    resolvedProfile.status || staff?.status || ""
+  ).toLowerCase();
+  const isOnLeave =
+    normalizedStatus === "onleave" || String(displayStatus).toLowerCase() === "on leave";
+  const isInactive =
+    normalizedStatus === "inactive" || String(displayStatus).toLowerCase() === "inactive";
+  const canAssignWork = !isOnLeave && !isInactive;
   const profileImageSrc = imageFailed
     ? ""
     : getProfileImageSrc(profile?.profileImageUrl || staff?.profileImageUrl);
@@ -526,6 +561,20 @@ function StaffActionModal({ staff, onClose }) {
       handleViewProfile();
     }
   }, [staff?._id]);
+
+  useEffect(() => {
+    if (!profileToast) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setProfileToast(null);
+    }, TOAST_DURATION_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [profileToast]);
 
   if (!staff) {
     return null;
@@ -659,13 +708,45 @@ function StaffActionModal({ staff, onClose }) {
                     >
                       Refresh Profile
                     </button>
-                    <Link
-                      to="/admin/staff/schedules"
-                      onClick={onClose}
-                      className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
-                    >
-                      Assign Work
-                    </Link>
+                    {canAssignWork ? (
+                      <Link
+                        to="/admin/staff/schedules"
+                        state={{
+                          preselectedStaff: {
+                            _id: resolvedProfile._id || staff._id,
+                            fullName:
+                              resolvedProfile.fullName ||
+                              resolvedProfile.name ||
+                              staff.fullName ||
+                              staff.name ||
+                              "Staff member",
+                            role: resolvedProfile.role || staff.role || "",
+                            email: resolvedProfile.email || staff.email || "",
+                            phone: resolvedProfile.phone || staff.phone || "",
+                            status: resolvedProfile.status || staff.status || "",
+                          },
+                        }}
+                        onClick={onClose}
+                        className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                      >
+                        Assign Work
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setProfileToast({
+                            type: "error",
+                            text: isOnLeave
+                              ? "Cannot assign work: this staff member is On Leave."
+                              : "Cannot assign work: this staff member is Inactive.",
+                          })
+                        }
+                        className="rounded-2xl border border-slate-200 bg-slate-100 px-4 py-4 text-sm font-semibold text-slate-500"
+                      >
+                        Assign Work
+                      </button>
+                    )}
                     <Link
                       to="/admin/staff/issues"
                       onClick={onClose}
@@ -793,7 +874,9 @@ function StatusPill({ status }) {
       ? "bg-amber-50 text-amber-700"
       : status === "Active"
         ? "bg-emerald-50 text-emerald-700"
-        : status === "Off Duty"
+        : status === "On Leave"
+          ? "bg-purple-50 text-purple-700"
+          : status === "Inactive"
           ? "bg-slate-100 text-slate-600"
           : "bg-blue-50 text-blue-700";
 

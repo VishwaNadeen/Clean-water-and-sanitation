@@ -2,6 +2,19 @@ import WorkSchedule from "../../models/Staff-Management/WorkScheduleModel.js";
 import { uploadBufferToCloudinary } from "../../utils/staff-Management/Staffcloudinary.js";
 import cloudinary from "../../config/cloudinary.js";
 
+const getSafeErrorMessage = (err, fallback = "Something went wrong. Please try again.") => {
+  if (err?.name === "CastError") {
+    if (err.path === "_id") return "Invalid schedule id.";
+    return "Invalid data format.";
+  }
+
+  if (err?.name === "ValidationError") {
+    return "Invalid schedule data. Please review your input.";
+  }
+
+  return fallback;
+};
+
 // Staff: Get my schedules
 // GET /api/staff/work-schedules/me
 export const getMySchedules = async (req, res) => {
@@ -14,7 +27,7 @@ export const getMySchedules = async (req, res) => {
 
     return res.json(schedules);
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: getSafeErrorMessage(error) });
   }
 };
 
@@ -36,14 +49,13 @@ export const startWork = async (req, res) => {
       return res.status(400).json({ message: "Only Assigned schedules can be started" });
     }
 
-    //  do NOT read status from req.body
     schedule.status = "InProgress";
     schedule.startedAt = new Date();
 
     await schedule.save();
     return res.json(schedule);
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    return res.status(500).json({ message: getSafeErrorMessage(err) });
   }
 };
 
@@ -71,7 +83,7 @@ export const revertStartWork = async (req, res) => {
     await schedule.save();
     return res.json(schedule);
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    return res.status(500).json({ message: getSafeErrorMessage(err) });
   }
 };
 
@@ -81,23 +93,6 @@ export const uploadProof = async (req, res) => {
   try {
     const staffId = req.user.id;
     const { id } = req.params;
-
-    console.log("✅ uploadProof HIT");
-    console.log("staffId:", staffId);
-    console.log("scheduleId:", id);
-    console.log("req.file:", req.file ? {
-      fieldname: req.file.fieldname,
-      originalname: req.file.originalname,
-      mimetype: req.file.mimetype,
-      size: req.file.size,
-    } : null);
-
-    // Check Cloudinary config
-    console.log("Cloudinary config:", {
-      cloud_name: process.env.CLOUDINARY_NAME ? "SET" : "NOT SET",
-      api_key: process.env.CLOUDINARY_API_KEY ? "SET" : "NOT SET",
-      api_secret: process.env.CLOUDINARY_SECRET_KEY ? "SET" : "NOT SET",
-    });
 
     const schedule = await WorkSchedule.findById(id);
     if (!schedule) return res.status(404).json({ message: "Schedule not found" });
@@ -111,31 +106,26 @@ export const uploadProof = async (req, res) => {
     }
 
     let result;
-    
+
     // Try Cloudinary upload first, fallback to base64 if not configured
     if (process.env.CLOUDINARY_NAME && process.env.CLOUDINARY_SECRET_KEY) {
-      console.log("Attempting to upload to Cloudinary...");
       try {
         result = await uploadBufferToCloudinary(req.file.buffer, "work-proofs");
-        console.log("Cloudinary upload successful:", result);
       } catch (cloudinaryError) {
         console.error("Cloudinary upload failed, using fallback:", cloudinaryError.message);
-        // Fallback: convert to base64
-        const base64Image = req.file.buffer.toString('base64');
+        const base64Image = req.file.buffer.toString("base64");
         const dataUrl = `data:${req.file.mimetype};base64,${base64Image}`;
         result = {
           secure_url: dataUrl,
-          public_id: `local_${Date.now()}_${req.file.originalname}`
+          public_id: `local_${Date.now()}_${req.file.originalname}`,
         };
       }
     } else {
-      console.log("Cloudinary not configured, using base64 fallback");
-      // Fallback: convert to base64
-      const base64Image = req.file.buffer.toString('base64');
+      const base64Image = req.file.buffer.toString("base64");
       const dataUrl = `data:${req.file.mimetype};base64,${base64Image}`;
       result = {
         secure_url: dataUrl,
-        public_id: `local_${Date.now()}_${req.file.originalname}`
+        public_id: `local_${Date.now()}_${req.file.originalname}`,
       };
     }
 
@@ -152,10 +142,9 @@ export const uploadProof = async (req, res) => {
       schedule,
     });
   } catch (err) {
-    console.error("❌ uploadProof ERROR:", err);
+    console.error("uploadProof ERROR:", err);
     return res.status(500).json({
-      message: err.message,
-      stack: err.stack,
+      message: getSafeErrorMessage(err),
     });
   }
 };
@@ -166,7 +155,6 @@ export const completeWork = async (req, res) => {
   try {
     const staffId = req.user.id;
     const { id } = req.params;
-
     const { staffNote, materialsUsed, issuesFound } = req.body;
 
     const schedule = await WorkSchedule.findById(id);
@@ -186,7 +174,6 @@ export const completeWork = async (req, res) => {
 
     schedule.status = "Completed";
     schedule.completedAt = new Date();
-
     schedule.staffNote = staffNote || "";
     schedule.materialsUsed = materialsUsed || "";
     schedule.issuesFound = issuesFound || "";
@@ -194,7 +181,7 @@ export const completeWork = async (req, res) => {
     await schedule.save();
     return res.json(schedule);
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    return res.status(500).json({ message: getSafeErrorMessage(err) });
   }
 };
 
@@ -249,7 +236,7 @@ export const removeProof = async (req, res) => {
     });
   } catch (err) {
     console.error("removeProof ERROR:", err);
-    return res.status(500).json({ message: err.message });
+    return res.status(500).json({ message: getSafeErrorMessage(err) });
   }
 };
 
@@ -301,6 +288,6 @@ export const reworkRejected = async (req, res) => {
     });
   } catch (err) {
     console.error("reworkRejected ERROR:", err);
-    return res.status(500).json({ message: err.message });
+    return res.status(500).json({ message: getSafeErrorMessage(err) });
   }
 };

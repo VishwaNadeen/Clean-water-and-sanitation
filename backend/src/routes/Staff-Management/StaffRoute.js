@@ -28,6 +28,7 @@ router.use(protect);
 
 // ✅ staff self endpoints (NO user id)
 router.get("/me", getMyStaffProfile);
+router.put("/me", updateMyStaffProfile);
 router.patch("/me", updateMyStaffProfile);
 router.post("/me/profile-image", upload.single("profileImage"), uploadMyStaffProfileImage);
 router.delete("/me/profile-image", removeMyStaffProfileImage);

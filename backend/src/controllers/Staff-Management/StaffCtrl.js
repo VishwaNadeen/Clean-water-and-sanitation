@@ -31,6 +31,34 @@ function splitFullName(fullName) {
   return { firstName, lastName };
 }
 
+const nicRegex = /^(?:\d{9}[VvXx]|\d{12})$/;
+const countryCodeRegex = /^\+\d{1,4}$/;
+const fullNameRegex = /^[A-Za-z\s]+$/;
+
+function sanitizePhone(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function validatePhone(countryCode, phone) {
+  const safeCountryCode = String(countryCode || "").trim();
+  const digits = sanitizePhone(phone);
+
+  if (!digits) return "Phone number is required";
+
+  if (safeCountryCode === "+94") {
+    if (!/^\d{9}$/.test(digits)) {
+      return "Sri Lanka phone number must be exactly 9 digits with +94";
+    }
+    return "";
+  }
+
+  if (digits.length < 6 || digits.length > 15) {
+    return "Phone number must be 6 to 15 digits";
+  }
+
+  return "";
+}
+
 // NOW req.user is Staff profile doc (because protect loads Staff by role=STAFF)
 function getAuthUserId(req) {
   return String(req.user?._id || req.user?.id || "");
@@ -52,12 +80,29 @@ function isSelf(req, staffId) {
  * Zod Validation Schemas (match StaffModel.js)
  * --------------------------------------------- */
 const staffCreateSchema = z.object({
-  fullName: z.string().trim().min(2, "Full name is too short").max(80),
-  nic: z.string().trim().min(5, "NIC is too short").max(20),
+  fullName: z
+    .string()
+    .trim()
+    .min(2, "Full name is too short")
+    .max(80)
+    .refine((v) => fullNameRegex.test(v), "Full name can contain letters and spaces only"),
+  nic: z
+    .string()
+    .trim()
+    .min(5, "NIC is too short")
+    .max(20)
+    .refine((v) => nicRegex.test(v), "NIC must be old format (123456789V) or 12-digit format"),
 
-  countryCode: z.string().trim().min(2).max(6).optional().default("+94"),
+  countryCode: z
+    .string()
+    .trim()
+    .min(2)
+    .max(6)
+    .refine((v) => countryCodeRegex.test(v), "Country code must be like +94")
+    .optional()
+    .default("+94"),
 
-  phone: z.coerce.number(),
+  phone: z.string().trim().regex(/^\d+$/, "Phone must contain only digits"),
 
   email: z.string().trim().toLowerCase().email("Invalid email"),
 
@@ -75,11 +120,29 @@ const staffCreateSchema = z.object({
 });
 
 const staffUpdateSchema = z.object({
-  fullName: z.string().trim().min(2).max(80).optional(),
-  nic: z.string().trim().min(5).max(20).optional(),
+  fullName: z
+    .string()
+    .trim()
+    .min(2)
+    .max(80)
+    .refine((v) => fullNameRegex.test(v), "Full name can contain letters and spaces only")
+    .optional(),
+  nic: z
+    .string()
+    .trim()
+    .min(5)
+    .max(20)
+    .refine((v) => nicRegex.test(v), "NIC must be old format (123456789V) or 12-digit format")
+    .optional(),
 
-  countryCode: z.string().trim().min(2).max(6).optional(),
-  phone: z.coerce.number().optional(),
+  countryCode: z
+    .string()
+    .trim()
+    .min(2)
+    .max(6)
+    .refine((v) => countryCodeRegex.test(v), "Country code must be like +94")
+    .optional(),
+  phone: z.string().trim().regex(/^\d+$/, "Phone must contain only digits").optional(),
 
   email: z.string().trim().toLowerCase().email().optional(),
 
@@ -157,12 +220,21 @@ export async function createStaff(req, res) {
   }
 
   const staffPayload = parsed.data;
+  const phoneError = validatePhone(staffPayload.countryCode, staffPayload.phone);
+  if (phoneError) {
+    return res.status(422).json({
+      message: "Validation failed",
+      invalidParams: [{ name: "phone", reason: phoneError }],
+    });
+  }
+
   const initialPassword = staffPayload.nic.trim();
   const { firstName, lastName } = splitFullName(staffPayload.fullName);
 
   try {
     const staff = await Staff.create({
       ...staffPayload,
+      phone: Number(staffPayload.phone),
       email: staffPayload.email.toLowerCase().trim(),
       password: initialPassword,
       mustChangePassword: true,
@@ -297,6 +369,33 @@ export async function updateMyStaffProfile(req, res) {
   }
 
   try {
+    if (typeof parsed.data.dob !== "undefined") {
+      return res.status(400).json({ message: "Date of birth cannot be changed" });
+    }
+
+    if (typeof parsed.data.joinDate !== "undefined") {
+      return res.status(400).json({ message: "Join date cannot be changed" });
+    }
+
+    if (typeof parsed.data.email !== "undefined") {
+      return res.status(400).json({ message: "Email cannot be changed" });
+    }
+
+    const currentStaff = await Staff.findById(id).select("countryCode");
+    if (!currentStaff) return res.status(404).json({ message: "Staff not found" });
+
+    if (typeof parsed.data.phone !== "undefined") {
+      const effectiveCountryCode = parsed.data.countryCode || currentStaff.countryCode || "+94";
+      const phoneError = validatePhone(effectiveCountryCode, parsed.data.phone);
+      if (phoneError) {
+        return res.status(422).json({
+          message: "Validation failed",
+          invalidParams: [{ name: "phone", reason: phoneError }],
+        });
+      }
+      parsed.data.phone = Number(parsed.data.phone);
+    }
+
     const updated = await Staff.findByIdAndUpdate(id, parsed.data, { new: true, runValidators: true });
     if (!updated) return res.status(404).json({ message: "Staff not found" });
 
@@ -305,9 +404,6 @@ export async function updateMyStaffProfile(req, res) {
       const { firstName, lastName } = splitFullName(parsed.data.fullName);
       loginUpdate.firstName = firstName;
       loginUpdate.lastName = lastName;
-    }
-    if (parsed.data.email) {
-      loginUpdate.email = parsed.data.email.toLowerCase().trim();
     }
     if (Object.keys(loginUpdate).length > 0) {
       await Login.updateOne({ userId: updated._id }, { $set: loginUpdate });
@@ -343,6 +439,33 @@ export async function updateStaff(req, res) {
   }
 
   try {
+    if (typeof parsed.data.dob !== "undefined") {
+      return res.status(400).json({ message: "Date of birth cannot be changed" });
+    }
+
+    if (typeof parsed.data.joinDate !== "undefined") {
+      return res.status(400).json({ message: "Join date cannot be changed" });
+    }
+
+    if (typeof parsed.data.email !== "undefined") {
+      return res.status(400).json({ message: "Email cannot be changed" });
+    }
+
+    const currentStaff = await Staff.findById(id).select("countryCode");
+    if (!currentStaff) return res.status(404).json({ message: "Staff not found" });
+
+    if (typeof parsed.data.phone !== "undefined") {
+      const effectiveCountryCode = parsed.data.countryCode || currentStaff.countryCode || "+94";
+      const phoneError = validatePhone(effectiveCountryCode, parsed.data.phone);
+      if (phoneError) {
+        return res.status(422).json({
+          message: "Validation failed",
+          invalidParams: [{ name: "phone", reason: phoneError }],
+        });
+      }
+      parsed.data.phone = Number(parsed.data.phone);
+    }
+
     const updated = await Staff.findByIdAndUpdate(id, parsed.data, { new: true, runValidators: true });
     if (!updated) return res.status(404).json({ message: "Staff not found" });
 
@@ -352,8 +475,6 @@ export async function updateStaff(req, res) {
       loginUpdate.firstName = firstName;
       loginUpdate.lastName = lastName;
     }
-    if (parsed.data.email) loginUpdate.email = parsed.data.email.toLowerCase().trim();
-
     if (Object.keys(loginUpdate).length > 0) {
       await Login.updateOne({ userId: updated._id }, { $set: loginUpdate });
     }

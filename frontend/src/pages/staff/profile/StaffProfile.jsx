@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import FloatingToast from "../../../components/common/FloatingToast";
+import ConfirmDialog from "../../../components/common/ConfirmDialog";
 import useProfileData from "../../../hooks/useProfileData";
 import { fetchCountries } from "../../../services/countryService";
 import {
@@ -10,6 +11,7 @@ import {
   uploadMyProfileImage,
 } from "../../../services/profileService";
 import { updateStoredUser } from "../../../utils/auth";
+import { validateStaffForm } from "../../../utils/staffFormValidation";
 
 import EditProfile from "./EditProfile";
 import PasswordProfile from "./PasswordProfile";
@@ -139,8 +141,10 @@ export default function StaffProfile() {
 
   const [uploadingImage, setUploadingImage] = useState(false);
   const [toast, setToast] = useState(null);
+  const [showRemovePhotoConfirm, setShowRemovePhotoConfirm] = useState(false);
   const [activeModal, setActiveModal] = useState("");
   const [savingModal, setSavingModal] = useState(false);
+  const [editErrors, setEditErrors] = useState({});
 
   const [editForm, setEditForm] = useState({
     fullName: "",
@@ -352,6 +356,7 @@ export default function StaffProfile() {
     setDeleteForm({ reason: "" });
     setCountryOpen(false);
     setCountrySearch("");
+    setEditErrors({});
   };
 
   async function handleProfileImageChange(event) {
@@ -375,8 +380,11 @@ export default function StaffProfile() {
   }
 
   async function handleRemoveProfileImage() {
-    const shouldRemove = window.confirm("Do you want to remove your profile photo?");
-    if (!shouldRemove) return;
+    setShowRemovePhotoConfirm(true);
+  }
+
+  async function confirmRemoveProfileImage() {
+    if (uploadingImage) return;
 
     try {
       setUploadingImage(true);
@@ -388,11 +396,18 @@ export default function StaffProfile() {
       showToast("error", error.message || "Failed to remove profile image.");
     } finally {
       setUploadingImage(false);
+      setShowRemovePhotoConfirm(false);
     }
   }
 
   async function handleEditSave(event) {
     event.preventDefault();
+    const errors = validateStaffForm(editForm, { requireEmail: false });
+    setEditErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      showToast("error", "Please fix the form errors.");
+      return;
+    }
 
     try {
       setSavingModal(true);
@@ -402,15 +417,12 @@ export default function StaffProfile() {
         nic: editForm.nic.trim(),
         countryCode: editForm.countryCode.trim(),
         phone: editForm.phone.trim(),
-        email: editForm.email.trim().toLowerCase(),
         role: editForm.role,
         gender: editForm.gender,
         status: editForm.status,
         baseProvince: editForm.baseProvince.trim(),
         baseDistrict: editForm.baseDistrict.trim(),
         address: editForm.address.trim(),
-        dob: editForm.dob,
-        joinDate: editForm.joinDate,
       });
 
       setProfile(updatedProfile);
@@ -525,7 +537,22 @@ export default function StaffProfile() {
   return (
     <div className="min-h-full bg-gradient-to-br from-blue-50 via-white to-blue-100 px-4 pb-6 pt-2 md:px-6 md:pb-8 md:pt-3">
       <div className="mx-auto max-w-7xl">
-        {toast ? <FloatingToast toast={toast} onClose={() => setToast(null)} /> : null}
+        <ConfirmDialog
+          open={showRemovePhotoConfirm}
+          title="Remove profile photo?"
+          message="This will remove your current profile photo from your account."
+          confirmText={uploadingImage ? "Removing..." : "Remove Photo"}
+          cancelText="Keep Photo"
+          tone="danger"
+          onCancel={() => {
+            if (!uploadingImage) setShowRemovePhotoConfirm(false);
+          }}
+          onConfirm={confirmRemoveProfileImage}
+        />
+
+        {toast && !activeModal ? (
+          <FloatingToast toast={toast} onClose={() => setToast(null)} />
+        ) : null}
 
         <div>
           <section className="rounded-[30px] border border-blue-100 bg-white p-6 shadow-sm">
@@ -770,6 +797,7 @@ export default function StaffProfile() {
 
       {activeModal ? (
         <div className="fixed inset-0 z-50 bg-slate-900/45 p-4">
+          {toast ? <FloatingToast toast={toast} onClose={() => setToast(null)} /> : null}
           <div className="flex h-full items-start justify-center overflow-y-auto py-6">
             <div className="w-full max-w-3xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
               <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
@@ -803,6 +831,8 @@ export default function StaffProfile() {
                   <EditProfile
                     editForm={editForm}
                     setEditForm={setEditForm}
+                    editErrors={editErrors}
+                    setEditErrors={setEditErrors}
                     handleEditSave={handleEditSave}
                     savingModal={savingModal}
                     closeModal={closeModal}

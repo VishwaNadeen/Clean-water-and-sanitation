@@ -4,6 +4,20 @@ import { useNavigate } from "react-router-dom";
 import FloatingToast from "../../../components/common/FloatingToast";
 import API_BASE_URL from "../../../config/api";
 import { fetchCountries } from "../../../services/countryService";
+import {
+  getPhoneMaxLengthByCountry,
+  normalizeAddressInput,
+  normalizeEmailInput,
+  normalizeNicInput,
+  normalizePhoneForCountry,
+  sanitizePhone,
+  validateAddressTyping,
+  validateEmailTyping,
+  validateFullNameTyping,
+  validateNic,
+  validatePhone,
+  validateStaffForm,
+} from "../../../utils/staffFormValidation";
 
 const initialForm = {
   fullName: "",
@@ -86,6 +100,7 @@ const StaffRegister = () => {
   const [countryError, setCountryError] = useState("");
   const [countryOpen, setCountryOpen] = useState(false);
   const [countrySearch, setCountrySearch] = useState("");
+  const today = new Date().toISOString().split("T")[0];
 
   const districtOptions = provinceDistrictMap[formData.baseProvince] || [];
 
@@ -187,6 +202,93 @@ const StaffRegister = () => {
       return;
     }
 
+    if (name === "phone") {
+      const normalizedPhone = normalizePhoneForCountry(formData.countryCode, sanitizePhone(value));
+      const phoneError = normalizedPhone
+        ? validatePhone(formData.countryCode, normalizedPhone)
+        : "";
+      setFormData((prev) => ({
+        ...prev,
+        phone: normalizedPhone,
+      }));
+      setErrors((prev) => ({
+        ...prev,
+        phone: phoneError,
+      }));
+      return;
+    }
+
+    if (name === "nic") {
+      const sanitizedNic = normalizeNicInput(value);
+      const isInvalidTyped = value.toUpperCase().replace(/\s/g, "") !== sanitizedNic;
+      const nicError = isInvalidTyped
+        ? "NIC allows only digits and optional V/X (old) or 12 digits (new)"
+        : sanitizedNic
+        ? validateNic(sanitizedNic)
+        : "";
+
+      setFormData((prev) => ({
+        ...prev,
+        nic: sanitizedNic,
+      }));
+      setErrors((prev) => ({
+        ...prev,
+        nic: nicError,
+      }));
+      return;
+    }
+
+    if (name === "fullName") {
+      const sanitizedName = value.replace(/[^A-Za-z\s]/g, "");
+      const isInvalidTyped = sanitizedName !== value;
+      const fullNameError = isInvalidTyped
+        ? "Full name can contain letters and spaces only"
+        : validateFullNameTyping(sanitizedName);
+      setFormData((prev) => ({
+        ...prev,
+        fullName: sanitizedName,
+      }));
+      setErrors((prev) => ({
+        ...prev,
+        fullName: fullNameError,
+      }));
+      return;
+    }
+
+    if (name === "email") {
+      const normalizedEmail = normalizeEmailInput(value);
+      const emailError =
+        normalizedEmail !== value
+          ? "Email can contain letters, numbers, and @ . _ + - only"
+          : validateEmailTyping(value);
+      setFormData((prev) => ({
+        ...prev,
+        email: normalizedEmail,
+      }));
+      setErrors((prev) => ({
+        ...prev,
+        email: emailError,
+      }));
+      return;
+    }
+
+    if (name === "address") {
+      const normalizedAddress = normalizeAddressInput(value);
+      const addressError =
+        normalizedAddress !== value
+          ? "Address contains unsupported characters"
+          : validateAddressTyping(value);
+      setFormData((prev) => ({
+        ...prev,
+        address: normalizedAddress,
+      }));
+      setErrors((prev) => ({
+        ...prev,
+        address: addressError,
+      }));
+      return;
+    }
+
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -199,38 +301,20 @@ const StaffRegister = () => {
   };
 
   const handleCountrySelect = (country) => {
+    const normalizedPhone = normalizePhoneForCountry(country.dialCode, formData.phone);
+    const phoneError = normalizedPhone ? validatePhone(country.dialCode, normalizedPhone) : "";
     setFormData((prev) => ({
       ...prev,
       countryCode: country.dialCode,
+      phone: normalizedPhone,
     }));
-    setErrors((prev) => ({ ...prev, countryCode: "" }));
+    setErrors((prev) => ({ ...prev, countryCode: "", phone: phoneError }));
     setCountryOpen(false);
     setCountrySearch("");
   };
 
   const validateForm = () => {
-    const newErrors = {};
-
-    if (!formData.fullName.trim()) newErrors.fullName = "Full name is required";
-    if (!formData.nic.trim()) newErrors.nic = "NIC is required";
-    if (!formData.countryCode.trim()) newErrors.countryCode = "Country code is required";
-    if (!formData.phone) newErrors.phone = "Phone number is required";
-    if (!formData.email.trim()) newErrors.email = "Email is required";
-    if (!formData.role) newErrors.role = "Role is required";
-    if (!formData.gender) newErrors.gender = "Gender is required";
-    if (!formData.status) newErrors.status = "Status is required";
-    if (!formData.baseProvince) newErrors.baseProvince = "Province is required";
-    if (!formData.baseDistrict) newErrors.baseDistrict = "District is required";
-    if (!formData.address.trim()) newErrors.address = "Address is required";
-    if (!formData.dob) newErrors.dob = "Date of birth is required";
-
-    if (formData.email && !/^\S+@\S+\.\S+$/.test(formData.email)) {
-      newErrors.email = "Enter a valid email address";
-    }
-
-    if (formData.phone && !/^\d{9,10}$/.test(String(formData.phone))) {
-      newErrors.phone = "Phone number must be 9 or 10 digits";
-    }
+    const newErrors = validateStaffForm(formData, { requireEmail: true });
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -257,7 +341,7 @@ const StaffRegister = () => {
         fullName: formData.fullName.trim(),
         nic: formData.nic.trim(),
         countryCode: formData.countryCode.trim(),
-        phone: Number(formData.phone),
+        phone: formData.phone.trim(),
         email: formData.email.trim().toLowerCase(),
         role: formData.role,
         gender: formData.gender,
@@ -346,6 +430,7 @@ const StaffRegister = () => {
                 value={formData.nic}
                 onChange={handleChange}
                 placeholder="Enter NIC"
+                maxLength={12}
                 className={inputClass}
               />
               {errors.nic && <p className={errorClass}>{errors.nic}</p>}
@@ -438,7 +523,9 @@ const StaffRegister = () => {
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
-                placeholder="771234567"
+                placeholder="0771234567"
+                inputMode="numeric"
+                maxLength={getPhoneMaxLengthByCountry(formData.countryCode)}
                 className={inputClass}
               />
               {errors.phone && <p className={errorClass}>{errors.phone}</p>}
@@ -565,6 +652,10 @@ const StaffRegister = () => {
                 name="dob"
                 value={formData.dob}
                 onChange={handleChange}
+                max={today}
+                onKeyDown={(event) => event.preventDefault()}
+                onPaste={(event) => event.preventDefault()}
+                onDrop={(event) => event.preventDefault()}
                 className={inputClass}
               />
               {errors.dob && <p className={errorClass}>{errors.dob}</p>}
@@ -577,6 +668,10 @@ const StaffRegister = () => {
                 name="joinDate"
                 value={formData.joinDate}
                 onChange={handleChange}
+                max={today}
+                onKeyDown={(event) => event.preventDefault()}
+                onPaste={(event) => event.preventDefault()}
+                onDrop={(event) => event.preventDefault()}
                 className={inputClass}
               />
             </div>

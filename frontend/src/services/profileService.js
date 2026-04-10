@@ -148,9 +148,10 @@ export async function updateMyProfile(payload) {
   }
 
   const endpoint = getProfileEndpointByRole(storedUser?.role);
+  const isStaffProfile = normalizeRole(storedUser?.role) === "staff";
 
   const response = await fetch(endpoint, {
-    method: "PUT",
+    method: isStaffProfile ? "PATCH" : "PUT",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,

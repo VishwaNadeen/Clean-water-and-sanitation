@@ -1,3 +1,14 @@
+import {
+  getPhoneMaxLengthByCountry,
+  normalizeAddressInput,
+  normalizeNicInput,
+  normalizePhoneForCountry,
+  validateAddressTyping,
+  validateFullNameTyping,
+  validateNic,
+  validatePhone,
+} from "../../../utils/staffFormValidation";
+
 function CountryFlag({ src, alt }) {
   if (!src) {
     return (
@@ -37,6 +48,8 @@ function ChevronIcon() {
 export default function EditProfile({
   editForm,
   setEditForm,
+  editErrors,
+  setEditErrors,
   handleEditSave,
   savingModal,
   closeModal,
@@ -53,6 +66,7 @@ export default function EditProfile({
   filteredCountries,
 }) {
   const districtOptions = provinceDistrictMap[editForm.baseProvince] || [];
+  const today = new Date().toISOString().split("T")[0];
 
   return (
     <form onSubmit={handleEditSave} className="space-y-6">
@@ -69,11 +83,22 @@ export default function EditProfile({
             <input
               type="text"
               value={editForm.fullName}
-              onChange={(e) =>
-                setEditForm((prev) => ({ ...prev, fullName: e.target.value }))
-              }
+              onChange={(e) => {
+                const sanitizedName = e.target.value.replace(/[^A-Za-z\s]/g, "");
+                const isInvalidTyped = sanitizedName !== e.target.value;
+                setEditForm((prev) => ({ ...prev, fullName: sanitizedName }));
+                setEditErrors((prev) => ({
+                  ...prev,
+                  fullName: isInvalidTyped
+                    ? "Full name can contain letters and spaces only"
+                    : validateFullNameTyping(sanitizedName),
+                }));
+              }}
               className={inputClass}
             />
+            {editErrors.fullName ? (
+              <p className="mt-1 text-xs text-rose-600">{editErrors.fullName}</p>
+            ) : null}
           </div>
 
           <div>
@@ -83,11 +108,30 @@ export default function EditProfile({
             <input
               type="text"
               value={editForm.nic}
-              onChange={(e) =>
-                setEditForm((prev) => ({ ...prev, nic: e.target.value }))
-              }
+              onChange={(e) => {
+                const sanitizedNic = normalizeNicInput(e.target.value);
+                const isInvalidTyped =
+                  e.target.value.toUpperCase().replace(/\s/g, "") !== sanitizedNic;
+                const nicError = isInvalidTyped
+                  ? "NIC allows only digits and optional V/X (old) or 12 digits (new)"
+                  : sanitizedNic
+                  ? validateNic(sanitizedNic)
+                  : "";
+                setEditForm((prev) => ({
+                  ...prev,
+                  nic: sanitizedNic,
+                }));
+                setEditErrors((prev) => ({
+                  ...prev,
+                  nic: nicError,
+                }));
+              }}
+              maxLength={12}
               className={inputClass}
             />
+            {editErrors.nic ? (
+              <p className="mt-1 text-xs text-rose-600">{editErrors.nic}</p>
+            ) : null}
           </div>
 
           <div>
@@ -97,11 +141,11 @@ export default function EditProfile({
             <input
               type="email"
               value={editForm.email}
-              onChange={(e) =>
-                setEditForm((prev) => ({ ...prev, email: e.target.value }))
-              }
-              className={inputClass}
+              readOnly
+              disabled
+              className={`${inputClass} cursor-not-allowed bg-slate-100 text-slate-500`}
             />
+            <p className="mt-2 text-xs text-slate-500">Email cannot be edited.</p>
           </div>
 
           <div>
@@ -146,9 +190,22 @@ export default function EditProfile({
                         key={`${country.code}-${country.dialCode}`}
                         type="button"
                         onClick={() => {
+                          const normalizedPhone = normalizePhoneForCountry(
+                            country.dialCode,
+                            editForm.phone
+                          );
+                          const phoneError = normalizedPhone
+                            ? validatePhone(country.dialCode, normalizedPhone)
+                            : "";
                           setEditForm((prev) => ({
                             ...prev,
                             countryCode: country.dialCode,
+                            phone: normalizedPhone,
+                          }));
+                          setEditErrors((prev) => ({
+                            ...prev,
+                            countryCode: "",
+                            phone: phoneError,
                           }));
                           setCountryOpen(false);
                           setCountrySearch("");
@@ -182,11 +239,27 @@ export default function EditProfile({
             <input
               type="text"
               value={editForm.phone}
-              onChange={(e) =>
-                setEditForm((prev) => ({ ...prev, phone: e.target.value }))
-              }
+              onChange={(e) => {
+                const normalizedPhone = normalizePhoneForCountry(
+                  editForm.countryCode,
+                  e.target.value
+                );
+                const phoneError = normalizedPhone
+                  ? validatePhone(editForm.countryCode, normalizedPhone)
+                  : "";
+                setEditForm((prev) => ({
+                  ...prev,
+                  phone: normalizedPhone,
+                }));
+                setEditErrors((prev) => ({ ...prev, phone: phoneError }));
+              }}
+              inputMode="numeric"
+              maxLength={getPhoneMaxLengthByCountry(editForm.countryCode)}
               className={inputClass}
             />
+            {editErrors.phone ? (
+              <p className="mt-1 text-xs text-rose-600">{editErrors.phone}</p>
+            ) : null}
           </div>
 
           <div>
@@ -195,15 +268,19 @@ export default function EditProfile({
             </label>
             <select
               value={editForm.gender}
-              onChange={(e) =>
-                setEditForm((prev) => ({ ...prev, gender: e.target.value }))
-              }
+              onChange={(e) => {
+                setEditForm((prev) => ({ ...prev, gender: e.target.value }));
+                setEditErrors((prev) => ({ ...prev, gender: "" }));
+              }}
               className={inputClass}
             >
               <option value="">Select gender</option>
               <option value="MALE">MALE</option>
               <option value="FEMALE">FEMALE</option>
             </select>
+            {editErrors.gender ? (
+              <p className="mt-1 text-xs text-rose-600">{editErrors.gender}</p>
+            ) : null}
           </div>
 
           <div>
@@ -213,11 +290,11 @@ export default function EditProfile({
             <input
               type="date"
               value={editForm.dob}
-              onChange={(e) =>
-                setEditForm((prev) => ({ ...prev, dob: e.target.value }))
-              }
-              className={inputClass}
+              readOnly
+              disabled
+              className={`${inputClass} cursor-not-allowed bg-slate-100 text-slate-500`}
             />
+            <p className="mt-2 text-xs text-slate-500">Date of birth cannot be edited.</p>
           </div>
         </div>
       </section>
@@ -234,9 +311,10 @@ export default function EditProfile({
             </label>
             <select
               value={editForm.role}
-              onChange={(e) =>
-                setEditForm((prev) => ({ ...prev, role: e.target.value }))
-              }
+              onChange={(e) => {
+                setEditForm((prev) => ({ ...prev, role: e.target.value }));
+                setEditErrors((prev) => ({ ...prev, role: "" }));
+              }}
               className={inputClass}
             >
               {roleOptions.map((role) => (
@@ -245,6 +323,9 @@ export default function EditProfile({
                 </option>
               ))}
             </select>
+            {editErrors.role ? (
+              <p className="mt-1 text-xs text-rose-600">{editErrors.role}</p>
+            ) : null}
           </div>
 
           <div>
@@ -253,9 +334,10 @@ export default function EditProfile({
             </label>
             <select
               value={editForm.status}
-              onChange={(e) =>
-                setEditForm((prev) => ({ ...prev, status: e.target.value }))
-              }
+              onChange={(e) => {
+                setEditForm((prev) => ({ ...prev, status: e.target.value }));
+                setEditErrors((prev) => ({ ...prev, status: "" }));
+              }}
               className={inputClass}
             >
               {statusOptions.map((status) => (
@@ -264,6 +346,9 @@ export default function EditProfile({
                 </option>
               ))}
             </select>
+            {editErrors.status ? (
+              <p className="mt-1 text-xs text-rose-600">{editErrors.status}</p>
+            ) : null}
           </div>
 
           <div>
@@ -272,13 +357,14 @@ export default function EditProfile({
             </label>
             <select
               value={editForm.baseProvince}
-              onChange={(e) =>
+              onChange={(e) => {
                 setEditForm((prev) => ({
                   ...prev,
                   baseProvince: e.target.value,
                   baseDistrict: "",
-                }))
-              }
+                }));
+                setEditErrors((prev) => ({ ...prev, baseProvince: "", baseDistrict: "" }));
+              }}
               className={inputClass}
             >
               <option value="">Select province</option>
@@ -288,6 +374,9 @@ export default function EditProfile({
                 </option>
               ))}
             </select>
+            {editErrors.baseProvince ? (
+              <p className="mt-1 text-xs text-rose-600">{editErrors.baseProvince}</p>
+            ) : null}
           </div>
 
           <div>
@@ -296,9 +385,10 @@ export default function EditProfile({
             </label>
             <select
               value={editForm.baseDistrict}
-              onChange={(e) =>
-                setEditForm((prev) => ({ ...prev, baseDistrict: e.target.value }))
-              }
+              onChange={(e) => {
+                setEditForm((prev) => ({ ...prev, baseDistrict: e.target.value }));
+                setEditErrors((prev) => ({ ...prev, baseDistrict: "" }));
+              }}
               className={inputClass}
               disabled={!editForm.baseProvince}
             >
@@ -309,6 +399,9 @@ export default function EditProfile({
                 </option>
               ))}
             </select>
+            {editErrors.baseDistrict ? (
+              <p className="mt-1 text-xs text-rose-600">{editErrors.baseDistrict}</p>
+            ) : null}
           </div>
 
           <div className="md:col-span-2">
@@ -318,11 +411,11 @@ export default function EditProfile({
             <input
               type="date"
               value={editForm.joinDate}
-              onChange={(e) =>
-                setEditForm((prev) => ({ ...prev, joinDate: e.target.value }))
-              }
-              className={inputClass}
+              readOnly
+              disabled
+              className={`${inputClass} cursor-not-allowed bg-slate-100 text-slate-500`}
             />
+            <p className="mt-2 text-xs text-slate-500">Join date cannot be edited.</p>
           </div>
         </div>
       </section>
@@ -339,11 +432,20 @@ export default function EditProfile({
           <textarea
             rows="4"
             value={editForm.address}
-            onChange={(e) =>
-              setEditForm((prev) => ({ ...prev, address: e.target.value }))
-            }
+            onChange={(e) => {
+              const normalizedAddress = normalizeAddressInput(e.target.value);
+              const addressError =
+                normalizedAddress !== e.target.value
+                  ? "Address contains unsupported characters"
+                  : validateAddressTyping(e.target.value);
+              setEditForm((prev) => ({ ...prev, address: normalizedAddress }));
+              setEditErrors((prev) => ({ ...prev, address: addressError }));
+            }}
             className={inputClass}
           />
+          {editErrors.address ? (
+            <p className="mt-1 text-xs text-rose-600">{editErrors.address}</p>
+          ) : null}
         </div>
       </section>
 
