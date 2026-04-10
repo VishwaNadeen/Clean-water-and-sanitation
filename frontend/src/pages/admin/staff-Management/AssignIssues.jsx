@@ -83,6 +83,14 @@ const AssignIssues = () => {
     e.preventDefault();
 
     try {
+      if (!form.restroomId) {
+        setToast({
+          type: "error",
+          text: "Please provide the restroom before assigning this issue.",
+        });
+        return;
+      }
+
       await assignIssueToStaff(form.issueId, {
         staffId: form.staffId,
         date: form.date,
@@ -90,7 +98,7 @@ const AssignIssues = () => {
         endTime: form.endTime,
         title: form.title,
         issueTaskType: form.issueTaskType,
-        restroomId: form.restroomId || undefined,
+        restroomId: form.restroomId,
         restroomLabel: form.restroomLabel,
         managerNote: form.managerNote,
       });
@@ -220,10 +228,11 @@ const AssignIssues = () => {
             <>
               <input
                 type="text"
-                placeholder="Restroom ID (optional)"
+                placeholder="Restroom ID"
                 value={form.restroomId}
                 onChange={(e) => setForm({ ...form, restroomId: e.target.value })}
                 className="rounded-xl border border-slate-200 px-4 py-3"
+                required
               />
 
               <input
@@ -232,6 +241,7 @@ const AssignIssues = () => {
                 value={form.restroomLabel}
                 onChange={(e) => setForm({ ...form, restroomLabel: e.target.value })}
                 className="rounded-xl border border-slate-200 px-4 py-3"
+                required
               />
             </>
           )}
