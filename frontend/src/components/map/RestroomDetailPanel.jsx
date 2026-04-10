@@ -190,16 +190,16 @@ export default function RestroomDetailPanel({ restroom, onClose, isNearby }) {
         </a>
 
         {/*
-         * "Report Issue" navigates to the issue-reporting flow.
+         * "Report Complaint" navigates to the complaint-reporting flow.
          * The restroom ID is passed as a query param so the form can pre-fill it.
          * (The issue-reporting page is built by another team member — just linking to it.)
          */}
         <a
-          href={`/report-issue?restroomId=${restroom._id}&restroomName=${encodeURIComponent(restroom.name)}`}
+          href={`/complaints/report?restroomId=${restroom._id}&restroomName=${encodeURIComponent(restroom.name)}`}
           className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium transition-colors"
         >
           <span>⚠️</span>
-          Report an Issue
+          Report a Complaint
         </a>
       </div>
     </div>

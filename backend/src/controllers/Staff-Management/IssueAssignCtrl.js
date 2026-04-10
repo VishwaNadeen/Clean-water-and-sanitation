@@ -70,20 +70,18 @@ const setIssueStatusSafely = (issueDoc, preferredStatus) => {
   const allowed = issueDoc.schema.path("status").enumValues || [];
   if (allowed.length === 0) return;
 
-  // if preferred exists -> use it
   if (allowed.includes(preferredStatus)) {
     issueDoc.status = preferredStatus;
     return;
   }
 
-  // otherwise choose best fallback from allowed enums
   const fallback =
     (allowed.includes("InProgress") && "InProgress") ||
     (allowed.includes("OPEN") && "OPEN") ||
     (allowed.includes("Open") && "Open") ||
     (allowed.includes("PENDING") && "PENDING") ||
     (allowed.includes("Pending") && "Pending") ||
-    (allowed.includes("Assigned") && "Assigned") || // just in case preferred wasn't exactly same
+    (allowed.includes("Assigned") && "Assigned") ||
     null;
 
   if (fallback) issueDoc.status = fallback;
@@ -238,9 +236,7 @@ export const assignIssueToStaff = async (req, res) => {
     // -------- update issue safely (avoid enum crash) --------
     setIfPathExists(issue, "assignedStaffId", staffId);
     setIfPathExists(issue, "assignedAt", new Date());
-
-    // won't crash even if "Assigned" is NOT in Issue enum
-    setIssueStatusSafely(issue, "Assigned");
+    setIssueStatusSafely(issue, "IN_PROGRESS");
 
     await issue.save();
 
