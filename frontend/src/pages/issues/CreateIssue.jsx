@@ -29,6 +29,7 @@ export default function CreateIssue() {
   const [cities, setCities] = useState([]);
   const [restrooms, setRestrooms] = useState([]);
   const [images, setImages] = useState([]);
+  const [preselectedRestroom, setPreselectedRestroom] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -95,6 +96,40 @@ export default function CreateIssue() {
   }, []);
 
   useEffect(() => {
+    if (!preselectedRestroomId) {
+      setPreselectedRestroom(null);
+      return;
+    }
+
+    let active = true;
+
+    async function loadPreselectedRestroom() {
+      try {
+        const restroom = await fetchRestroomById(preselectedRestroomId);
+
+        if (!active) {
+          return;
+        }
+
+        setPreselectedRestroom(restroom || null);
+      } catch (prefillError) {
+        if (!active) {
+          return;
+        }
+
+        setPreselectedRestroom(null);
+        setError(prefillError.message || "Failed to prefill restroom details.");
+      }
+    }
+
+    loadPreselectedRestroom();
+
+    return () => {
+      active = false;
+    };
+  }, [preselectedRestroomId]);
+
+  useEffect(() => {
     if (!preselectedRestroomId || provinces.length === 0) {
       return;
     }
@@ -102,10 +137,8 @@ export default function CreateIssue() {
     async function applyRestroomPrefill() {
       try {
         setError("");
-
-        const restroom = await fetchRestroomById(preselectedRestroomId);
         const matchedProvince = provinces.find(
-          (province) => province.name === restroom?.province
+          (province) => province.name === preselectedRestroom?.province
         );
 
         setFormData((prev) => ({
@@ -121,7 +154,7 @@ export default function CreateIssue() {
     }
 
     applyRestroomPrefill();
-  }, [preselectedRestroomId, provinces]);
+  }, [preselectedRestroomId, preselectedRestroom, provinces]);
 
   useEffect(() => {
     if (!formData.provinceId) {
@@ -161,11 +194,10 @@ export default function CreateIssue() {
 
     async function applyDistrictPrefill() {
       try {
-        const restroom = await fetchRestroomById(preselectedRestroomId);
-        if (restroom?.province !== selectedProvince.name) return;
+        if (preselectedRestroom?.province !== selectedProvince.name) return;
 
         const matchedDistrict = districts.find(
-          (district) => district.name === restroom?.district
+          (district) => district.name === preselectedRestroom?.district
         );
 
         if (!matchedDistrict) return;
@@ -183,7 +215,7 @@ export default function CreateIssue() {
     }
 
     applyDistrictPrefill();
-  }, [preselectedRestroomId, districts, selectedProvince]);
+  }, [preselectedRestroomId, preselectedRestroom, districts, selectedProvince]);
 
   useEffect(() => {
     if (!formData.districtId) {
@@ -222,10 +254,11 @@ export default function CreateIssue() {
 
     async function applyCityPrefill() {
       try {
-        const restroom = await fetchRestroomById(preselectedRestroomId);
-        if (restroom?.district !== selectedDistrict.name) return;
+        if (preselectedRestroom?.district !== selectedDistrict.name) return;
 
-        const matchedCity = cities.find((city) => city.name === restroom?.city);
+        const matchedCity = cities.find(
+          (city) => city.name === preselectedRestroom?.city
+        );
         if (!matchedCity) return;
 
         setFormData((prev) => ({
@@ -239,7 +272,7 @@ export default function CreateIssue() {
     }
 
     applyCityPrefill();
-  }, [preselectedRestroomId, cities, selectedDistrict]);
+  }, [preselectedRestroomId, preselectedRestroom, cities, selectedDistrict]);
 
   useEffect(() => {
     if (!selectedProvince || !selectedDistrict || !selectedCity) {
