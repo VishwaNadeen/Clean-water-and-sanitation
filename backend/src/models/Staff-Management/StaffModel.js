@@ -39,6 +39,8 @@ const StaffSchema = new Schema(
       default: "Active",
     },
 
+    mustChangePassword: { type: Boolean, default: true },
+
     baseProvince: { type: String, required: true, trim: true },
     baseDistrict: { type: String, required: true, trim: true },
 

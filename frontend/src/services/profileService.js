@@ -60,6 +60,7 @@ function normalizeProfileResponse(data, role, storedUser) {
       gender: raw.gender || "",
       role: raw.role || storedUser?.role || "staff",
       profileImageUrl: raw.profileImageUrl || raw.avatarUrl || "",
+      mustChangePassword: Boolean(raw.mustChangePassword),
       originalData: raw,
     };
   }
@@ -72,8 +73,40 @@ function normalizeProfileResponse(data, role, storedUser) {
     gender: raw.gender || "",
     role: raw.role || storedUser?.role || "user",
     profileImageUrl: raw.profileImageUrl || raw.avatarUrl || "",
+    mustChangePassword: Boolean(raw.mustChangePassword),
     originalData: raw,
   };
+}
+
+export async function changeMyPassword(payload) {
+  const token = getToken();
+  const storedUser = getStoredUser();
+  const safeRole = normalizeRole(storedUser?.role);
+
+  if (!token) {
+    throw new Error("No auth token found.");
+  }
+
+  if (safeRole === "staff") {
+    const response = await fetch(`${API_BASE_URL}/staff/me/password`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data?.message || "Failed to change password.");
+    }
+
+    return data;
+  }
+
+  return updateMyProfile(payload);
 }
 
 export async function getMyProfile() {
@@ -159,6 +192,37 @@ export async function deleteMyProfile(password) {
 
   if (!response.ok) {
     throw new Error(data?.message || "Failed to delete profile.");
+  }
+
+  return data;
+}
+
+export async function requestMyDeleteProfile(reason) {
+  const token = getToken();
+  const storedUser = getStoredUser();
+  const safeRole = normalizeRole(storedUser?.role);
+
+  if (!token) {
+    throw new Error("No auth token found.");
+  }
+
+  if (safeRole !== "staff") {
+    throw new Error("Delete request is currently available for staff accounts only.");
+  }
+
+  const response = await fetch(`${API_BASE_URL}/staff/me/delete-request`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ reason }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to submit delete request.");
   }
 
   return data;

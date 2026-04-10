@@ -46,6 +46,34 @@ export const startWork = async (req, res) => {
   }
 };
 
+// Staff: Undo start (InProgress -> Assigned)
+// PATCH /api/staff/work-schedules/:id/revert-start
+export const revertStartWork = async (req, res) => {
+  try {
+    const staffId = req.user.id;
+    const { id } = req.params;
+
+    const schedule = await WorkSchedule.findById(id);
+    if (!schedule) return res.status(404).json({ message: "Not found" });
+
+    if (schedule.staffId.toString() !== staffId) {
+      return res.status(403).json({ message: "Not your schedule" });
+    }
+
+    if (schedule.status !== "InProgress") {
+      return res.status(400).json({ message: "Only InProgress schedules can be changed back" });
+    }
+
+    schedule.status = "Assigned";
+    schedule.startedAt = undefined;
+
+    await schedule.save();
+    return res.json(schedule);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
 // Staff: Upload proof image
 // POST /api/staff/work-schedules/:id/proof  (form-data key = proof)
 export const uploadProof = async (req, res) => {

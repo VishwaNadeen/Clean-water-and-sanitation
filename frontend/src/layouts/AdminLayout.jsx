@@ -255,9 +255,9 @@ export default function AdminLayout() {
     location.pathname === item.path;
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="h-screen overflow-hidden bg-slate-100">
       <div
-        className={`grid min-h-screen transition-[grid-template-columns] duration-500 ease-out ${
+        className={`grid h-screen transition-[grid-template-columns] duration-500 ease-out ${
           collapsed ? "lg:grid-cols-[80px_1fr]" : "lg:grid-cols-[260px_1fr]"
         }`}
       >
@@ -296,7 +296,7 @@ export default function AdminLayout() {
             </button>
           </div>
 
-          <nav className="flex-1 px-2 py-6">
+          <nav className="flex-1 overflow-y-auto px-2 py-6">
             <ul className="space-y-2">
               {navItems.map((item) => (
                 <li key={item.path}>
@@ -443,12 +443,12 @@ export default function AdminLayout() {
         </aside>
 
         {/* Page content */}
-        <section className="flex min-h-screen flex-col">
-          <header className="border-b border-slate-200 bg-white px-6 py-5 shadow-sm">
+        <section className="flex h-screen min-h-0 flex-col overflow-hidden">
+          <header className="shrink-0 border-b border-slate-200 bg-white px-6 py-5 shadow-sm">
             <h2 className="text-2xl font-bold text-slate-800">Admin Panel</h2>
           </header>
 
-          <main className="flex-1 p-6">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden p-6">
             <Outlet />
           </main>
         </section>

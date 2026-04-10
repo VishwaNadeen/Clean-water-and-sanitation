@@ -13,9 +13,10 @@ const NAVBAR_LOGO_URL =
 
 export default function Navbar() {
   const navigate = useNavigate();
+  const storedUser = getStoredUser();
   const [loggedIn, setLoggedIn] = useState(isLoggedIn());
   const [profileImageUrl, setProfileImageUrl] = useState(
-    getStoredUser()?.profileImageUrl || ""
+    storedUser?.profileImageUrl || ""
   );
   const [scrolled, setScrolled] = useState(false);
   const [profileMenuState, setProfileMenuState] = useState("closed");
@@ -157,6 +158,10 @@ export default function Navbar() {
     { to: "/about", label: "About Us" },
     { to: "/contact", label: "Contact Us" },
   ];
+  const profilePath =
+    String(storedUser?.role || "").toLowerCase() === "staff"
+      ? "/staff/profile"
+      : "/profile";
 
   return (
     <>

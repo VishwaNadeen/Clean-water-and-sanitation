@@ -1,13 +1,18 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import ProfileLayout from "../../components/profile/ProfileLayout";
 import useProfileData from "../../hooks/useProfileData";
-import { updateMyProfile } from "../../services/profileService";
+import { changeMyPassword } from "../../services/profileService";
+import { updateStoredUser } from "../../utils/auth";
 
 export default function ChangePassword() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { profile, loading, pageError, setPageError, storedUser, token } =
     useProfileData();
+  const profileBasePath = location.pathname.startsWith("/staff/profile")
+    ? "/staff/profile"
+    : "/profile";
 
   const [formData, setFormData] = useState({
     currentPassword: "",
@@ -46,10 +51,12 @@ export default function ChangePassword() {
       setPageError("");
       setSuccessMessage("");
 
-      await updateMyProfile({
+      await changeMyPassword({
         currentPassword: formData.currentPassword,
         newPassword: formData.newPassword,
       });
+
+      updateStoredUser({ mustChangePassword: false });
 
       setSuccessMessage("Password changed successfully.");
       setFormData({
@@ -59,7 +66,7 @@ export default function ChangePassword() {
       });
 
       setTimeout(() => {
-        navigate("/profile");
+        navigate(profileBasePath);
       }, 900);
     } catch (error) {
       setPageError(error.message || "Failed to change password.");
@@ -149,7 +156,7 @@ export default function ChangePassword() {
 
           <button
             type="button"
-            onClick={() => navigate("/profile")}
+            onClick={() => navigate(profileBasePath)}
             className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
           >
             Cancel

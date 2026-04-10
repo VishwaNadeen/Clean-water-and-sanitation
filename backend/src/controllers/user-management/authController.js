@@ -119,6 +119,7 @@ export const loginUser = async (req, res, next) => {
       message: "Login successful",
       token: generateToken(login._id, login.role, login.userId), // FIXED
       role: login.role,
+      mustChangePassword: Boolean(profile.mustChangePassword),
     });
   } catch (err) {
     next(err);

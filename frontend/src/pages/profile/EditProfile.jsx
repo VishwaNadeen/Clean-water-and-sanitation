@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import ProfileLayout from "../../components/profile/ProfileLayout";
 import useProfileData from "../../hooks/useProfileData";
 import { updateMyProfile } from "../../services/profileService";
 
 export default function EditProfile() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { profile, loading, pageError, setPageError, storedUser, token } =
     useProfileData();
+  const profileBasePath = location.pathname.startsWith("/staff/profile")
+    ? "/staff/profile"
+    : "/profile";
 
   const [editForm, setEditForm] = useState({
     firstName: "",
@@ -52,7 +56,7 @@ export default function EditProfile() {
         gender: editForm.gender,
       });
 
-      navigate("/profile");
+      navigate(profileBasePath);
     } catch (error) {
       setPageError(error.message || "Failed to update profile.");
     } finally {
@@ -148,7 +152,7 @@ export default function EditProfile() {
 
           <button
             type="button"
-            onClick={() => navigate("/profile")}
+            onClick={() => navigate(profileBasePath)}
             className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
           >
             Cancel

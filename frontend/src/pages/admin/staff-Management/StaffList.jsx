@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import DashboardLayout from "../../components/staffManagement/DashboardLayout";
-import staffApi from "../../services/staffManagementService";
+import DashboardLayout from "../../../components/staffManagement/DashboardLayout";
+import { getManagerStaff } from "../../../services/staffManagementService";
 
 const pageStyle = {
   padding: "24px",
@@ -27,8 +27,8 @@ export default function StaffList() {
 
   const loadStaff = async () => {
     try {
-      const res = await staffApi.get("/manager/staff");
-      setStaff(res.data || []);
+      const data = await getManagerStaff();
+      setStaff(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Failed to load staff", error);
     } finally {

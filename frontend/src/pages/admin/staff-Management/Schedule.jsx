@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
-import DashboardLayout from "../../components/staffManagement/DashboardLayout";
+import DashboardLayout from "../../../components/staffManagement/DashboardLayout";
 import {
   getAllSchedules,
   assignSchedule,
   approveSchedule,
   rejectSchedule,
   cancelSchedule,
-} from "../../services/staffManagementService";
-import staffApi from "../../services/staffManagementService";
+} from "../../../services/staffManagementService";
+import staffApi from "../../../services/staffManagementService";
 
 const pageStyle = {
   padding: "24px",

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import ProfileLayout from "../../components/profile/ProfileLayout";
 import useProfileData from "../../hooks/useProfileData";
 import {
@@ -10,10 +10,14 @@ import { updateStoredUser } from "../../utils/auth";
 
 export default function Profile() {
   const navigate = useNavigate();
+  const location = useLocation();
   const fileInputRef = useRef(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const { profile, setProfile, loading, pageError, setPageError, storedUser, token } =
     useProfileData();
+  const profileBasePath = location.pathname.startsWith("/staff/profile")
+    ? "/staff/profile"
+    : "/profile";
 
   const profileImageSrc = profile?.profileImageUrl || "";
   const profileImageInitial = String(
@@ -153,11 +157,17 @@ export default function Profile() {
         </div>
 
         <button
-          onClick={() => navigate("/profile/edit")}
+          onClick={() => navigate(`${profileBasePath}/edit`)}
           className="inline-flex items-center gap-2 rounded-xl border border-sky-300 bg-sky-100 px-4 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-200"
         >
           <span>✏️</span>
           <span>Edit</span>
+        </button>
+        <button
+          onClick={() => navigate(`${profileBasePath}/delete`)}
+          className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-100"
+        >
+          <span>Delete</span>
         </button>
       </div>
 

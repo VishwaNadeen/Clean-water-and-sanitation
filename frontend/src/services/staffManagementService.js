@@ -5,15 +5,37 @@ const staffApi = axios.create({
   baseURL: API_BASE_URL,
 });
 
-staffApi.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+staffApi.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
 
-// ---------- manager ----------
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// =========================
+// manager
+// =========================
+export const getManagerStaff = async () => {
+  const res = await staffApi.get("/staff");
+  return Array.isArray(res.data?.staff) ? res.data.staff : [];
+};
+
+export const getStaffProfile = async (id) => {
+  const res = await staffApi.get(`/staff/${id}`);
+  return res.data?.staff || null;
+};
+
+export const getRestrooms = async (params = {}) => {
+  const res = await staffApi.get("/restrooms", { params });
+  return Array.isArray(res.data) ? res.data : [];
+};
+
 export const getAllSchedules = async (params = {}) => {
   const res = await staffApi.get("/manager/work-schedules", { params });
   return res.data;
@@ -52,8 +74,13 @@ export const rejectSchedule = async (id, managerReviewNote = "") => {
   });
   return res.data;
 };
-
-// ---------- staff ----------
+export const assignIssueToStaff = async (issueId, payload) => {
+  const res = await staffApi.post(`/manager/issue-assign/${issueId}/assign`, payload);
+  return res.data;
+};
+// =========================
+// staff
+// =========================
 export const getMySchedules = async () => {
   const res = await staffApi.get("/staff/work-schedules/me");
   return res.data;
@@ -64,14 +91,34 @@ export const startWork = async (id) => {
   return res.data;
 };
 
+export const revertStartWork = async (id) => {
+  const res = await staffApi.patch(`/staff/work-schedules/${id}/revert-start`);
+  return res.data;
+};
+
 export const uploadProof = async (id, file) => {
   const formData = new FormData();
   formData.append("proof", file);
 
-  const res = await staffApi.post(`/staff/work-schedules/${id}/proof`, formData, {
-    headers: { "Content-Type": "multipart/form-data" },
+  const token = localStorage.getItem("token");
+
+  const response = await fetch(`${API_BASE_URL}/staff/work-schedules/${id}/proof`, {
+    method: "POST",
+    headers: token
+      ? {
+          Authorization: `Bearer ${token}`,
+        }
+      : undefined,
+    body: formData,
   });
-  return res.data;
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to upload proof");
+  }
+
+  return data;
 };
 
 export const completeWork = async (id, payload) => {
