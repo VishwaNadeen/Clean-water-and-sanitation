@@ -1,5 +1,3 @@
-import { Link } from "react-router-dom";
-
 function CloseIcon() {
   return (
     <svg
@@ -95,8 +93,7 @@ export default function ViewComplaint({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-8 lg:left-[260px]">
-      <div className="w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-200">
-        <div className="max-h-[90vh] overflow-y-auto p-6">
+      <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-slate-200">
         <div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-5">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.3px] text-blue-600">
@@ -190,24 +187,18 @@ export default function ViewComplaint({
               </p>
               <div className="mt-4 space-y-3">
                 <StatusBadge status={issue.status} />
-                <p className="text-sm leading-7 text-slate-600">
-                  Complaint progress should be updated through the staff
-                  assignment workflow after a team member starts or finishes the
-                  task.
-                </p>
-                {issue.status === "OPEN" ? (
-                  <Link
-                    to={`/admin/staff/issues?issueId=${issue._id}&issueNumber=${
-                      issue.issueNumber || ""
-                    }&restroomId=${issue.restroomId?._id || ""}&restroomLabel=${encodeURIComponent(
-                      issue.restroomId?.name || ""
-                    )}&title=${encodeURIComponent(issue.title || "")}`}
-                    onClick={onClose}
-                    className="inline-flex w-full items-center justify-center rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
-                  >
-                    Assign to Staff
-                  </Link>
-                ) : null}
+                <select
+                  value={issue.status}
+                  onChange={(event) => onStatusChange(issue._id, event.target.value)}
+                  disabled={Boolean(actionLoading[issue._id])}
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                >
+                  {statusOptions.map((status) => (
+                    <option key={status} value={status}>
+                      {formatStatus(status)}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -218,16 +209,26 @@ export default function ViewComplaint({
               <p className="mt-3 text-sm text-slate-500">
                 Resolved: {formatDate(issue.resolvedAt)}
               </p>
+              <textarea
+                value={resolutionNote}
+                onChange={(event) => setResolutionNote(event.target.value)}
+                rows={5}
+                placeholder="Explain how this complaint was resolved"
+                className="mt-4 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+              />
+              <button
+                type="button"
+                onClick={() => onResolve(issue._id)}
+                disabled={Boolean(actionLoading[issue._id])}
+                className="mt-3 w-full rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {actionLoading[issue._id] ? "Saving..." : "Resolve Complaint"}
+              </button>
               {issue.resolutionNote ? (
                 <div className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
                   {issue.resolutionNote}
                 </div>
-              ) : (
-                <div className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
-                  Resolution details will appear here after the assigned work is
-                  completed.
-                </div>
-              )}
+              ) : null}
             </div>
 
             <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
@@ -247,7 +248,6 @@ export default function ViewComplaint({
               </button>
             </div>
           </div>
-        </div>
         </div>
       </div>
     </div>

@@ -3,94 +3,8 @@ import IssueCategory from "../../models/issue-reporting/issueCategoryModel.js";
 import Province from "../../models/issue-reporting/provinceModel.js";
 import District from "../../models/issue-reporting/districtModel.js";
 import City from "../../models/issue-reporting/cityModel.js";
-import WorkSchedule from "../../models/Staff-Management/WorkScheduleModel.js";
 import { uploadToCloudinary } from "../../utils/issue-reporting/cloudinary.js";
 import mongoose from "mongoose";
-
-const OPEN_WORK_STATUSES = ["Assigned", "Pending"];
-const IN_PROGRESS_WORK_STATUSES = ["InProgress"];
-const RESOLVED_WORK_STATUSES = ["Completed", "Verified"];
-
-const extractWorkResolutionNote = (schedule) => {
-    const parts = [
-        schedule?.staffNote,
-        schedule?.issuesFound,
-        schedule?.materialsUsed
-    ]
-        .map((value) => (typeof value === "string" ? value.trim() : ""))
-        .filter(Boolean);
-
-    return parts.join(" | ");
-};
-
-const syncIssuesFromWorkSchedules = async (issues) => {
-    const issueList = Array.isArray(issues) ? issues : [issues].filter(Boolean);
-    if (!issueList.length) {
-        return;
-    }
-
-    const issueIds = issueList
-        .map((issue) => issue?._id)
-        .filter(Boolean)
-        .map((id) => id.toString());
-
-    if (!issueIds.length) {
-        return;
-    }
-
-    const schedules = await WorkSchedule.find({
-        issueId: { $in: issueIds },
-        status: {
-            $in: [...OPEN_WORK_STATUSES, ...IN_PROGRESS_WORK_STATUSES, ...RESOLVED_WORK_STATUSES]
-        }
-    })
-        .select("issueId status completedAt verifiedAt staffNote issuesFound materialsUsed")
-        .sort({ verifiedAt: -1, completedAt: -1, updatedAt: -1 })
-        .lean();
-
-    if (!schedules.length) {
-        return;
-    }
-
-    const latestScheduleByIssue = new Map();
-    for (const schedule of schedules) {
-        const key = schedule.issueId?.toString();
-        if (!key || latestScheduleByIssue.has(key)) {
-            continue;
-        }
-        latestScheduleByIssue.set(key, schedule);
-    }
-
-    for (const issue of issueList) {
-        const issueId = issue?._id?.toString();
-        const schedule = issueId ? latestScheduleByIssue.get(issueId) : null;
-        if (!schedule) {
-            continue;
-        }
-
-        if (OPEN_WORK_STATUSES.includes(schedule.status)) {
-            issue.status = "OPEN";
-            issue.resolvedAt = null;
-            issue.resolutionNote = "";
-            continue;
-        }
-
-        if (IN_PROGRESS_WORK_STATUSES.includes(schedule.status)) {
-            issue.status = "IN_PROGRESS";
-            issue.resolvedAt = null;
-            continue;
-        }
-
-        const resolvedAt = schedule.verifiedAt || schedule.completedAt || issue.resolvedAt || new Date();
-        const resolutionNote = extractWorkResolutionNote(schedule);
-
-        issue.status = "RESOLVED";
-        issue.resolvedAt = resolvedAt;
-        if (resolutionNote && !issue.resolutionNote) {
-            issue.resolutionNote = resolutionNote;
-        }
-    }
-};
 
 // CREATE ISSUE
 export const createIssue = async (req, res) => {
@@ -421,8 +335,6 @@ export const getAllIssues = async (req, res) => {
             .skip(skip)
             .limit(parseInt(limit));
 
-        await syncIssuesFromWorkSchedules(issues);
-
         const total = await Issue.countDocuments(filter);
 
         // Filter issues to show only selected subcategory
@@ -529,8 +441,6 @@ export const getIssueById = async (req, res) => {
                 message: "Access denied. You can only view your own issues."
             });
         }
-
-        await syncIssuesFromWorkSchedules(issue);
 
         // Add subcategory name and clean response
         let subCategoryName = 'Unknown Subcategory';
@@ -976,8 +886,6 @@ export const getUserIssues = async (req, res) => {
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(parseInt(limit));
-
-        await syncIssuesFromWorkSchedules(userIssues);
 
         const total = await Issue.countDocuments(filter);
 

@@ -17,6 +17,10 @@ export default function ViewIssue() {
   const canUserEdit = issue?.status === "OPEN";
 
   useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [id]);
+
+  useEffect(() => {
     async function loadIssue() {
       try {
         setLoading(true);
@@ -89,8 +93,8 @@ export default function ViewIssue() {
             }
           : prev
       );
-      setSuccessMessage(data?.message || "Complaint cancelled successfully.");
-      window.scrollTo({ top: 0, behavior: "auto" });
+      setSuccessMessage(data?.message || "Issue cancelled successfully.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (cancelError) {
       setError(cancelError.message || "Failed to cancel issue.");
     } finally {
@@ -103,11 +107,11 @@ export default function ViewIssue() {
       <div className="mx-auto max-w-6xl rounded-[28px] border border-sky-200 bg-white/95 p-6 shadow-[0_16px_50px_rgba(56,189,248,0.12)] md:p-8">
         <div className="flex flex-col gap-3 border-b border-sky-100 pb-6">
           <p className="text-sm font-semibold uppercase tracking-[0.3px] text-sky-600">
-            Complaint Reporting
+            Issue Reporting
           </p>
-          <h1 className="text-3xl font-bold text-slate-900">View Complaint</h1>
+          <h1 className="text-3xl font-bold text-slate-900">View Issue</h1>
           <p className="max-w-3xl text-sm leading-7 text-slate-600">
-            Review the full complaint details, selected location, restroom, images,
+            Review the full issue details, selected location, restroom, images,
             and current resolution progress.
           </p>
         </div>
@@ -130,7 +134,7 @@ export default function ViewIssue() {
 
           {loading ? (
             <div className="rounded-2xl border border-sky-100 bg-sky-50/70 px-5 py-10 text-sm text-slate-500">
-              Loading complaint details...
+              Loading issue details...
             </div>
           ) : error ? (
             <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
@@ -138,7 +142,7 @@ export default function ViewIssue() {
             </div>
           ) : !issue ? (
             <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-10 text-sm text-slate-600">
-              Complaint details are not available.
+              Issue details are not available.
             </div>
           ) : (
             <>
@@ -147,7 +151,7 @@ export default function ViewIssue() {
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-[0.3px] text-sky-600">
-                        Complaint #{issue.issueNumber || "Pending"}
+                        Issue #{issue.issueNumber || "Pending"}
                       </p>
                       <h2 className="mt-2 text-2xl font-bold text-slate-900">
                         {issue.title}
@@ -270,7 +274,7 @@ export default function ViewIssue() {
                       >
                         <img
                           src={image.url}
-                          alt={`Complaint upload ${index + 1}`}
+                          alt={`Issue upload ${index + 1}`}
                           className="h-52 w-full object-cover"
                         />
                       </a>
@@ -278,25 +282,25 @@ export default function ViewIssue() {
                   </div>
                 ) : (
                   <p className="mt-4 text-sm text-slate-600">
-                    No complaint images were uploaded.
+                    No issue images were uploaded.
                   </p>
                 )}
               </div>
 
               <div className="flex flex-col gap-3 sm:flex-row">
                 <Link
-                  to="/my-complaints"
+                  to="/issues/me"
                   className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
                 >
-                  Back to Complaints
+                  Back to Issues
                 </Link>
                 {canUserEdit ? (
                   <>
                     <Link
-                      to={`/my-complaints/${issue._id}/edit`}
+                      to={`/issues/me/${issue._id}/edit`}
                       className="rounded-xl border border-sky-300 bg-gradient-to-r from-sky-500 to-blue-500 px-5 py-3 text-center text-sm font-semibold text-white shadow-[0_10px_28px_rgba(56,189,248,0.24)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(56,189,248,0.3)]"
                     >
-                      Edit Complaint
+                      Update Issue
                     </Link>
                     <button
                       type="button"
@@ -304,7 +308,7 @@ export default function ViewIssue() {
                       disabled={actionLoading}
                       className="rounded-xl border border-red-200 bg-red-50 px-5 py-3 text-center text-sm font-semibold text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      {actionLoading ? "Cancelling..." : "Cancel Complaint"}
+                      {actionLoading ? "Cancelling..." : "Cancel Issue"}
                     </button>
                   </>
                 ) : null}

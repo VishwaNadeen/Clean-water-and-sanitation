@@ -332,7 +332,7 @@ export default function StaffManagementHome() {
             note="Create schedules and assign tasks to staff members."
           />
           <QuickLink
-            to="/admin/complaints"
+            to="/admin/staff/issues"
             title="Assign Reported Issues"
             note="Send open issues to the correct staff member."
             badgeCount={pendingIssuesCount}

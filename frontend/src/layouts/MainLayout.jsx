@@ -6,7 +6,7 @@ export default function MainLayout({ children }) {
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-white">
       <Navbar />
-      <main className="flex-1 pt-[72px]">
+      <main className="flex-1">
         {children || <Outlet />}
       </main>
       <Footer />

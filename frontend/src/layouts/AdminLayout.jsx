@@ -183,7 +183,11 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
-  const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+  const [expandedMenus, setExpandedMenus] = useState({
+    staff: true,
+    categories: true,
+  });
   const textTransition =
     "overflow-hidden whitespace-nowrap transition-all duration-300 ease-out";
 
