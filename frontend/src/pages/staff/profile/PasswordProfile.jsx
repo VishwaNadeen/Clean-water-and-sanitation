@@ -1,6 +1,8 @@
 export default function PasswordProfile({
   passwordForm,
   setPasswordForm,
+  passwordErrors,
+  setPasswordErrors,
   passwordVisibility,
   setPasswordVisibility,
   handlePasswordSave,
@@ -9,8 +11,19 @@ export default function PasswordProfile({
   EyeIcon,
   EyeOffIcon,
 }) {
+  const inputClass = (fieldName) =>
+    `staff-password-input w-full rounded-xl border bg-slate-50 px-4 py-2.5 pr-12 text-sm outline-none focus:bg-white ${
+      passwordErrors[fieldName]
+        ? "border-rose-300 focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
+        : "border-slate-200 focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+    }`;
+
   return (
     <form onSubmit={handlePasswordSave} className="mx-auto max-w-xl space-y-3">
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        Use at least 6 characters with one uppercase letter and one special character.
+      </div>
+
       <div>
         <label className="mb-2 block text-sm font-medium text-slate-700">
           Current Password
@@ -20,12 +33,15 @@ export default function PasswordProfile({
             type={passwordVisibility.currentPassword ? "text" : "password"}
             value={passwordForm.currentPassword}
             onChange={(e) =>
-              setPasswordForm((prev) => ({
-                ...prev,
-                currentPassword: e.target.value,
-              }))
+              {
+                setPasswordForm((prev) => ({
+                  ...prev,
+                  currentPassword: e.target.value,
+                }));
+                setPasswordErrors((prev) => ({ ...prev, currentPassword: "" }));
+              }
             }
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 pr-12 text-sm outline-none focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-100"
+            className={inputClass("currentPassword")}
           />
           <button
             type="button"
@@ -42,6 +58,9 @@ export default function PasswordProfile({
             </span>
           </button>
         </div>
+        {passwordErrors.currentPassword ? (
+          <p className="mt-2 text-sm text-rose-600">{passwordErrors.currentPassword}</p>
+        ) : null}
       </div>
 
       <div>
@@ -53,12 +72,15 @@ export default function PasswordProfile({
             type={passwordVisibility.newPassword ? "text" : "password"}
             value={passwordForm.newPassword}
             onChange={(e) =>
-              setPasswordForm((prev) => ({
-                ...prev,
-                newPassword: e.target.value,
-              }))
+              {
+                setPasswordForm((prev) => ({
+                  ...prev,
+                  newPassword: e.target.value,
+                }));
+                setPasswordErrors((prev) => ({ ...prev, newPassword: "" }));
+              }
             }
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 pr-12 text-sm outline-none focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-100"
+            className={inputClass("newPassword")}
           />
           <button
             type="button"
@@ -75,6 +97,9 @@ export default function PasswordProfile({
             </span>
           </button>
         </div>
+        {passwordErrors.newPassword ? (
+          <p className="mt-2 text-sm text-rose-600">{passwordErrors.newPassword}</p>
+        ) : null}
       </div>
 
       <div>
@@ -86,12 +111,15 @@ export default function PasswordProfile({
             type={passwordVisibility.confirmPassword ? "text" : "password"}
             value={passwordForm.confirmPassword}
             onChange={(e) =>
-              setPasswordForm((prev) => ({
-                ...prev,
-                confirmPassword: e.target.value,
-              }))
+              {
+                setPasswordForm((prev) => ({
+                  ...prev,
+                  confirmPassword: e.target.value,
+                }));
+                setPasswordErrors((prev) => ({ ...prev, confirmPassword: "" }));
+              }
             }
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 pr-12 text-sm outline-none focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-100"
+            className={inputClass("confirmPassword")}
           />
           <button
             type="button"
@@ -108,6 +136,9 @@ export default function PasswordProfile({
             </span>
           </button>
         </div>
+        {passwordErrors.confirmPassword ? (
+          <p className="mt-2 text-sm text-rose-600">{passwordErrors.confirmPassword}</p>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap gap-3 pt-1">

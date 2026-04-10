@@ -1,12 +1,14 @@
 import React from "react";
 
-export default function FloatingToast({ toast, onClose }) {
+export default function FloatingToast({ toast, onClose, positionClassName = "" }) {
   if (!toast?.text) {
     return null;
   }
 
   return (
-    <div className="fixed right-6 top-6 z-50 max-w-sm animate-[fade-in_0.2s_ease-out]">
+    <div
+      className={`fixed right-6 top-6 z-50 max-w-sm animate-[fade-in_0.2s_ease-out] ${positionClassName}`.trim()}
+    >
       <div
         className={`rounded-2xl border px-4 py-3 text-sm font-medium shadow-lg backdrop-blur ${
           toast.type === "success"

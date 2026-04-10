@@ -7,14 +7,14 @@ import {
     getRestrooms,
     updateRestroom,
 } from "../../controllers/restRoom-Management/restroomController.js";
+// rating controllers
+import { submitRating, getMyRating } from "../../controllers/restRoom-Management/restroomRatingController.js";
 import { protect, authorizeRoles } from "../../middleware/authMiddleware.js";
-import multer from "multer"; // ← add this
+import multer from "multer";
 
-// multer with memory storage — buffers uploaded files in RAM
-// so we can pipe them directly to Cloudinary without saving to disk
 const upload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB per image
+    limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
         if (file.mimetype.startsWith("image/")) cb(null, true);
         else cb(new Error("Only image files are allowed"), false);
@@ -28,9 +28,13 @@ router.get("/",        getRestrooms);
 router.get("/nearby",  getNearbyRestrooms);
 router.get("/:id",     getRestroomById);
 
-// admin only — upload.array("images", 5) allows up to 5 images per restroom
+// admin
 router.post(  "/",    protect, authorizeRoles("ADMIN"), upload.array("images", 5), createRestroom);
 router.put(   "/:id", protect, authorizeRoles("ADMIN"), upload.array("images", 5), updateRestroom);
 router.delete("/:id", protect, authorizeRoles("ADMIN"), deleteRestroom);
+
+// ratings — any logged-in user
+router.post("/:id/rate",      protect, submitRating);
+router.get( "/:id/my-rating", protect, getMyRating);
 
 export default router;

@@ -74,6 +74,17 @@ export const rejectSchedule = async (id, managerReviewNote = "") => {
   });
   return res.data;
 };
+
+export const approveStaffDeleteRequest = async (staffId) => {
+  const res = await staffApi.delete(`/staff/${staffId}`);
+  return res.data;
+};
+
+export const rejectStaffDeleteRequest = async (staffId) => {
+  const res = await staffApi.patch(`/staff/${staffId}/delete-request/reject`);
+  return res.data;
+};
+
 export const assignIssueToStaff = async (issueId, payload) => {
   const res = await staffApi.post(`/manager/issue-assign/${issueId}/assign`, payload);
   return res.data;
@@ -93,6 +104,11 @@ export const startWork = async (id) => {
 
 export const revertStartWork = async (id) => {
   const res = await staffApi.patch(`/staff/work-schedules/${id}/revert-start`);
+  return res.data;
+};
+
+export const reworkRejectedTask = async (id) => {
+  const res = await staffApi.patch(`/staff/work-schedules/${id}/rework`);
   return res.data;
 };
 
@@ -116,6 +132,27 @@ export const uploadProof = async (id, file) => {
 
   if (!response.ok) {
     throw new Error(data?.message || "Failed to upload proof");
+  }
+
+  return data;
+};
+
+export const removeProof = async (id, publicId) => {
+  const token = localStorage.getItem("token");
+
+  const response = await fetch(`${API_BASE_URL}/staff/work-schedules/${id}/proof`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ publicId }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to remove proof image");
   }
 
   return data;
