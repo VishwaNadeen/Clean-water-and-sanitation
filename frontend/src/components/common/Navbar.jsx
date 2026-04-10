@@ -162,7 +162,6 @@ export default function Navbar() {
     String(storedUser?.role || "").toLowerCase() === "staff"
       ? "/staff/profile"
       : "/profile";
-  const isStaff = String(storedUser?.role || "").toLowerCase() === "staff";
 
   return (
     <>
@@ -374,7 +373,7 @@ export default function Navbar() {
                           role="menuitem"
                           onClick={() => {
                             setProfileMenuState("closed");
-                            navigate(profilePath);
+                            navigate("/profile");
                           }}
                         >
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -392,36 +391,6 @@ export default function Navbar() {
                           </svg>
                           Profile
                         </button>
-
-                        {!isStaff ? (
-                          <button
-                            className="flex w-full items-center gap-[10px] rounded-[12px] bg-transparent px-3 py-[11px] text-left text-[13px] font-semibold text-slate-900 transition-all duration-200 hover:-translate-y-[1px] hover:bg-white/35"
-                            role="menuitem"
-                            onClick={() => {
-                              setProfileMenuState("closed");
-                              navigate("/my-complaints");
-                            }}
-                          >
-                            <svg
-                              width="16"
-                              height="16"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="1.8"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <path d="M9 5h10" />
-                              <path d="M9 12h10" />
-                              <path d="M9 19h10" />
-                              <path d="M4 6h.01" />
-                              <path d="M4 12h.01" />
-                              <path d="M4 18h.01" />
-                            </svg>
-                            My Complaints
-                          </button>
-                        ) : null}
 
                         <div className="mx-[6px] my-1 h-px bg-black/30" />
 

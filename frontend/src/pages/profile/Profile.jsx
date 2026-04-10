@@ -171,25 +171,6 @@ export default function Profile() {
         </button>
       </div>
 
-      {!location.pathname.startsWith("/staff/profile") ? (
-        <div className="mt-6 flex items-center justify-between rounded-2xl border border-sky-200 bg-white p-4 shadow-sm">
-          <div>
-            <p className="text-sm font-medium text-slate-500">My complaints</p>
-            <p className="mt-1 text-base font-semibold text-slate-900">
-              View the complaints you have submitted
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => navigate("/my-complaints")}
-            className="inline-flex items-center gap-2 rounded-xl border border-sky-300 bg-sky-100 px-4 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-200"
-          >
-            <span>View All</span>
-          </button>
-        </div>
-      ) : null}
-
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4">
           <p className="text-xs font-semibold uppercase tracking-[0.3px] text-slate-500">
