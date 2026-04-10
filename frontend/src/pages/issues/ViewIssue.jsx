@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import API_BASE_URL from "../../config/api";
 import { getToken } from "../../utils/auth";
@@ -15,16 +15,6 @@ export default function ViewIssue() {
   const [actionLoading, setActionLoading] = useState(false);
 
   const canUserEdit = issue?.status === "OPEN";
-
-  useLayoutEffect(() => {
-    window.scrollTo(0, 0);
-  }, [id]);
-
-  useEffect(() => {
-    if (!loading) {
-      window.scrollTo(0, 0);
-    }
-  }, [loading]);
 
   useEffect(() => {
     async function loadIssue() {

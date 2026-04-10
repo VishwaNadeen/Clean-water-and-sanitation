@@ -268,14 +268,12 @@ export default function ReadIssues() {
                       <div className="flex flex-col gap-3 sm:flex-row">
                         <Link
                           to={`/my-complaints/${issue._id}`}
-                          onClick={() => window.scrollTo({ top: 0, behavior: "auto" })}
                           className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
                         >
                           View Complaint
                         </Link>
                         <Link
                           to={`/my-complaints/${issue._id}/edit`}
-                          onClick={() => window.scrollTo({ top: 0, behavior: "auto" })}
                           className="rounded-xl border border-sky-300 bg-gradient-to-r from-sky-500 to-blue-500 px-5 py-3 text-center text-sm font-semibold text-white shadow-[0_10px_28px_rgba(56,189,248,0.24)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(56,189,248,0.3)]"
                         >
                           Edit Complaint

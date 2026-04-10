@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import API_BASE_URL from "../../config/api";
 import { getToken } from "../../utils/auth";
@@ -51,16 +51,6 @@ export default function UpdateIssue() {
     () => cities.find((city) => city._id === formData.cityId),
     [cities, formData.cityId]
   );
-
-  useLayoutEffect(() => {
-    window.scrollTo(0, 0);
-  }, [id]);
-
-  useEffect(() => {
-    if (!loading) {
-      window.scrollTo(0, 0);
-    }
-  }, [loading]);
 
   useEffect(() => {
     async function loadInitialData() {
