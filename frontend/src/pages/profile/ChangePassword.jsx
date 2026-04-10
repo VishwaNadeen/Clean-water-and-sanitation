@@ -6,8 +6,7 @@ import { updateStoredUser } from "../../utils/auth";
 export default function ChangePassword() {
   const navigate = useNavigate();
 
-  const { profile, storedUser, token, setPageError, profileBasePath } =
-    useOutletContext();
+  const { setPageError, profileBasePath } = useOutletContext();
 
   const [formData, setFormData] = useState({
     currentPassword: "",
@@ -70,15 +69,24 @@ export default function ChangePassword() {
     }
   }
 
-  return (
-    <div>
-      {successMessage ? (
+return (
+  <div className="flex justify-center">
+    <div className="w-full max-w-2xl">
+
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold text-slate-900">
+          Change Password
+        </h2>
+      </div>
+
+      {successMessage && (
         <div className="mb-5 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-600">
           {successMessage}
         </div>
-      ) : null}
+      )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        
         <div>
           <label className="mb-2 block text-sm font-medium text-slate-700">
             Current Password
@@ -88,7 +96,7 @@ export default function ChangePassword() {
             name="currentPassword"
             value={formData.currentPassword}
             onChange={handleChange}
-            className="w-full rounded-xl border border-sky-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100"
+            className="w-full rounded-2xl border border-sky-200 bg-white px-4 py-4 text-sm focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
           />
         </div>
 
@@ -101,7 +109,7 @@ export default function ChangePassword() {
             name="newPassword"
             value={formData.newPassword}
             onChange={handleChange}
-            className="w-full rounded-xl border border-sky-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100"
+            className="w-full rounded-2xl border border-sky-200 bg-white px-4 py-4 text-sm focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
           />
         </div>
 
@@ -114,15 +122,15 @@ export default function ChangePassword() {
             name="confirmPassword"
             value={formData.confirmPassword}
             onChange={handleChange}
-            className="w-full rounded-xl border border-sky-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100"
+            className="w-full rounded-2xl border border-sky-200 bg-white px-4 py-4 text-sm focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
           />
         </div>
 
-        <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+        <div className="flex gap-3 pt-2">
           <button
             type="submit"
             disabled={saving}
-            className="rounded-xl border border-sky-300 bg-gradient-to-r from-sky-500 to-blue-500 px-5 py-3 text-sm font-semibold text-white disabled:opacity-70"
+            className="rounded-2xl bg-gradient-to-r from-sky-500 to-blue-500 px-6 py-3 text-sm font-semibold text-white"
           >
             {saving ? "Saving..." : "Change Password"}
           </button>
@@ -130,12 +138,13 @@ export default function ChangePassword() {
           <button
             type="button"
             onClick={() => navigate(profileBasePath)}
-            className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+            className="rounded-2xl border border-slate-200 px-6 py-3 text-sm font-semibold text-slate-700"
           >
             Cancel
           </button>
         </div>
       </form>
     </div>
-  );
+  </div>
+);
 }

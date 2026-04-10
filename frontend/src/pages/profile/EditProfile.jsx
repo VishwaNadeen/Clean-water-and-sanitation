@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import useProfileData from "../../hooks/useProfileData";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import {
   fetchWorldCitiesByDistrict,
   fetchWorldCities,
@@ -9,7 +8,6 @@ import {
   fetchWorldStates,
 } from "../../services/worldLocationService";
 import { updateMyProfile } from "../../services/profileService";
-import Dashboard from "./Dashboard";
 
 const SRI_LANKA_NAME = "Sri Lanka";
 
@@ -52,20 +50,9 @@ function withCurrentOption(options, currentValue) {
 
 export default function EditProfile() {
   const navigate = useNavigate();
-  const location = useLocation();
 
-  const {
-    profile,
-    loading,
-    pageError,
-    setPageError,
-    storedUser,
-    token,
-  } = useProfileData();
-
-  const profileBasePath = location.pathname.startsWith("/staff/profile")
-    ? "/staff/profile"
-    : "/profile";
+  const { profile, storedUser, setProfile, setPageError, profileBasePath } =
+    useOutletContext();
 
   const [editForm, setEditForm] = useState({
     firstName: "",
@@ -89,26 +76,24 @@ export default function EditProfile() {
   const [cities, setCities] = useState([]);
 
   useEffect(() => {
-    if (profile || storedUser) {
-      const { addressLine1, addressLine2, addressLine3 } = splitAddress(
-        profile?.address
-      );
+    const { addressLine1, addressLine2, addressLine3 } = splitAddress(
+      profile?.address
+    );
 
-      setEditForm({
-        firstName: profile?.firstName || "",
-        lastName: profile?.lastName || "",
-        phone: profile?.phone || "",
-        gender: profile?.gender || "",
-        addressLine1,
-        addressLine2,
-        addressLine3,
-        city: profile?.city || "",
-        district: profile?.district || "",
-        provinceState: profile?.provinceState || "",
-        country: profile?.country || "",
-        dob: formatDateForInput(profile?.dob),
-      });
-    }
+    setEditForm({
+      firstName: profile?.firstName || "",
+      lastName: profile?.lastName || "",
+      phone: profile?.phone || "",
+      gender: profile?.gender || "",
+      addressLine1,
+      addressLine2,
+      addressLine3,
+      city: profile?.city || "",
+      district: profile?.district || "",
+      provinceState: profile?.provinceState || "",
+      country: profile?.country || "",
+      dob: formatDateForInput(profile?.dob),
+    });
   }, [profile]);
 
   useEffect(() => {
@@ -118,7 +103,7 @@ export default function EditProfile() {
       try {
         const data = await fetchWorldCountries();
         if (mounted) {
-          setCountries(data);
+          setCountries(Array.isArray(data) ? data : []);
         }
       } catch {
         if (mounted) {
@@ -199,7 +184,11 @@ export default function EditProfile() {
           return;
         }
 
-        const data = await fetchWorldCities(editForm.country, editForm.provinceState);
+        const data = await fetchWorldCities(
+          editForm.country,
+          editForm.provinceState
+        );
+
         if (mounted) {
           setDistricts([]);
           setCities(Array.isArray(data) ? data : []);
@@ -217,7 +206,7 @@ export default function EditProfile() {
     return () => {
       mounted = false;
     };
-  }, [editForm.country, editForm.district, editForm.provinceState]);
+  }, [editForm.country, editForm.provinceState, editForm.district]);
 
   const fullName = useMemo(() => {
     return (
@@ -227,29 +216,21 @@ export default function EditProfile() {
     );
   }, [editForm.firstName, editForm.lastName, storedUser]);
 
-  const countryOptions = useMemo(
-    () =>
-      withCurrentOption(
-        countries,
-        editForm.country
-      ),
-    [countries, editForm.country]
-  );
+  const countryOptions = useMemo(() => {
+    return withCurrentOption(countries, editForm.country);
+  }, [countries, editForm.country]);
 
   const provinceOptions = useMemo(() => {
-    const options = states;
-    return withCurrentOption(options, editForm.provinceState);
-  }, [editForm.provinceState, states]);
-
-  const cityOptions = useMemo(() => {
-    const options = cities;
-    return withCurrentOption(options, editForm.city);
-  }, [cities, editForm.city]);
+    return withCurrentOption(states, editForm.provinceState);
+  }, [states, editForm.provinceState]);
 
   const districtOptions = useMemo(() => {
-    const options = districts;
-    return withCurrentOption(options, editForm.district);
+    return withCurrentOption(districts, editForm.district);
   }, [districts, editForm.district]);
+
+  const cityOptions = useMemo(() => {
+    return withCurrentOption(cities, editForm.city);
+  }, [cities, editForm.city]);
 
   function handleChange(event) {
     const { name, value } = event.target;
@@ -288,13 +269,16 @@ export default function EditProfile() {
       };
     });
 
-    if (pageError) {
-      setPageError("");
-    }
+    setPageError("");
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
+
+    if (!editForm.firstName.trim() || !editForm.lastName.trim()) {
+      setPageError("First name and last name are required.");
+      return;
+    }
 
     try {
       setSaving(true);
@@ -309,7 +293,7 @@ export default function EditProfile() {
         .filter(Boolean)
         .join(", ");
 
-      await updateMyProfile({
+      const updatedProfile = await updateMyProfile({
         firstName: editForm.firstName,
         lastName: editForm.lastName,
         phone: editForm.phone,
@@ -322,6 +306,10 @@ export default function EditProfile() {
         dob: editForm.dob,
       });
 
+      if (updatedProfile && typeof setProfile === "function") {
+        setProfile(updatedProfile);
+      }
+
       navigate(profileBasePath);
     } catch (error) {
       setPageError(error.message || "Failed to update profile.");
@@ -330,241 +318,208 @@ export default function EditProfile() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-[calc(100vh-160px)] px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
-            <div className="h-32 animate-pulse bg-slate-100" />
-            <div className="px-6 pb-6">
-              <div className="-mt-10 flex items-end gap-4">
-                <div className="h-20 w-20 rounded-[24px] bg-slate-200" />
-                <div className="space-y-2">
-                  <div className="h-4 w-40 rounded bg-slate-200" />
-                  <div className="h-3 w-56 rounded bg-slate-100" />
-                </div>
-              </div>
-              <div className="mt-8 grid gap-4 sm:grid-cols-2">
-                <div className="h-24 rounded-[24px] bg-slate-100" />
-                <div className="h-24 rounded-[24px] bg-slate-100" />
-                <div className="h-24 rounded-[24px] bg-slate-100" />
-                <div className="h-24 rounded-[24px] bg-slate-100" />
-              </div>
-            </div>
+  return (
+    <section className="flex h-full flex-col">
+      <div className="flex flex-col gap-3 border-b border-slate-200 pb-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-100 text-sky-700">
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.9"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M4.5 21V7.875A1.875 1.875 0 0 1 6.375 6h8.379a1.875 1.875 0 0 1 1.326.549l1.371 1.371A1.875 1.875 0 0 1 18 9.246V21m-13.5 0h13.5M9 12h6m-6 3h6"
+              />
+            </svg>
           </div>
+
+          <div>
+            <h3 className="text-xl font-bold tracking-tight text-slate-900">
+              Edit Profile
+            </h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Update your personal information and save the latest details.
+            </p>
+          </div>
+        </div>
+
+        <div className="rounded-xl bg-slate-50 px-4 py-2 text-sm font-medium text-slate-600">
+          {fullName}
         </div>
       </div>
-    );
-  }
 
-  return (
-    <Dashboard
-      title="Edit Profile"
-      subtitle="Update your account information and personal details."
-      token={token}
-      profile={profile}
-      storedUser={storedUser}
-      alerts={
-        pageError ? (
-          <div className="profile-section-enter rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600 shadow-sm">
-            {pageError}
-          </div>
-        ) : null
-      }
-      showHero
-      heroTitle={fullName}
-      heroSubtitle="Update your profile information"
-    >
-      <section className="profile-section-enter-delayed rounded-[28px] border border-slate-200 bg-white p-5 sm:p-6 shadow-sm">
-        <div className="border-b border-slate-200 pb-5">
-          <h3 className="text-xl font-bold tracking-tight text-slate-900">
-            Profile Information
-          </h3>
-          <p className="mt-1 text-sm text-slate-500">
-            Edit your personal information and save the latest details.
-          </p>
+      <form onSubmit={handleSubmit} className="mt-6 flex-1 space-y-6">
+        <div className="grid gap-4 md:grid-cols-2">
+          <InputCard
+            label="First Name"
+            name="firstName"
+            value={editForm.firstName}
+            onChange={handleChange}
+            placeholder="Enter first name"
+          />
+          <InputCard
+            label="Last Name"
+            name="lastName"
+            value={editForm.lastName}
+            onChange={handleChange}
+            placeholder="Enter last name"
+          />
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-          <div className="space-y-4">
-            <div>
-              <h4 className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">
-                Personal Information
-              </h4>
-            </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <InputCard
+            label="Phone Number"
+            name="phone"
+            value={editForm.phone}
+            onChange={handleChange}
+            placeholder="Enter phone number"
+          />
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <FormField
-                label="First Name"
-                name="firstName"
-                value={editForm.firstName}
-                onChange={handleChange}
-                placeholder="Enter first name"
-              />
+          <SelectCard
+            label="Gender"
+            name="gender"
+            value={editForm.gender}
+            onChange={handleChange}
+            placeholder="Select gender"
+            options={["Male", "Female", "Other"]}
+          />
+        </div>
 
-              <FormField
-                label="Last Name"
-                name="lastName"
-                value={editForm.lastName}
-                onChange={handleChange}
-                placeholder="Enter last name"
-              />
-            </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <InputCard
+            label="Date of Birth"
+            name="dob"
+            type="date"
+            value={editForm.dob}
+            onChange={handleChange}
+          />
+        </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <FormField
-                label="Phone Number"
-                name="phone"
-                value={editForm.phone}
-                onChange={handleChange}
-                placeholder="Enter phone number"
-              />
+        <div className="grid gap-4">
+          <InputCard
+            label="Address Line 1"
+            name="addressLine1"
+            value={editForm.addressLine1}
+            onChange={handleChange}
+            placeholder="Enter address line 1"
+            className="md:col-span-2"
+          />
+        </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Gender
-                </label>
-                <select
-                  name="gender"
-                  value={editForm.gender}
-                  onChange={handleChange}
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100"
-                >
-                  <option value="">Select gender</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-            </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <InputCard
+            label="Address Line 2"
+            name="addressLine2"
+            value={editForm.addressLine2}
+            onChange={handleChange}
+            placeholder="Enter address line 2"
+          />
+          <InputCard
+            label="Address Line 3"
+            name="addressLine3"
+            value={editForm.addressLine3}
+            onChange={handleChange}
+            placeholder="Enter address line 3"
+          />
+        </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <FormField
-                label="Date of Birth"
-                name="dob"
-                type="date"
-                value={editForm.dob}
-                onChange={handleChange}
-              />
-            </div>
-          </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <SelectCard
+            label="Country"
+            name="country"
+            value={editForm.country}
+            onChange={handleChange}
+            options={countryOptions}
+            placeholder="Select country"
+          />
 
-          <div className="border-t border-slate-100 pt-6 space-y-4">
-            <div>
-              <h4 className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">
-                Address Information
-              </h4>
-            </div>
+          <SelectCard
+            label="Province / State"
+            name="provinceState"
+            value={editForm.provinceState}
+            onChange={handleChange}
+            options={provinceOptions}
+            placeholder="Select province or state"
+            disabled={!editForm.country}
+          />
+        </div>
 
-            <div className="grid gap-4">
-              <FormField
-                label="Address Line 1"
-                name="addressLine1"
-                value={editForm.addressLine1}
-                onChange={handleChange}
-                placeholder="Enter address line 1"
-              />
-            </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          {editForm.country === SRI_LANKA_NAME ? (
+            <SelectCard
+              label="District"
+              name="district"
+              value={editForm.district}
+              onChange={handleChange}
+              options={districtOptions}
+              placeholder="Select district"
+              disabled={!editForm.provinceState}
+            />
+          ) : (
+            <InputCard
+              label="District"
+              name="district"
+              value={editForm.district}
+              onChange={handleChange}
+              placeholder="Enter district"
+            />
+          )}
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <FormField
-                label="Address Line 2"
-                name="addressLine2"
-                value={editForm.addressLine2}
-                onChange={handleChange}
-                placeholder="Enter address line 2"
-              />
+          <SelectCard
+            label="City"
+            name="city"
+            value={editForm.city}
+            onChange={handleChange}
+            options={cityOptions}
+            placeholder="Select city"
+            disabled={
+              !editForm.provinceState ||
+              (editForm.country === SRI_LANKA_NAME && !editForm.district)
+            }
+          />
+        </div>
 
-              <FormField
-                label="Address Line 3"
-                name="addressLine3"
-                value={editForm.addressLine3}
-                onChange={handleChange}
-                placeholder="Enter address line 3"
-              />
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <SelectField
-                label="Country"
-                name="country"
-                value={editForm.country}
-                onChange={handleChange}
-                options={countryOptions}
-                placeholder="Select country"
-              />
-
-              <SelectField
-                label="Province / State"
-                name="provinceState"
-                value={editForm.provinceState}
-                onChange={handleChange}
-                options={provinceOptions}
-                placeholder="Select province or state"
-                disabled={!editForm.country}
-              />
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              {editForm.country === SRI_LANKA_NAME ? (
-                <SelectField
-                  label="District"
-                  name="district"
-                  value={editForm.district}
-                  onChange={handleChange}
-                  options={districtOptions}
-                  placeholder="Select district"
-                  disabled={!editForm.provinceState}
-                />
-              ) : (
-                <FormField
-                  label="District"
-                  name="district"
-                  value={editForm.district}
-                  onChange={handleChange}
-                  placeholder="Enter district"
-                />
-              )}
-
-              <SelectField
-                label="City"
-                name="city"
-                value={editForm.city}
-                onChange={handleChange}
-                options={cityOptions}
-                placeholder="Select city"
-                disabled={
-                  !editForm.provinceState ||
-                  (editForm.country === SRI_LANKA_NAME && !editForm.district)
-                }
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-3 pt-2 sm:flex-row">
-            <button
-              type="submit"
-              disabled={saving}
-              className="inline-flex items-center justify-center rounded-xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-70"
+        <div className="flex flex-wrap gap-3 pt-2">
+          <button
+            type="submit"
+            disabled={saving}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:opacity-70"
+          >
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
             >
-              {saving ? "Saving..." : "Save Changes"}
-            </button>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+            {saving ? "Saving..." : "Save Changes"}
+          </button>
 
-            <button
-              type="button"
-              onClick={() => navigate(profileBasePath)}
-              className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      </section>
-    </Dashboard>
+          <button
+            type="button"
+            onClick={() => navigate(profileBasePath)}
+            className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </section>
   );
 }
 
-function FormField({
+function InputCard({
   label,
   name,
   value,
@@ -572,30 +527,31 @@ function FormField({
   placeholder = "",
   type = "text",
   disabled = false,
+  className = "",
 }) {
   return (
-    <div>
-      <label className="mb-2 block text-sm font-medium text-slate-700">
-        {label}
-      </label>
-      <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        disabled={disabled}
-        className={`w-full rounded-2xl border px-4 py-3 text-sm font-medium outline-none transition ${
-          disabled
-            ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500"
-            : "border-slate-200 bg-slate-50 text-slate-900 focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100"
-        }`}
-      />
+    <div className={className}>
+      <p className="mb-2 text-sm font-medium text-slate-700">{label}</p>
+      <div className="rounded-2xl border border-slate-100 bg-slate-50 px-5 py-4 transition focus-within:border-sky-200 focus-within:bg-white">
+        <input
+          type={type}
+          name={name}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          disabled={disabled}
+          className={`w-full bg-transparent text-sm font-semibold outline-none ${
+            disabled
+              ? "cursor-not-allowed text-slate-400"
+              : "text-slate-900 placeholder:text-slate-400"
+          }`}
+        />
+      </div>
     </div>
   );
 }
 
-function SelectField({
+function SelectCard({
   label,
   name,
   value,
@@ -606,27 +562,27 @@ function SelectField({
 }) {
   return (
     <div>
-      <label className="mb-2 block text-sm font-medium text-slate-700">
-        {label}
-      </label>
-      <select
-        name={name}
-        value={value}
-        onChange={onChange}
-        disabled={disabled}
-        className={`w-full rounded-2xl border px-4 py-3 text-sm font-medium outline-none transition ${
-          disabled
-            ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500"
-            : "border-slate-200 bg-slate-50 text-slate-900 focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100"
-        }`}
-      >
-        <option value="">{placeholder}</option>
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
+      <p className="mb-2 text-sm font-medium text-slate-700">{label}</p>
+      <div className="rounded-2xl border border-slate-100 bg-slate-50 px-5 py-4 transition focus-within:border-sky-200 focus-within:bg-white">
+        <select
+          name={name}
+          value={value}
+          onChange={onChange}
+          disabled={disabled}
+          className={`w-full bg-transparent text-sm font-semibold outline-none ${
+            disabled
+              ? "cursor-not-allowed text-slate-400"
+              : "text-slate-900"
+          }`}
+        >
+          <option value="">{placeholder}</option>
+          {options.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </div>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import ProfileLayout from "../../components/profile/ProfileLayout";
 import useProfileData from "../../hooks/useProfileData";
 
@@ -96,6 +97,7 @@ export default function Dashboard() {
 
   const {
     profile,
+    setProfile,
     loading,
     pageError,
     setPageError,
@@ -127,8 +129,8 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-[calc(100vh-160px)] px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
+      <div className="min-h-[calc(100vh-160px)] py-8">
+        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
           <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
             <div className="h-32 animate-pulse bg-slate-100" />
             <div className="px-6 pb-6">
@@ -158,7 +160,7 @@ export default function Dashboard() {
       profile={profile}
       storedUser={storedUser}
     >
-      <div className="mx-auto max-w-7xl space-y-6">
+      <div className="mx-auto w-full max-w-6xl space-y-6 px-4 sm:px-6 lg:px-8">
         {pageError ? (
           <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600 shadow-sm">
             {pageError}
@@ -291,17 +293,26 @@ export default function Dashboard() {
               </nav>
             </aside>
 
-            <div className="min-h-[620px] p-5 sm:p-6 lg:min-h-[720px]">
-              <Outlet
-                context={{
-                  profile,
-                  storedUser,
-                  token,
-                  pageError,
-                  setPageError,
-                  profileBasePath,
-                }}
-              />
+            <div className="min-h-[620px] overflow-hidden p-5 sm:p-6 lg:min-h-[720px]">
+              <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0, y: 12, filter: "blur(6px)" }}
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                className="h-full"
+              >
+                <Outlet
+                  context={{
+                    profile,
+                    setProfile,
+                    storedUser,
+                    token,
+                    pageError,
+                    setPageError,
+                    profileBasePath,
+                  }}
+                />
+              </motion.div>
             </div>
           </div>
         </section>

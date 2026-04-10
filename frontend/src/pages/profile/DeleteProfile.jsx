@@ -5,7 +5,6 @@ import { clearAuthSession } from "../../utils/auth";
 
 export default function DeleteProfile() {
   const navigate = useNavigate();
-
   const { setPageError, profileBasePath } = useOutletContext();
 
   const [deletePassword, setDeletePassword] = useState("");
@@ -38,20 +37,26 @@ export default function DeleteProfile() {
     }
   }
 
-  return (
-    <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
-      <h3 className="text-lg font-semibold text-red-700">
-        Delete your account permanently
-      </h3>
-      <p className="mt-2 text-sm leading-6 text-red-600">
-        All account access will be removed. To continue, enter your password and
-        type <span className="font-semibold">delete</span> in the confirmation
-        field.
-      </p>
+return (
+  <div className="flex justify-center">
+    <div className="w-full max-w-2xl">
+      
+      {/* HEADER */}
+      <div className="mb-10">
+        <h2 className="text-3xl font-bold tracking-tight text-slate-900">
+          Delete Account
+        </h2>
+        <p className="mt-3 text-sm text-slate-600">
+          This action is permanent. Enter your password and type{" "}
+          <span className="font-semibold text-red-600">delete</span> to confirm.
+        </p>
+      </div>
 
-      <div className="mt-5 space-y-4">
+      {/* FORM */}
+      <div className="space-y-6">
+        
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
+          <label className="mb-2 block text-sm font-medium text-slate-900">
             Password
           </label>
           <input
@@ -62,12 +67,12 @@ export default function DeleteProfile() {
               setPageError("");
             }}
             placeholder="Enter password"
-            className="w-full rounded-xl border border-red-200 bg-white px-4 py-3 text-sm outline-none focus:border-red-300 focus:ring-4 focus:ring-red-100"
+            className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-4 text-sm text-slate-900 outline-none transition focus:border-red-400 focus:ring-4 focus:ring-red-100"
           />
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
+          <label className="mb-2 block text-sm font-medium text-slate-900">
             Type "delete" to confirm
           </label>
           <input
@@ -78,16 +83,16 @@ export default function DeleteProfile() {
               setPageError("");
             }}
             placeholder='Type "delete"'
-            className="w-full rounded-xl border border-red-200 bg-white px-4 py-3 text-sm outline-none focus:border-red-300 focus:ring-4 focus:ring-red-100"
+            className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-4 text-sm text-slate-900 outline-none transition focus:border-red-400 focus:ring-4 focus:ring-red-100"
           />
         </div>
 
-        <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+        <div className="flex flex-wrap gap-3 pt-4">
           <button
             type="button"
             disabled={deleting}
             onClick={handleDelete}
-            className="rounded-xl border border-red-200 bg-red-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-600 disabled:opacity-70"
+            className="rounded-2xl bg-red-500 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-red-600 disabled:opacity-70"
           >
             {deleting ? "Deleting..." : "Delete My Account"}
           </button>
@@ -95,12 +100,13 @@ export default function DeleteProfile() {
           <button
             type="button"
             onClick={() => navigate(profileBasePath)}
-            className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+            className="rounded-2xl border border-slate-300 bg-white px-6 py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
           >
             Cancel
           </button>
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }
