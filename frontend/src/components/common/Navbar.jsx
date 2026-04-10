@@ -54,8 +54,6 @@ export default function Navbar() {
   );
   const [scrolled, setScrolled] = useState(false);
   const [profileMenuState, setProfileMenuState] = useState("closed");
-  const [ripples, setRipples] = useState([]);
-  const rippleId = useRef(0);
   const profileMenuRef = useRef(null);
   const profileMenuTimeoutRef = useRef(null);
 
@@ -192,19 +190,6 @@ export default function Navbar() {
     });
   }
 
-  function addRipple(e) {
-    const id = rippleId.current++;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    setRipples((r) => [...r, { id, x, y }]);
-
-    setTimeout(() => {
-      setRipples((r) => r.filter((rip) => rip.id !== id));
-    }, 600);
-  }
-
   const navLinks = [
     { to: "/", label: "Home" },
     { to: "/rest-rooms", label: "Rest Rooms" },
@@ -241,10 +226,6 @@ export default function Navbar() {
         @keyframes nb2-fade-down {
           from { opacity: 0; transform: translateY(-8px); }
           to   { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes nb2-ripple {
-          to { transform: scale(5); opacity: 0; }
         }
 
         @keyframes nb2-menu-in {
@@ -321,7 +302,6 @@ export default function Navbar() {
                   <NavLink
                     key={to}
                     to={to}
-                    onClick={addRipple}
                     className={({ isActive }) =>
                       `group relative overflow-hidden rounded-[8px] px-[14px] py-[7px] text-[13.5px] font-medium tracking-[0.05px] no-underline transition-all duration-200 hover:text-slate-900 ${
                         isActive
@@ -336,21 +316,6 @@ export default function Navbar() {
                     <span className="relative z-[1]">{label}</span>
 
                     <span className="pointer-events-none absolute bottom-[4px] left-1/2 h-[3px] w-0 -translate-x-1/2 rounded-full bg-white transition-all duration-300 group-hover:w-[60%]" />
-
-                    {ripples.map((r) => (
-                      <span
-                        key={r.id}
-                        className="pointer-events-none absolute rounded-full bg-sky-300/50"
-                        style={{
-                          left: r.x - 10,
-                          top: r.y - 10,
-                          width: 20,
-                          height: 20,
-                          transform: "scale(0)",
-                          animation: "nb2-ripple 0.6s linear forwards",
-                        }}
-                      />
-                    ))}
                   </NavLink>
                 ))}
               </nav>

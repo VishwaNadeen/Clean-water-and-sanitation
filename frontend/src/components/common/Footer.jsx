@@ -5,7 +5,7 @@ export default function Footer() {
   const year = new Date().getFullYear();
 
   const footerLinkClass =
-    "inline-flex w-fit items-center rounded-full border border-white/35 bg-white/12 px-4 py-2 text-[13px] font-medium text-slate-900/90 no-underline transition-all duration-200 hover:-translate-y-0.5 hover:border-white/60 hover:bg-white/28 hover:text-slate-950";
+    "flex w-full items-center justify-between rounded-2xl border border-white/35 bg-white/14 px-4 py-3 text-[14px] font-medium text-slate-900/90 no-underline shadow-[0_8px_18px_rgba(15,23,42,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:border-white/60 hover:bg-white/26 hover:text-slate-950";
 
   const socialLinkClass =
     "grid h-9 w-9 place-items-center rounded-full border border-white/40 bg-white/14 text-slate-900 transition-all duration-200 hover:-translate-y-0.5 hover:border-white/65 hover:bg-white/30";
@@ -48,7 +48,7 @@ export default function Footer() {
 
         <div className="relative z-[1] mx-auto max-w-[1200px] px-6 pb-6 pt-10">
           <div
-            className="grid gap-8 lg:grid-cols-[1.3fr_0.8fr_0.8fr]"
+            className="grid gap-6 lg:grid-cols-[1.35fr_0.9fr_0.9fr]"
             style={{ animation: "ftFadeUp 0.5s ease-out both" }}
           >
             <div className="rounded-[28px] border border-white/40 bg-white/18 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.10)] backdrop-blur-[10px]">
@@ -74,36 +74,36 @@ export default function Footer() {
               </p>
             </div>
 
-            <div>
-              <div className="mb-4 text-[12px] font-semibold uppercase tracking-[1.4px] text-slate-900/65">
+            <div className="rounded-[28px] border border-white/35 bg-white/12 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur-[8px]">
+              <div className="mb-5 text-[12px] font-semibold uppercase tracking-[1.6px] text-slate-900/65">
                 Explore
               </div>
               <div className="flex flex-col gap-3">
                 <a href="/" className={footerLinkClass}>
-                  Home
+                  <span>Home</span>
                 </a>
                 <a href="#features" className={footerLinkClass}>
-                  Features
+                  <span>Features</span>
                 </a>
                 <a href="#impact" className={footerLinkClass}>
-                  Impact
+                  <span>Impact</span>
                 </a>
               </div>
             </div>
 
-            <div>
-              <div className="mb-4 text-[12px] font-semibold uppercase tracking-[1.4px] text-slate-900/65">
-                Company
+            <div className="rounded-[28px] border border-white/35 bg-white/12 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur-[8px]">
+              <div className="mb-5 text-[12px] font-semibold uppercase tracking-[1.6px] text-slate-900/65">
+                Quick Links
               </div>
               <div className="flex flex-col gap-3">
                 <a href="/about" className={footerLinkClass}>
-                  About Us
+                  <span>About Us</span>
                 </a>
                 <a href="/contact" className={footerLinkClass}>
-                  Contact
+                  <span>Contact</span>
                 </a>
                 <a href="/rest-rooms" className={footerLinkClass}>
-                  Rest Rooms
+                  <span>Rest Rooms</span>
                 </a>
               </div>
             </div>
