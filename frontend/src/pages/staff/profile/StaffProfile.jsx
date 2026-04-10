@@ -12,7 +12,6 @@ import {
 import { updateStoredUser } from "../../../utils/auth";
 
 import EditProfile from "./EditProfile";
-import DetailsProfile from "./ProfileDetails";
 import PasswordProfile from "./PasswordProfile";
 import DeleteRequestProfile from "./DeleteRequestProfile";
 
@@ -528,7 +527,7 @@ export default function StaffProfile() {
       <div className="mx-auto max-w-7xl">
         {toast ? <FloatingToast toast={toast} onClose={() => setToast(null)} /> : null}
 
-        <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <div>
           <section className="rounded-[30px] border border-blue-100 bg-white p-6 shadow-sm">
             {mustChangePassword ? (
               <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
@@ -706,15 +705,66 @@ export default function StaffProfile() {
               </button>
               </div>
             </div>
-          </section>
 
-          <DetailsProfile
-            staff={staff}
-            phoneLabel={phoneLabel}
-            locationLabel={locationLabel}
-            formatDate={formatDate}
-            DetailCard={DetailCard}
-          />
+            <section className="mt-6 rounded-[24px] border border-blue-100 bg-blue-50/40 p-6">
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600">
+                Staff Details
+              </p>
+              <h3 className="mt-2 text-2xl font-bold text-slate-900">
+                Work and contact information
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                This section includes role, assigned base area, and work identity details.
+              </p>
+
+              <div className="mt-6 grid gap-4 md:grid-cols-2">
+                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Phone Number
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-slate-800">
+                    {phoneLabel || "-"}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Gender
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-slate-800">
+                    {staff.gender || "-"}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Base Location
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-slate-800">
+                    {locationLabel || "-"}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Date of Birth
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-slate-800">
+                    {formatDate(staff.dob)}
+                  </p>
+                </div>
+
+                <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Address
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-slate-800">
+                    {staff.address || "-"}
+                  </p>
+                </div>
+              </div>
+            </section>
+          </section>
         </div>
       </div>
 

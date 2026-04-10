@@ -1,5 +1,6 @@
 import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { useMemo, useState } from "react";
+import ConfirmDialog from "../components/common/ConfirmDialog";
 
 function DashboardIcon() {
   return (
@@ -182,6 +183,7 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState({
     staff: true,
     categories: true,
@@ -203,7 +205,7 @@ export default function AdminLayout() {
     return role ? `${role.charAt(0).toUpperCase()}${role.slice(1)}` : "Admin";
   }, [user]);
 
-  const handleLogout = () => {
+  const performLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     navigate("/login");
@@ -443,7 +445,7 @@ export default function AdminLayout() {
             </div>
 
             <button
-              onClick={handleLogout}
+              onClick={() => setLogoutDialogOpen(true)}
               className={`mt-4 flex w-full items-center overflow-hidden rounded-lg bg-red-600 text-sm font-medium text-white transition-all duration-300 ease-out hover:bg-red-500 ${
                 collapsed
                   ? "justify-center px-0 py-3"
@@ -479,6 +481,20 @@ export default function AdminLayout() {
           </main>
         </section>
       </div>
+
+      <ConfirmDialog
+        open={logoutDialogOpen}
+        title="Logout"
+        message="Are you sure you want to logout from your admin account?"
+        confirmText="Logout"
+        cancelText="Stay"
+        tone="danger"
+        onCancel={() => setLogoutDialogOpen(false)}
+        onConfirm={() => {
+          setLogoutDialogOpen(false);
+          performLogout();
+        }}
+      />
     </div>
   );
 }
