@@ -1,8 +1,6 @@
-// src/config/cloudinary.js
 import { v2 as cloudinary } from "cloudinary";
 import dotenv from 'dotenv';
 
-// Ensure environment variables are loaded
 dotenv.config({ quiet: true });
 
 cloudinary.config({
