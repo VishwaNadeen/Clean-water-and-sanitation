@@ -1,4 +1,6 @@
 import { Routes } from "react-router-dom";
+import { Route } from "react-router-dom";
+import MainLayout from "../layouts/MainLayout";
 import PublicRoutes from "./PublicRoutes";
 import AuthRoutes from "./AuthRoutes";
 import HomeRoutes from "./HomeRoutes";
@@ -12,14 +14,16 @@ import IssueRoutes from "./IssueRoutes";
 export default function AppRoutes() {
   return (
     <Routes>
-      {HomeRoutes}
-      {PublicRoutes}
-      {AuthRoutes}
-      {ProfileRoutes}
-      {IssueRoutes}
+      <Route element={<MainLayout />}>
+        {HomeRoutes}
+        {PublicRoutes}
+        {AuthRoutes}
+        {ProfileRoutes}
+        {IssueRoutes}
+        {MapRoutes}
+      </Route>
       {AdminRoutes}
       {StaffRoutes}
-      {MapRoutes}
     </Routes>
   );
 }
