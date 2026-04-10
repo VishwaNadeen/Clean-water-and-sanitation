@@ -7,6 +7,7 @@ import WorkSchedule from "../../models/Staff-Management/WorkScheduleModel.js";
 import { uploadToCloudinary } from "../../utils/issue-reporting/cloudinary.js";
 import mongoose from "mongoose";
 
+const OPEN_WORK_STATUSES = ["Assigned", "Pending"];
 const IN_PROGRESS_WORK_STATUSES = ["InProgress"];
 const RESOLVED_WORK_STATUSES = ["Completed", "Verified"];
 
@@ -39,7 +40,9 @@ const syncIssuesFromWorkSchedules = async (issues) => {
 
     const schedules = await WorkSchedule.find({
         issueId: { $in: issueIds },
-        status: { $in: [...IN_PROGRESS_WORK_STATUSES, ...RESOLVED_WORK_STATUSES] }
+        status: {
+            $in: [...OPEN_WORK_STATUSES, ...IN_PROGRESS_WORK_STATUSES, ...RESOLVED_WORK_STATUSES]
+        }
     })
         .select("issueId status completedAt verifiedAt staffNote issuesFound materialsUsed")
         .sort({ verifiedAt: -1, completedAt: -1, updatedAt: -1 })
@@ -64,6 +67,28 @@ const syncIssuesFromWorkSchedules = async (issues) => {
         const issueId = issue?._id?.toString();
         const schedule = issueId ? latestScheduleByIssue.get(issueId) : null;
         if (!schedule) {
+            continue;
+        }
+
+        if (OPEN_WORK_STATUSES.includes(schedule.status)) {
+            if (issue.status !== "OPEN" || issue.resolvedAt || issue.resolutionNote) {
+                bulkUpdates.push({
+                    updateOne: {
+                        filter: { _id: issue._id },
+                        update: {
+                            $set: {
+                                status: "OPEN",
+                                resolvedAt: null,
+                                resolutionNote: ""
+                            }
+                        }
+                    }
+                });
+            }
+
+            issue.status = "OPEN";
+            issue.resolvedAt = null;
+            issue.resolutionNote = "";
             continue;
         }
 

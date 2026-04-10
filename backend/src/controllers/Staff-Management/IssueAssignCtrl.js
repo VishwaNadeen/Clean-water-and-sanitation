@@ -48,6 +48,30 @@ const setIfPathExists = (doc, path, value) => {
   if (doc?.schema?.path(path)) doc[path] = value;
 };
 
+// safe status setter (avoid enum validation crash)
+const setIssueStatusSafely = (issueDoc, preferredStatus) => {
+  if (!issueDoc?.schema?.path("status")) return;
+
+  const allowed = issueDoc.schema.path("status").enumValues || [];
+  if (allowed.length === 0) return;
+
+  if (allowed.includes(preferredStatus)) {
+    issueDoc.status = preferredStatus;
+    return;
+  }
+
+  const fallback =
+    (allowed.includes("InProgress") && "InProgress") ||
+    (allowed.includes("OPEN") && "OPEN") ||
+    (allowed.includes("Open") && "Open") ||
+    (allowed.includes("PENDING") && "PENDING") ||
+    (allowed.includes("Pending") && "Pending") ||
+    (allowed.includes("Assigned") && "Assigned") ||
+    null;
+
+  if (fallback) issueDoc.status = fallback;
+};
+
 /**
  * POST /api/manager/issue-assign/:issueId/assign
  * Body: { staffId, date, startTime, endTime, title, issueTaskType, restroomId, restroomLabel, managerNote }
@@ -194,9 +218,10 @@ export const assignIssueToStaff = async (req, res) => {
 
     const schedule = await WorkSchedule.create(scheduleData);
 
-    // -------- update issue link fields only --------
+    // -------- update issue safely (avoid enum crash) --------
     setIfPathExists(issue, "assignedStaffId", staffId);
     setIfPathExists(issue, "assignedAt", new Date());
+    setIssueStatusSafely(issue, "IN_PROGRESS");
 
     await issue.save();
 
