@@ -61,8 +61,6 @@ const syncIssuesFromWorkSchedules = async (issues) => {
         latestScheduleByIssue.set(key, schedule);
     }
 
-    const bulkUpdates = [];
-
     for (const issue of issueList) {
         const issueId = issue?._id?.toString();
         const schedule = issueId ? latestScheduleByIssue.get(issueId) : null;
@@ -71,21 +69,6 @@ const syncIssuesFromWorkSchedules = async (issues) => {
         }
 
         if (OPEN_WORK_STATUSES.includes(schedule.status)) {
-            if (issue.status !== "OPEN" || issue.resolvedAt || issue.resolutionNote) {
-                bulkUpdates.push({
-                    updateOne: {
-                        filter: { _id: issue._id },
-                        update: {
-                            $set: {
-                                status: "OPEN",
-                                resolvedAt: null,
-                                resolutionNote: ""
-                            }
-                        }
-                    }
-                });
-            }
-
             issue.status = "OPEN";
             issue.resolvedAt = null;
             issue.resolutionNote = "";
@@ -93,50 +76,19 @@ const syncIssuesFromWorkSchedules = async (issues) => {
         }
 
         if (IN_PROGRESS_WORK_STATUSES.includes(schedule.status)) {
-            if (issue.status !== "IN_PROGRESS") {
-                bulkUpdates.push({
-                    updateOne: {
-                        filter: { _id: issue._id },
-                        update: {
-                            $set: {
-                                status: "IN_PROGRESS"
-                            }
-                        }
-                    }
-                });
-            }
-
             issue.status = "IN_PROGRESS";
+            issue.resolvedAt = null;
             continue;
         }
 
         const resolvedAt = schedule.verifiedAt || schedule.completedAt || issue.resolvedAt || new Date();
         const resolutionNote = extractWorkResolutionNote(schedule);
 
-        if (issue.status !== "RESOLVED" || !issue.resolvedAt || (!issue.resolutionNote && resolutionNote)) {
-            bulkUpdates.push({
-                updateOne: {
-                    filter: { _id: issue._id },
-                    update: {
-                        $set: {
-                            status: "RESOLVED",
-                            resolvedAt,
-                            ...(resolutionNote ? { resolutionNote } : {})
-                        }
-                    }
-                }
-            });
-        }
-
         issue.status = "RESOLVED";
         issue.resolvedAt = resolvedAt;
         if (resolutionNote && !issue.resolutionNote) {
             issue.resolutionNote = resolutionNote;
         }
-    }
-
-    if (bulkUpdates.length) {
-        await Issue.bulkWrite(bulkUpdates);
     }
 };
 
