@@ -224,8 +224,8 @@ export const assignIssueToStaff = async (req, res) => {
     setIfPathExists(issue, "assignedStaffId", staffId);
     setIfPathExists(issue, "assignedAt", new Date());
 
-    // won't crash even if "Assigned" is NOT in Issue enum
-    setIssueStatusSafely(issue, "Assigned");
+    // Move complaint workflow forward once a staff member is assigned.
+    setIssueStatusSafely(issue, "IN_PROGRESS");
 
     await issue.save();
 

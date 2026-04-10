@@ -3,8 +3,98 @@ import IssueCategory from "../../models/issue-reporting/issueCategoryModel.js";
 import Province from "../../models/issue-reporting/provinceModel.js";
 import District from "../../models/issue-reporting/districtModel.js";
 import City from "../../models/issue-reporting/cityModel.js";
+import WorkSchedule from "../../models/Staff-Management/WorkScheduleModel.js";
 import { uploadToCloudinary } from "../../utils/issue-reporting/cloudinary.js";
 import mongoose from "mongoose";
+
+const RESOLVED_WORK_STATUSES = ["Completed", "Verified"];
+
+const extractWorkResolutionNote = (schedule) => {
+    const parts = [
+        schedule?.staffNote,
+        schedule?.issuesFound,
+        schedule?.materialsUsed
+    ]
+        .map((value) => (typeof value === "string" ? value.trim() : ""))
+        .filter(Boolean);
+
+    return parts.join(" | ");
+};
+
+const syncIssuesFromWorkSchedules = async (issues) => {
+    const issueList = Array.isArray(issues) ? issues : [issues].filter(Boolean);
+    if (!issueList.length) {
+        return;
+    }
+
+    const issueIds = issueList
+        .map((issue) => issue?._id)
+        .filter(Boolean)
+        .map((id) => id.toString());
+
+    if (!issueIds.length) {
+        return;
+    }
+
+    const schedules = await WorkSchedule.find({
+        issueId: { $in: issueIds },
+        status: { $in: RESOLVED_WORK_STATUSES }
+    })
+        .select("issueId status completedAt verifiedAt staffNote issuesFound materialsUsed")
+        .sort({ verifiedAt: -1, completedAt: -1, updatedAt: -1 })
+        .lean();
+
+    if (!schedules.length) {
+        return;
+    }
+
+    const latestResolvedScheduleByIssue = new Map();
+    for (const schedule of schedules) {
+        const key = schedule.issueId?.toString();
+        if (!key || latestResolvedScheduleByIssue.has(key)) {
+            continue;
+        }
+        latestResolvedScheduleByIssue.set(key, schedule);
+    }
+
+    const bulkUpdates = [];
+
+    for (const issue of issueList) {
+        const issueId = issue?._id?.toString();
+        const schedule = issueId ? latestResolvedScheduleByIssue.get(issueId) : null;
+        if (!schedule) {
+            continue;
+        }
+
+        const resolvedAt = schedule.verifiedAt || schedule.completedAt || issue.resolvedAt || new Date();
+        const resolutionNote = extractWorkResolutionNote(schedule);
+
+        if (issue.status !== "RESOLVED" || !issue.resolvedAt || (!issue.resolutionNote && resolutionNote)) {
+            bulkUpdates.push({
+                updateOne: {
+                    filter: { _id: issue._id },
+                    update: {
+                        $set: {
+                            status: "RESOLVED",
+                            resolvedAt,
+                            ...(resolutionNote ? { resolutionNote } : {})
+                        }
+                    }
+                }
+            });
+        }
+
+        issue.status = "RESOLVED";
+        issue.resolvedAt = resolvedAt;
+        if (resolutionNote && !issue.resolutionNote) {
+            issue.resolutionNote = resolutionNote;
+        }
+    }
+
+    if (bulkUpdates.length) {
+        await Issue.bulkWrite(bulkUpdates);
+    }
+};
 
 // CREATE ISSUE
 export const createIssue = async (req, res) => {
@@ -335,6 +425,8 @@ export const getAllIssues = async (req, res) => {
             .skip(skip)
             .limit(parseInt(limit));
 
+        await syncIssuesFromWorkSchedules(issues);
+
         const total = await Issue.countDocuments(filter);
 
         // Filter issues to show only selected subcategory
@@ -441,6 +533,8 @@ export const getIssueById = async (req, res) => {
                 message: "Access denied. You can only view your own issues."
             });
         }
+
+        await syncIssuesFromWorkSchedules(issue);
 
         // Add subcategory name and clean response
         let subCategoryName = 'Unknown Subcategory';
@@ -886,6 +980,8 @@ export const getUserIssues = async (req, res) => {
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(parseInt(limit));
+
+        await syncIssuesFromWorkSchedules(userIssues);
 
         const total = await Issue.countDocuments(filter);
 
