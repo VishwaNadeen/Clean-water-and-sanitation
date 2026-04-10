@@ -247,9 +247,9 @@ export default function RestroomMap() {
     setFlyTo({ lat: rLat, lng: rLng, zoom: 16 });
   }
 
-  // Report Issue — check login first
+  // Report Complaint — check login first
   function handleReportIssue() {
-    const url = `/report-issue?restroomId=${selectedRestroom._id}&restroomName=${encodeURIComponent(selectedRestroom.name)}`;
+    const url = `/complaints/report?restroomId=${selectedRestroom._id}&restroomName=${encodeURIComponent(selectedRestroom.name)}`;
     if (!isLoggedIn()) {
       navigate("/login", {
         state: {
@@ -479,7 +479,7 @@ export default function RestroomMap() {
                   className="flex flex-col items-center gap-1.5 py-3 rounded-2xl bg-slate-50 hover:bg-slate-100 transition-colors"
                 >
                   <span className="text-2xl">⚠️</span>
-                  <span className="text-xs font-semibold text-slate-600">Report Issue</span>
+                  <span className="text-xs font-semibold text-slate-600">Report Complaint</span>
                 </button>
               </div>
 
