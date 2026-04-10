@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import ProfileLayout from "../../components/profile/ProfileLayout";
 import useProfileData from "../../hooks/useProfileData";
 import {
   fetchWorldCitiesByDistrict,
@@ -10,6 +9,7 @@ import {
   fetchWorldStates,
 } from "../../services/worldLocationService";
 import { updateMyProfile } from "../../services/profileService";
+import Dashboard from "./Dashboard";
 
 const SRI_LANKA_NAME = "Sri Lanka";
 
@@ -219,14 +219,6 @@ export default function EditProfile() {
     };
   }, [editForm.country, editForm.district, editForm.provinceState]);
 
-  const profileImageSrc = profile?.profileImageUrl || "";
-  const profileImageInitial = String(
-    profile?.firstName || storedUser?.fullName || storedUser?.email || "U"
-  )
-    .trim()
-    .charAt(0)
-    .toUpperCase();
-
   const fullName = useMemo(() => {
     return (
       `${editForm.firstName || ""} ${editForm.lastName || ""}`.trim() ||
@@ -366,264 +358,209 @@ export default function EditProfile() {
   }
 
   return (
-    <ProfileLayout
+    <Dashboard
       title="Edit Profile"
       subtitle="Update your account information and personal details."
       token={token}
       profile={profile}
       storedUser={storedUser}
-    >
-      <div className="mx-auto max-w-6xl space-y-6">
-        {pageError ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600 shadow-sm">
+      alerts={
+        pageError ? (
+          <div className="profile-section-enter rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600 shadow-sm">
             {pageError}
           </div>
-        ) : null}
+        ) : null
+      }
+      showHero
+      heroTitle={fullName}
+      heroSubtitle="Update your profile information"
+    >
+      <section className="profile-section-enter-delayed rounded-[28px] border border-slate-200 bg-white p-5 sm:p-6 shadow-sm">
+        <div className="border-b border-slate-200 pb-5">
+          <h3 className="text-xl font-bold tracking-tight text-slate-900">
+            Profile Information
+          </h3>
+          <p className="mt-1 text-sm text-slate-500">
+            Edit your personal information and save the latest details.
+          </p>
+        </div>
 
-        {/* HERO */}
-        <section
-          className="relative overflow-hidden rounded-[30px] border border-sky-100 shadow-[0_20px_55px_rgba(56,189,248,0.12)]"
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(143,208,251,0.88) 0%, rgba(83,179,245,0.94) 45%, rgba(67,160,232,0.98) 100%)",
-          }}
-        >
-          <div
-            className="pointer-events-none absolute inset-x-0 top-0 h-px"
-            style={{
-              background:
-                "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.85) 50%, transparent 100%)",
-            }}
-          />
-          <div
-            className="pointer-events-none absolute -left-14 top-0 h-40 w-40 rounded-full"
-            style={{
-              background:
-                "radial-gradient(circle, rgba(255,255,255,0.22), transparent 72%)",
-            }}
-          />
-          <div
-            className="pointer-events-none absolute -right-10 bottom-0 h-44 w-44 rounded-full"
-            style={{
-              background:
-                "radial-gradient(circle, rgba(255,255,255,0.18), transparent 72%)",
-            }}
-          />
+        <form onSubmit={handleSubmit} className="mt-6 space-y-6">
+          <div className="space-y-4">
+            <div>
+              <h4 className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">
+                Personal Information
+              </h4>
+            </div>
 
-          <div className="relative flex min-h-[140px] items-center justify-start px-5 py-4 sm:px-6 lg:px-8">
-            <div className="flex flex-row items-center justify-start gap-5">
-              {profileImageSrc ? (
-                <img
-                  src={profileImageSrc}
-                  alt="Profile"
-                  className="h-28 w-28 rounded-[28px] border-4 border-white object-cover bg-white shadow-[0_18px_38px_rgba(59,130,246,0.18)]"
+            <div className="grid gap-4 md:grid-cols-2">
+              <FormField
+                label="First Name"
+                name="firstName"
+                value={editForm.firstName}
+                onChange={handleChange}
+                placeholder="Enter first name"
+              />
+
+              <FormField
+                label="Last Name"
+                name="lastName"
+                value={editForm.lastName}
+                onChange={handleChange}
+                placeholder="Enter last name"
+              />
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <FormField
+                label="Phone Number"
+                name="phone"
+                value={editForm.phone}
+                onChange={handleChange}
+                placeholder="Enter phone number"
+              />
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Gender
+                </label>
+                <select
+                  name="gender"
+                  value={editForm.gender}
+                  onChange={handleChange}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100"
+                >
+                  <option value="">Select gender</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <FormField
+                label="Date of Birth"
+                name="dob"
+                type="date"
+                value={editForm.dob}
+                onChange={handleChange}
+              />
+            </div>
+          </div>
+
+          <div className="border-t border-slate-100 pt-6 space-y-4">
+            <div>
+              <h4 className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">
+                Address Information
+              </h4>
+            </div>
+
+            <div className="grid gap-4">
+              <FormField
+                label="Address Line 1"
+                name="addressLine1"
+                value={editForm.addressLine1}
+                onChange={handleChange}
+                placeholder="Enter address line 1"
+              />
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <FormField
+                label="Address Line 2"
+                name="addressLine2"
+                value={editForm.addressLine2}
+                onChange={handleChange}
+                placeholder="Enter address line 2"
+              />
+
+              <FormField
+                label="Address Line 3"
+                name="addressLine3"
+                value={editForm.addressLine3}
+                onChange={handleChange}
+                placeholder="Enter address line 3"
+              />
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <SelectField
+                label="Country"
+                name="country"
+                value={editForm.country}
+                onChange={handleChange}
+                options={countryOptions}
+                placeholder="Select country"
+              />
+
+              <SelectField
+                label="Province / State"
+                name="provinceState"
+                value={editForm.provinceState}
+                onChange={handleChange}
+                options={provinceOptions}
+                placeholder="Select province or state"
+                disabled={!editForm.country}
+              />
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              {editForm.country === SRI_LANKA_NAME ? (
+                <SelectField
+                  label="District"
+                  name="district"
+                  value={editForm.district}
+                  onChange={handleChange}
+                  options={districtOptions}
+                  placeholder="Select district"
+                  disabled={!editForm.provinceState}
                 />
               ) : (
-                <div className="grid h-28 w-28 place-items-center rounded-[28px] border-4 border-white bg-white text-4xl font-bold text-sky-700 shadow-[0_18px_38px_rgba(59,130,246,0.18)]">
-                  {profileImageInitial}
-                </div>
+                <FormField
+                  label="District"
+                  name="district"
+                  value={editForm.district}
+                  onChange={handleChange}
+                  placeholder="Enter district"
+                />
               )}
 
-              <div>
-                <h2 className="whitespace-nowrap text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
-                  {fullName}
-                </h2>
-                <p className="mt-2 text-sm font-medium text-slate-700">
-                  Update your profile information
-                </p>
-              </div>
+              <SelectField
+                label="City"
+                name="city"
+                value={editForm.city}
+                onChange={handleChange}
+                options={cityOptions}
+                placeholder="Select city"
+                disabled={
+                  !editForm.provinceState ||
+                  (editForm.country === SRI_LANKA_NAME && !editForm.district)
+                }
+              />
             </div>
           </div>
-        </section>
 
-        {/* FORM CARD */}
-        <section className="rounded-[28px] border border-slate-200 bg-white p-5 sm:p-6 shadow-sm">
-          <div className="border-b border-slate-200 pb-5">
-            <h3 className="text-xl font-bold tracking-tight text-slate-900">
-              Profile Information
-            </h3>
-            <p className="mt-1 text-sm text-slate-500">
-              Edit your personal information and save the latest details.
-            </p>
+          <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex items-center justify-center rounded-xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate(profileBasePath)}
+              className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+            >
+              Cancel
+            </button>
           </div>
-
-          <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">
-                  Personal Information
-                </h4>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <FormField
-                  label="First Name"
-                  name="firstName"
-                  value={editForm.firstName}
-                  onChange={handleChange}
-                  placeholder="Enter first name"
-                />
-
-                <FormField
-                  label="Last Name"
-                  name="lastName"
-                  value={editForm.lastName}
-                  onChange={handleChange}
-                  placeholder="Enter last name"
-                />
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <FormField
-                  label="Phone Number"
-                  name="phone"
-                  value={editForm.phone}
-                  onChange={handleChange}
-                  placeholder="Enter phone number"
-                />
-
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Gender
-                  </label>
-                  <select
-                    name="gender"
-                    value={editForm.gender}
-                    onChange={handleChange}
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100"
-                  >
-                    <option value="">Select gender</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <FormField
-                  label="Date of Birth"
-                  name="dob"
-                  type="date"
-                  value={editForm.dob}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-
-            <div className="border-t border-slate-100 pt-6 space-y-4">
-              <div>
-                <h4 className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">
-                  Address Information
-                </h4>
-              </div>
-
-              <div className="grid gap-4">
-                <FormField
-                  label="Address Line 1"
-                  name="addressLine1"
-                  value={editForm.addressLine1}
-                  onChange={handleChange}
-                  placeholder="Enter address line 1"
-                />
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <FormField
-                  label="Address Line 2"
-                  name="addressLine2"
-                  value={editForm.addressLine2}
-                  onChange={handleChange}
-                  placeholder="Enter address line 2"
-                />
-
-                <FormField
-                  label="Address Line 3"
-                  name="addressLine3"
-                  value={editForm.addressLine3}
-                  onChange={handleChange}
-                  placeholder="Enter address line 3"
-                />
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <SelectField
-                  label="Country"
-                  name="country"
-                  value={editForm.country}
-                  onChange={handleChange}
-                  options={countryOptions}
-                  placeholder="Select country"
-                />
-
-                <SelectField
-                  label="Province / State"
-                  name="provinceState"
-                  value={editForm.provinceState}
-                  onChange={handleChange}
-                  options={provinceOptions}
-                  placeholder="Select province or state"
-                  disabled={!editForm.country}
-                />
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                {editForm.country === SRI_LANKA_NAME ? (
-                  <SelectField
-                    label="District"
-                    name="district"
-                    value={editForm.district}
-                    onChange={handleChange}
-                    options={districtOptions}
-                    placeholder="Select district"
-                    disabled={!editForm.provinceState}
-                  />
-                ) : (
-                  <FormField
-                    label="District"
-                    name="district"
-                    value={editForm.district}
-                    onChange={handleChange}
-                    placeholder="Enter district"
-                  />
-                )}
-
-                <SelectField
-                  label="City"
-                  name="city"
-                  value={editForm.city}
-                  onChange={handleChange}
-                  options={cityOptions}
-                  placeholder="Select city"
-                  disabled={
-                    !editForm.provinceState ||
-                    (editForm.country === SRI_LANKA_NAME && !editForm.district)
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-3 pt-2 sm:flex-row">
-              <button
-                type="submit"
-                disabled={saving}
-                className="inline-flex items-center justify-center rounded-xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                {saving ? "Saving..." : "Save Changes"}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => navigate(profileBasePath)}
-                className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </section>
-      </div>
-    </ProfileLayout>
+        </form>
+      </section>
+    </Dashboard>
   );
 }
 
@@ -650,7 +587,7 @@ function FormField({
         disabled={disabled}
         className={`w-full rounded-2xl border px-4 py-3 text-sm font-medium outline-none transition ${
           disabled
-            ? "border-slate-200 bg-slate-100 text-slate-500 cursor-not-allowed"
+            ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500"
             : "border-slate-200 bg-slate-50 text-slate-900 focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100"
         }`}
       />

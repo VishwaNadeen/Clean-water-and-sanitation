@@ -1,18 +1,13 @@
 import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import ProfileLayout from "../../components/profile/ProfileLayout";
-import useProfileData from "../../hooks/useProfileData";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import { changeMyPassword } from "../../services/profileService";
 import { updateStoredUser } from "../../utils/auth";
 
 export default function ChangePassword() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { profile, loading, pageError, setPageError, storedUser, token } =
-    useProfileData();
-  const profileBasePath = location.pathname.startsWith("/staff/profile")
-    ? "/staff/profile"
-    : "/profile";
+
+  const { profile, storedUser, token, setPageError, profileBasePath } =
+    useOutletContext();
 
   const [formData, setFormData] = useState({
     currentPassword: "",
@@ -75,30 +70,8 @@ export default function ChangePassword() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-[calc(100vh-160px)] px-4 py-10">
-        <div className="mx-auto max-w-6xl rounded-[28px] border border-sky-200 bg-white/95 p-6">
-          <p className="text-slate-600">Loading profile...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <ProfileLayout
-      title="Change Password"
-      subtitle="Update your account password securely."
-      token={token}
-      profile={profile}
-      storedUser={storedUser}
-    >
-      {pageError ? (
-        <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-          {pageError}
-        </div>
-      ) : null}
-
+    <div>
       {successMessage ? (
         <div className="mb-5 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-600">
           {successMessage}
@@ -163,6 +136,6 @@ export default function ChangePassword() {
           </button>
         </div>
       </form>
-    </ProfileLayout>
+    </div>
   );
 }
