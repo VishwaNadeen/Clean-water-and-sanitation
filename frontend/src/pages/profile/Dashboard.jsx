@@ -129,8 +129,8 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-[calc(100vh-160px)] py-8">
-        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+      <div className="min-h-[calc(100vh-160px)] py-2 sm:py-3">
+        <div className="w-full">
           <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
             <div className="h-32 animate-pulse bg-slate-100" />
             <div className="px-6 pb-6">
@@ -160,7 +160,7 @@ export default function Dashboard() {
       profile={profile}
       storedUser={storedUser}
     >
-      <div className="mx-auto w-full max-w-6xl space-y-6 px-4 sm:px-6 lg:px-8">
+      <div className="w-full space-y-6">
         {pageError ? (
           <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600 shadow-sm">
             {pageError}

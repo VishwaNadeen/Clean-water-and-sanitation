@@ -1,5 +1,4 @@
 import { Navigate, Route } from "react-router-dom";
-import MainLayout from "../layouts/MainLayout.jsx";
 import ProtectedRoute from "../components/common/ProtectedRoute.jsx";
 import Dashboard from "../pages/profile/Dashboard.jsx";
 import Profile from "../pages/profile/Profile.jsx";
@@ -21,11 +20,7 @@ function UserOnlyProfile({ children, fallbackPath }) {
 
 const ProfileRoutes = (
   <Route
-    element={
-      <ProtectedRoute>
-        <MainLayout />
-      </ProtectedRoute>
-    }
+    element={<ProtectedRoute />}
   >
     <Route
       path="/profile"

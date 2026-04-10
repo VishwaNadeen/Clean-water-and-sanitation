@@ -29,14 +29,10 @@
  */
 
 import { Route } from "react-router-dom";
-import MainLayout   from "../layouts/MainLayout";
 import RestroomMap  from "../pages/map/RestroomMap";
 
 const MapRoutes = (
-  // MainLayout wraps everything — gives us Navbar + Footer automatically
-  <Route element={<MainLayout />}>
-    <Route path="/rest-rooms" element={<RestroomMap />} />
-  </Route>
+  <Route path="/rest-rooms" element={<RestroomMap />} />
 );
 
 export default MapRoutes;

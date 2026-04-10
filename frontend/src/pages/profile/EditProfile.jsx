@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import {
   fetchWorldCitiesByDistrict,
@@ -8,6 +8,7 @@ import {
   fetchWorldStates,
 } from "../../services/worldLocationService";
 import { updateMyProfile } from "../../services/profileService";
+import { updateStoredUser } from "../../utils/auth";
 
 const SRI_LANKA_NAME = "Sri Lanka";
 
@@ -310,6 +311,18 @@ export default function EditProfile() {
         setProfile(updatedProfile);
       }
 
+      updateStoredUser({
+        fullName:
+          updatedProfile?.fullName ||
+          [updatedProfile?.firstName, updatedProfile?.lastName]
+            .filter(Boolean)
+            .join(" ") ||
+          `${editForm.firstName} ${editForm.lastName}`.trim(),
+        firstName: updatedProfile?.firstName || editForm.firstName,
+        lastName: updatedProfile?.lastName || editForm.lastName,
+        email: updatedProfile?.email || storedUser?.email || "",
+      });
+
       navigate(profileBasePath);
     } catch (error) {
       setPageError(error.message || "Failed to update profile.");
@@ -387,6 +400,7 @@ export default function EditProfile() {
             onChange={handleChange}
             placeholder="Select gender"
             options={["Male", "Female", "Other"]}
+            searchable={false}
           />
         </div>
 
@@ -436,6 +450,7 @@ export default function EditProfile() {
             onChange={handleChange}
             options={countryOptions}
             placeholder="Select country"
+            preferOpenUpward
           />
 
           <SelectCard
@@ -446,6 +461,7 @@ export default function EditProfile() {
             options={provinceOptions}
             placeholder="Select province or state"
             disabled={!editForm.country}
+            preferOpenUpward
           />
         </div>
 
@@ -459,6 +475,7 @@ export default function EditProfile() {
               options={districtOptions}
               placeholder="Select district"
               disabled={!editForm.provinceState}
+              preferOpenUpward
             />
           ) : (
             <InputCard
@@ -481,6 +498,7 @@ export default function EditProfile() {
               !editForm.provinceState ||
               (editForm.country === SRI_LANKA_NAME && !editForm.district)
             }
+            preferOpenUpward
           />
         </div>
 
@@ -532,7 +550,7 @@ function InputCard({
   return (
     <div className={className}>
       <p className="mb-2 text-sm font-medium text-slate-700">{label}</p>
-      <div className="rounded-2xl border border-slate-100 bg-slate-50 px-5 py-4 transition focus-within:border-sky-200 focus-within:bg-white">
+      <div className="rounded-2xl border border-sky-200 bg-white px-5 py-4 transition focus-within:border-sky-400 focus-within:ring-4 focus-within:ring-sky-100">
         <input
           type={type}
           name={name}
@@ -559,30 +577,205 @@ function SelectCard({
   options,
   placeholder,
   disabled = false,
+  preferOpenUpward = false,
+  searchable = true,
 }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [opensUpward, setOpensUpward] = useState(false);
+  const [menuMaxHeight, setMenuMaxHeight] = useState(320);
+  const [searchTerm, setSearchTerm] = useState("");
+  const containerRef = useRef(null);
+  const searchInputRef = useRef(null);
+
+  const filteredOptions = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+
+    if (!normalizedSearch) {
+      return options;
+    }
+
+    return options.filter((option) =>
+      String(option).toLowerCase().includes(normalizedSearch)
+    );
+  }, [options, searchTerm]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    function handleClickOutside(event) {
+      if (!containerRef.current?.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    function updateDropdownPlacement() {
+      if (!containerRef.current) return;
+
+      const rect = containerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      const nextOpensUpward =
+        preferOpenUpward || (spaceBelow < 280 && spaceAbove > spaceBelow);
+      const availableSpace = nextOpensUpward ? spaceAbove - 24 : spaceBelow - 24;
+
+      setOpensUpward(nextOpensUpward);
+      setMenuMaxHeight(Math.max(180, Math.min(320, availableSpace)));
+    }
+
+    updateDropdownPlacement();
+    setSearchTerm("");
+
+    window.addEventListener("resize", updateDropdownPlacement);
+    window.addEventListener("scroll", updateDropdownPlacement, true);
+
+    return () => {
+      window.removeEventListener("resize", updateDropdownPlacement);
+      window.removeEventListener("scroll", updateDropdownPlacement, true);
+    };
+  }, [isOpen, preferOpenUpward]);
+
+  useEffect(() => {
+    if (isOpen && searchable) {
+      searchInputRef.current?.focus();
+    }
+  }, [isOpen, searchable]);
+
+  function handleSelect(nextValue) {
+    onChange({
+      target: {
+        name,
+        value: nextValue,
+      },
+    });
+    setIsOpen(false);
+  }
+
+  function handleKeyDown(event) {
+    if (disabled) return;
+
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      setIsOpen((prev) => !prev);
+    }
+
+    if (event.key === "Escape") {
+      setIsOpen(false);
+    }
+  }
+
   return (
-    <div>
+    <div ref={containerRef} className="relative">
       <p className="mb-2 text-sm font-medium text-slate-700">{label}</p>
-      <div className="rounded-2xl border border-slate-100 bg-slate-50 px-5 py-4 transition focus-within:border-sky-200 focus-within:bg-white">
-        <select
-          name={name}
-          value={value}
-          onChange={onChange}
-          disabled={disabled}
-          className={`w-full bg-transparent text-sm font-semibold outline-none ${
+      <button
+        type="button"
+        onClick={() => !disabled && setIsOpen((prev) => !prev)}
+        disabled={disabled}
+        className={`flex w-full items-center justify-between rounded-2xl border bg-white px-5 py-4 text-left text-sm font-semibold outline-none transition ${
+          disabled
+            ? "cursor-not-allowed border-slate-200 text-slate-400"
+            : isOpen
+              ? "border-sky-400 text-slate-900 ring-4 ring-sky-100"
+              : "cursor-pointer border-sky-200 text-slate-900"
+        }`}
+        onKeyDown={handleKeyDown}
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+      >
+        <span className={value ? "text-slate-900" : "text-slate-400"}>
+          {value || placeholder}
+        </span>
+        <svg
+          className={`h-4 w-4 shrink-0 transition ${
             disabled
-              ? "cursor-not-allowed text-slate-400"
-              : "text-slate-900"
+              ? "text-slate-300"
+              : isOpen
+                ? "rotate-180 text-sky-500"
+                : "text-sky-500"
+          }`}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="m6 9 6 6 6-6"
+          />
+        </svg>
+      </button>
+
+      {!disabled && isOpen ? (
+        <div
+          className={`absolute left-0 right-0 z-30 overflow-hidden rounded-2xl border border-sky-200 bg-white shadow-[0_18px_45px_rgba(14,116,144,0.16)] ${
+            opensUpward ? "bottom-[calc(100%+0.5rem)]" : "top-[calc(100%+0.5rem)]"
           }`}
         >
-          <option value="">{placeholder}</option>
-          {options.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      </div>
+          {searchable ? (
+            <div className="border-b border-sky-100 p-3">
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    setIsOpen(false);
+                  }
+                }}
+                placeholder={`Search ${label.toLowerCase()}`}
+                className="w-full rounded-xl border border-sky-200 bg-sky-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100"
+              />
+            </div>
+          ) : null}
+
+          <div className="overflow-y-auto py-2" style={{ maxHeight: menuMaxHeight }}>
+            <button
+              type="button"
+              onClick={() => handleSelect("")}
+              className={`block w-full px-5 py-3 text-left text-sm transition ${
+                value
+                  ? "text-slate-500 hover:bg-sky-50 hover:text-sky-700"
+                  : "bg-sky-600 font-semibold text-white"
+              }`}
+            >
+              {placeholder}
+            </button>
+
+            {filteredOptions.length ? (
+              filteredOptions.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => handleSelect(option)}
+                  className={`block w-full px-5 py-3 text-left text-sm transition ${
+                    value === option
+                      ? "bg-sky-600 font-semibold text-white"
+                      : "text-slate-700 hover:bg-sky-50 hover:text-sky-700"
+                  }`}
+                >
+                  {option}
+                </button>
+              ))
+            ) : (
+              <div className="px-5 py-4 text-sm text-slate-500">
+                No matching options found.
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

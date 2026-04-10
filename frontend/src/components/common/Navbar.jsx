@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import {
   clearAuthSession,
@@ -11,10 +11,44 @@ import { getMyProfile } from "../../services/profileService";
 const NAVBAR_LOGO_URL =
   "https://api.iconify.design/material-symbols/wc-rounded.svg?color=%23000000";
 
+function getDisplayName(user) {
+  if (!user) return "My Profile";
+
+  const fullName = String(
+    user.fullName ||
+      [user.firstName, user.lastName].filter(Boolean).join(" ") ||
+      user.username ||
+      ""
+  ).trim();
+
+  if (fullName) return fullName;
+
+  if (user.email) {
+    return String(user.email).split("@")[0];
+  }
+
+  return "My Profile";
+}
+
+function getProfileInitials(user) {
+  const displayName = getDisplayName(user);
+  const parts = displayName
+    .split(/\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .slice(0, 2);
+
+  if (!parts.length) return "MP";
+
+  return parts.map((part) => part.charAt(0).toUpperCase()).join("");
+}
+
 export default function Navbar() {
   const navigate = useNavigate();
+  const location = useLocation();
   const storedUser = getStoredUser();
   const [loggedIn, setLoggedIn] = useState(isLoggedIn());
+  const [currentUser, setCurrentUser] = useState(storedUser);
   const [profileImageUrl, setProfileImageUrl] = useState(
     storedUser?.profileImageUrl || ""
   );
@@ -27,8 +61,10 @@ export default function Navbar() {
 
   useEffect(() => {
     const syncAuth = () => {
+      const nextUser = getStoredUser();
       setLoggedIn(isLoggedIn());
-      setProfileImageUrl(getStoredUser()?.profileImageUrl || "");
+      setCurrentUser(nextUser);
+      setProfileImageUrl(nextUser?.profileImageUrl || "");
     };
 
     syncAuth();
@@ -50,8 +86,24 @@ export default function Navbar() {
 
       try {
         const profile = await getMyProfile();
+        const mergedUser = {
+          ...(getStoredUser() || {}),
+          firstName: profile?.firstName || "",
+          lastName: profile?.lastName || "",
+          fullName:
+            profile?.fullName ||
+            [profile?.firstName, profile?.lastName].filter(Boolean).join(" ") ||
+            getStoredUser()?.fullName ||
+            "",
+          email: profile?.email || getStoredUser()?.email || "",
+          role: profile?.role || getStoredUser()?.role || "",
+          profileImageUrl: profile?.profileImageUrl || "",
+        };
+
+        setCurrentUser(mergedUser);
         setProfileImageUrl(profile?.profileImageUrl || "");
       } catch (error) {
+        setCurrentUser(getStoredUser());
         setProfileImageUrl(getStoredUser()?.profileImageUrl || "");
       }
     }
@@ -115,6 +167,7 @@ export default function Navbar() {
     } finally {
       clearAuthSession();
       setLoggedIn(false);
+      setCurrentUser(null);
       setProfileImageUrl("");
       setProfileMenuState("closed");
       navigate("/login");
@@ -159,19 +212,21 @@ export default function Navbar() {
     { to: "/contact", label: "Contact Us" },
   ];
   const profilePath =
-    String(storedUser?.role || "").toLowerCase() === "staff"
+    String(currentUser?.role || "").toLowerCase() === "staff"
       ? "/staff/profile"
       : "/profile";
+  const isProfileActive =
+    location.pathname === "/profile" ||
+    location.pathname.startsWith("/profile/") ||
+    location.pathname === "/staff/profile" ||
+    location.pathname.startsWith("/staff/profile/");
+  const displayName = getDisplayName(currentUser);
+  const profileInitials = getProfileInitials(currentUser);
 
   return (
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
-
-        @keyframes nb2-slide-in {
-          from { transform: translateY(-100%); opacity: 0; }
-          to   { transform: translateY(0); opacity: 1; }
-        }
 
         @keyframes nb2-fade-left {
           from { opacity: 0; transform: translateX(-12px); }
@@ -206,9 +261,6 @@ export default function Navbar() {
       <header className="sticky top-0 isolate z-[1000] font-['Poppins',sans-serif]">
         <div
           className="relative overflow-visible"
-          style={{
-            animation: "nb2-slide-in 0.45s cubic-bezier(0.34,1.4,0.64,1) both",
-          }}
         >
           <div
             className="pointer-events-none absolute inset-x-0 top-0 h-px"
@@ -283,7 +335,7 @@ export default function Navbar() {
                   >
                     <span className="relative z-[1]">{label}</span>
 
-                    <span className="pointer-events-none absolute bottom-[5px] left-1/2 h-[1.5px] w-0 -translate-x-1/2 rounded-full bg-gradient-to-r from-transparent via-sky-400 to-transparent transition-all duration-300 group-hover:w-[60%]" />
+                    <span className="pointer-events-none absolute bottom-[4px] left-1/2 h-[3px] w-0 -translate-x-1/2 rounded-full bg-white transition-all duration-300 group-hover:w-[60%]" />
 
                     {ripples.map((r) => (
                       <span
@@ -328,38 +380,55 @@ export default function Navbar() {
                 ) : (
                   <div ref={profileMenuRef} className="relative z-[1100]">
                     <button
-                      className="grid h-[38px] w-[38px] place-items-center overflow-hidden rounded-full border-[1.5px] border-white/65 bg-white/20 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] transition-all duration-200 hover:-translate-y-[1px] hover:scale-[1.03] hover:border-white hover:bg-white/30"
+                      className={`flex min-h-[42px] items-center gap-3 rounded-full pl-1.5 pr-3 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] transition-all duration-200 hover:-translate-y-[1px] hover:scale-[1.01] ${
+                        isProfileActive
+                          ? "bg-white/30"
+                          : "bg-white/16 hover:bg-white/26"
+                      }`}
                       title="Account menu"
                       aria-haspopup="menu"
                       aria-expanded={profileMenuState === "open"}
                       onClick={toggleProfileMenu}
                     >
-                      {profileImageUrl ? (
-                        <img
-                          src={profileImageUrl}
-                          alt="Profile"
-                          className="h-full w-full object-cover"
+                      <span className="grid h-[34px] w-[34px] shrink-0 place-items-center overflow-hidden rounded-full border border-white/65 bg-gradient-to-br from-white/95 via-sky-50 to-sky-100 text-[11px] font-bold tracking-[0.08em] text-sky-700 shadow-[0_6px_16px_rgba(15,23,42,0.14)]">
+                        {profileImageUrl ? (
+                          <img
+                            src={profileImageUrl}
+                            alt="Profile"
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          profileInitials
+                        )}
+                      </span>
+
+                      <span className="hidden min-w-0 text-left md:block">
+                        <span className="block max-w-[160px] truncate text-[13px] font-semibold leading-tight text-slate-900">
+                          {displayName}
+                        </span>
+                      </span>
+
+                      <svg
+                        className={`hidden h-4 w-4 shrink-0 text-white/95 transition md:block ${
+                          profileMenuState === "open" ? "rotate-180" : ""
+                        }`}
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="m5 7.5 5 5 5-5"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
                         />
-                      ) : (
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                          <path
-                            d="M12 12a4.5 4.5 0 1 0-4.5-4.5A4.5 4.5 0 0 0 12 12Z"
-                            stroke="currentColor"
-                            strokeWidth="1.8"
-                          />
-                          <path
-                            d="M20 20.5c-1.6-4-5-6-8-6s-6.4 2-8 6"
-                            stroke="currentColor"
-                            strokeWidth="1.8"
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                      )}
+                      </svg>
                     </button>
 
                     {profileMenuState !== "closed" ? (
                       <div
-                        className="absolute right-0 top-[calc(100%+10px)] z-[1200] min-w-[176px] rounded-[18px] border border-white/45 bg-white/80 p-2 shadow-[0_18px_36px_rgba(15,23,42,0.16)] backdrop-blur-[12px]"
+                        className="absolute right-0 top-[calc(100%+10px)] z-[1200] min-w-[176px] rounded-[18px] border border-sky-100 bg-white p-2 shadow-[0_18px_36px_rgba(15,23,42,0.16)]"
                         style={{
                           animation:
                             profileMenuState === "closing"
@@ -368,12 +437,40 @@ export default function Navbar() {
                         }}
                         role="menu"
                       >
+                        <div className="mb-2 rounded-[14px] bg-gradient-to-br from-sky-50 via-white to-blue-50 px-3 py-3">
+                          <div className="flex items-center gap-3">
+                            <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full border border-sky-200 bg-gradient-to-br from-sky-100 to-blue-100 text-xs font-bold tracking-[0.08em] text-sky-700">
+                              {profileImageUrl ? (
+                                <img
+                                  src={profileImageUrl}
+                                  alt="Profile"
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                profileInitials
+                              )}
+                            </span>
+                            <div className="min-w-0">
+                              <div className="truncate text-[13px] font-semibold text-slate-900">
+                                {displayName}
+                              </div>
+                              <div className="truncate text-[11px] font-medium text-slate-500">
+                                {currentUser?.email || "Profile"}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
                         <button
-                          className="flex w-full items-center gap-[10px] rounded-[12px] bg-transparent px-3 py-[11px] text-left text-[13px] font-semibold text-slate-900 transition-all duration-200 hover:-translate-y-[1px] hover:bg-white/35"
+                          className={`flex w-full items-center gap-[10px] rounded-[12px] px-3 py-[11px] text-left text-[13px] font-semibold transition-all duration-200 hover:-translate-y-[1px] ${
+                            isProfileActive
+                              ? "bg-sky-50 text-sky-700"
+                              : "bg-transparent text-slate-900 hover:bg-slate-50"
+                          }`}
                           role="menuitem"
                           onClick={() => {
                             setProfileMenuState("closed");
-                            navigate("/profile");
+                            navigate(profilePath);
                           }}
                         >
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
