@@ -53,6 +53,10 @@ export default function UpdateIssue() {
   );
 
   useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [id]);
+
+  useEffect(() => {
     async function loadInitialData() {
       try {
         setLoading(true);
@@ -323,10 +327,10 @@ export default function UpdateIssue() {
         throw new Error(data?.message || "Failed to update issue.");
       }
 
-      const successText = data?.message || "Complaint updated successfully.";
+      const successText = data?.message || "Issue updated successfully.";
       setSuccessMessage(successText);
 
-      navigate(`/my-complaints/${id}`, {
+      navigate(`/issues/me/${id}`, {
         state: {
           successMessage: successText,
         },
@@ -343,18 +347,18 @@ export default function UpdateIssue() {
       <div className="mx-auto max-w-6xl rounded-[28px] border border-sky-200 bg-white/95 p-6 shadow-[0_16px_50px_rgba(56,189,248,0.12)] md:p-8">
         <div className="flex flex-col gap-3 border-b border-sky-100 pb-6">
           <p className="text-sm font-semibold uppercase tracking-[0.3px] text-sky-600">
-            Complaint Reporting
+            Issue Reporting
           </p>
-          <h1 className="text-3xl font-bold text-slate-900">Edit Complaint</h1>
+          <h1 className="text-3xl font-bold text-slate-900">Update Issue</h1>
           <p className="max-w-3xl text-sm leading-7 text-slate-600">
-            Edit your complaint details using the same category, location, and
-            restroom structure used when the complaint was created.
+            Edit your issue details using the same category, location, and
+            restroom structure used when the issue was created.
           </p>
         </div>
 
         {loading ? (
           <div className="py-12 text-sm text-slate-500">
-            Loading complaint details...
+            Loading issue details...
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="mt-8 space-y-8">
@@ -505,7 +509,7 @@ export default function UpdateIssue() {
             </div>
 
             <div className="grid gap-5">
-              <Field label="Complaint Title">
+              <Field label="Issue Title">
                 <input
                   type="text"
                   name="title"
@@ -547,7 +551,7 @@ export default function UpdateIssue() {
                     >
                       <img
                         src={image.url}
-                        alt={`Complaint upload ${index + 1}`}
+                        alt={`Issue upload ${index + 1}`}
                         className="h-48 w-full object-cover"
                       />
                     </a>
@@ -555,7 +559,7 @@ export default function UpdateIssue() {
                 </div>
               ) : (
                 <p className="mt-3 text-sm text-slate-600">
-                  No complaint images were uploaded for this record.
+                  No issue images were uploaded for this record.
                 </p>
               )}
             </div>
@@ -563,7 +567,7 @@ export default function UpdateIssue() {
             <div className="flex flex-col gap-3 border-t border-sky-100 pt-6 sm:flex-row sm:justify-end">
               <button
                 type="button"
-                onClick={() => navigate(`/my-complaints/${id}`)}
+                onClick={() => navigate(`/issues/me/${id}`)}
                 className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
               >
                 Cancel
@@ -573,7 +577,7 @@ export default function UpdateIssue() {
                 disabled={submitting || status !== "OPEN"}
                 className="rounded-xl border border-sky-300 bg-gradient-to-r from-sky-500 to-blue-500 px-5 py-3 text-sm font-semibold text-white shadow-[0_10px_28px_rgba(56,189,248,0.24)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(56,189,248,0.3)] disabled:cursor-not-allowed disabled:opacity-70"
               >
-                {submitting ? "Updating..." : "Update Complaint"}
+                {submitting ? "Updating..." : "Update Issue"}
               </button>
             </div>
           </form>

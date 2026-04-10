@@ -1,16 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import API_BASE_URL from "../../config/api";
 import { getToken } from "../../utils/auth";
-import { fetchRestroomById } from "../../services/restroomService";
 
 const PRIORITIES = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 
 export default function CreateIssue() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const fileInputRef = useRef(null);
-  const preselectedRestroomId = searchParams.get("restroomId") || "";
 
   const [formData, setFormData] = useState({
     categoryId: "",
@@ -29,7 +26,6 @@ export default function CreateIssue() {
   const [cities, setCities] = useState([]);
   const [restrooms, setRestrooms] = useState([]);
   const [images, setImages] = useState([]);
-  const [preselectedRestroom, setPreselectedRestroom] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -96,67 +92,6 @@ export default function CreateIssue() {
   }, []);
 
   useEffect(() => {
-    if (!preselectedRestroomId) {
-      setPreselectedRestroom(null);
-      return;
-    }
-
-    let active = true;
-
-    async function loadPreselectedRestroom() {
-      try {
-        const restroom = await fetchRestroomById(preselectedRestroomId);
-
-        if (!active) {
-          return;
-        }
-
-        setPreselectedRestroom(restroom || null);
-      } catch (prefillError) {
-        if (!active) {
-          return;
-        }
-
-        setPreselectedRestroom(null);
-        setError(prefillError.message || "Failed to prefill restroom details.");
-      }
-    }
-
-    loadPreselectedRestroom();
-
-    return () => {
-      active = false;
-    };
-  }, [preselectedRestroomId]);
-
-  useEffect(() => {
-    if (!preselectedRestroomId || provinces.length === 0) {
-      return;
-    }
-
-    async function applyRestroomPrefill() {
-      try {
-        setError("");
-        const matchedProvince = provinces.find(
-          (province) => province.name === preselectedRestroom?.province
-        );
-
-        setFormData((prev) => ({
-          ...prev,
-          provinceId: matchedProvince?._id || prev.provinceId,
-          districtId: "",
-          cityId: "",
-          restroomId: "",
-        }));
-      } catch (prefillError) {
-        setError(prefillError.message || "Failed to prefill restroom details.");
-      }
-    }
-
-    applyRestroomPrefill();
-  }, [preselectedRestroomId, preselectedRestroom, provinces]);
-
-  useEffect(() => {
     if (!formData.provinceId) {
       setDistricts([]);
       setCities([]);
@@ -188,36 +123,6 @@ export default function CreateIssue() {
   }, [formData.provinceId]);
 
   useEffect(() => {
-    if (!preselectedRestroomId || districts.length === 0 || !selectedProvince) {
-      return;
-    }
-
-    async function applyDistrictPrefill() {
-      try {
-        if (preselectedRestroom?.province !== selectedProvince.name) return;
-
-        const matchedDistrict = districts.find(
-          (district) => district.name === preselectedRestroom?.district
-        );
-
-        if (!matchedDistrict) return;
-
-        setFormData((prev) => ({
-          ...prev,
-          districtId:
-            prev.districtId || matchedDistrict._id,
-          cityId: "",
-          restroomId: "",
-        }));
-      } catch {
-        // keep current selection if the prefill lookup fails
-      }
-    }
-
-    applyDistrictPrefill();
-  }, [preselectedRestroomId, preselectedRestroom, districts, selectedProvince]);
-
-  useEffect(() => {
     if (!formData.districtId) {
       setCities([]);
       setRestrooms([]);
@@ -246,33 +151,6 @@ export default function CreateIssue() {
 
     loadCities();
   }, [formData.districtId]);
-
-  useEffect(() => {
-    if (!preselectedRestroomId || cities.length === 0 || !selectedDistrict) {
-      return;
-    }
-
-    async function applyCityPrefill() {
-      try {
-        if (preselectedRestroom?.district !== selectedDistrict.name) return;
-
-        const matchedCity = cities.find(
-          (city) => city.name === preselectedRestroom?.city
-        );
-        if (!matchedCity) return;
-
-        setFormData((prev) => ({
-          ...prev,
-          cityId: prev.cityId || matchedCity._id,
-          restroomId: "",
-        }));
-      } catch {
-        // keep current selection if the prefill lookup fails
-      }
-    }
-
-    applyCityPrefill();
-  }, [preselectedRestroomId, preselectedRestroom, cities, selectedDistrict]);
 
   useEffect(() => {
     if (!selectedProvince || !selectedDistrict || !selectedCity) {
@@ -308,25 +186,6 @@ export default function CreateIssue() {
 
     loadRestrooms();
   }, [selectedProvince, selectedDistrict, selectedCity]);
-
-  useEffect(() => {
-    if (!preselectedRestroomId || restrooms.length === 0) {
-      return;
-    }
-
-    const matchedRestroom = restrooms.find(
-      (restroom) => restroom._id === preselectedRestroomId
-    );
-
-    if (!matchedRestroom) {
-      return;
-    }
-
-    setFormData((prev) => ({
-      ...prev,
-      restroomId: prev.restroomId || matchedRestroom._id,
-    }));
-  }, [preselectedRestroomId, restrooms]);
 
   function handleChange(event) {
     const { name, value } = event.target;
@@ -459,7 +318,7 @@ export default function CreateIssue() {
         throw new Error(data?.message || "Failed to create issue.");
       }
 
-      const successText = data?.message || "Complaint submitted successfully.";
+      const successText = data?.message || "Issue created successfully.";
       setSuccessMessage(successText);
       setFormData({
         categoryId: "",
@@ -482,7 +341,7 @@ export default function CreateIssue() {
 
       const issueId = data?.data?._id;
       if (issueId) {
-        navigate(`/my-complaints/${issueId}`, {
+        navigate(`/issues/me/${issueId}`, {
           state: {
             successMessage: successText,
           },
@@ -500,9 +359,9 @@ export default function CreateIssue() {
       <div className="mx-auto max-w-6xl rounded-[28px] border border-sky-200 bg-white/95 p-6 shadow-[0_16px_50px_rgba(56,189,248,0.12)] md:p-8">
         <div className="flex flex-col gap-3 border-b border-sky-100 pb-6">
           <p className="text-sm font-semibold uppercase tracking-[0.3px] text-sky-600">
-            Complaint Reporting
+            Issue Reporting
           </p>
-          <h1 className="text-3xl font-bold text-slate-900">Report Complaint</h1>
+          <h1 className="text-3xl font-bold text-slate-900">Create Issue</h1>
           <p className="max-w-3xl text-sm leading-7 text-slate-600">
             Report a sanitation or water-related issue using the admin-managed
             category list, your seeded location data, and the existing restroom
@@ -666,7 +525,7 @@ export default function CreateIssue() {
             </div>
 
             <div className="grid gap-5">
-              <Field label="Complaint Title">
+              <Field label="Issue Title">
                 <input
                   type="text"
                   name="title"
@@ -693,7 +552,7 @@ export default function CreateIssue() {
             <div className="flex flex-col gap-3 border-t border-sky-100 pt-6 sm:flex-row sm:justify-end">
               <button
                 type="button"
-                onClick={() => navigate("/my-complaints")}
+                onClick={() => navigate("/issues/me")}
                 className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
               >
                 Cancel
@@ -703,7 +562,7 @@ export default function CreateIssue() {
                 disabled={submitting}
                 className="rounded-xl border border-sky-300 bg-gradient-to-r from-sky-500 to-blue-500 px-5 py-3 text-sm font-semibold text-white shadow-[0_10px_28px_rgba(56,189,248,0.24)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(56,189,248,0.3)] disabled:cursor-not-allowed disabled:opacity-70"
               >
-                {submitting ? "Submitting..." : "Submit Complaint"}
+                {submitting ? "Submitting..." : "Create Issue"}
               </button>
             </div>
           </form>

@@ -259,9 +259,38 @@ export default function RestroomMap() {
     setFlyTo({ lat: rLat, lng: rLng, zoom: 16 });
   }
 
-  // Report Complaint — check login first
+  // clear route from map
+  function clearRoute() {
+    setRoute(null);
+    setRouteInfo(null);
+    setRouteError(null);
+  }
+
+  // submit rating and lock — optimistic UI update for avg/count
+  async function handleSubmitRating(stars) {
+    if (ratingLoading || myRating !== null) return;
+    setRatingLoading(true);
+    try {
+      await submitRestroomRating(selectedRestroom._id, stars);
+      setMyRating(stars);
+      setOurRestrooms((prev) =>
+        prev.map((r) => {
+          if (r._id !== selectedRestroom._id) return r;
+          const newCount = r.ratingCount + 1;
+          const newAvg   = parseFloat(((r.avgRating * r.ratingCount + stars) / newCount).toFixed(1));
+          return { ...r, avgRating: newAvg, ratingCount: newCount };
+        })
+      );
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setRatingLoading(false);
+    }
+  }
+
+  // redirect to report issue, requiring login
   function handleReportIssue() {
-    const url = `/complaints/report?restroomId=${selectedRestroom._id}&restroomName=${encodeURIComponent(selectedRestroom.name)}`;
+    const url = `/report-issue?restroomId=${selectedRestroom._id}&restroomName=${encodeURIComponent(selectedRestroom.name)}`;
     if (!isLoggedIn()) {
       navigate("/login", {
         state: {
@@ -458,33 +487,29 @@ export default function RestroomMap() {
 
               <hr className="border-slate-100" />
 
-              {/* ── Action buttons ── */}
-              <div className="grid grid-cols-2 gap-2">
-
-                {/* Directions — uses our map, not Google Maps */}
-                <button
-                  onClick={handleGetDirections}
-                  disabled={loadingRoute}
-                  className="flex flex-col items-center gap-1.5 py-3 rounded-2xl bg-blue-50 hover:bg-blue-100 disabled:opacity-60 transition-colors"
-                >
-                  {loadingRoute ? (
-                    <span className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <span className="text-2xl">🗺️</span>
-                  )}
-                  <span className="text-xs font-semibold text-blue-700">
-                    {loadingRoute ? "Routing…" : "Directions"}
-                  </span>
-                </button>
-
-                <button
-                  onClick={handleReportIssue}
-                  className="flex flex-col items-center gap-1.5 py-3 rounded-2xl bg-slate-50 hover:bg-slate-100 transition-colors"
-                >
-                  <span className="text-2xl">⚠️</span>
-                  <span className="text-xs font-semibold text-slate-600">Report Complaint</span>
-                </button>
-              </div>
+              {/* directions and report hidden for out of order */}
+              {selectedRestroom.condition === "OUT_OF_ORDER" ? (
+                <div className="rounded-2xl bg-red-50 border border-red-200 px-4 py-4 text-center">
+                  <span className="text-2xl">🚫</span>
+                  <p className="mt-1 text-sm font-semibold text-red-700">Out of Order</p>
+                  <p className="text-xs text-red-500 mt-0.5">Directions and issue reporting are unavailable for this restroom.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={handleGetDirections}
+                    disabled={loadingRoute}
+                    className="flex flex-col items-center gap-1.5 py-3 rounded-2xl bg-blue-50 hover:bg-blue-100 disabled:opacity-60 transition-colors"
+                  >
+                    {loadingRoute ? (
+                      <span className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <span className="text-2xl">🗺️</span>
+                    )}
+                    <span className="text-xs font-semibold text-blue-700">
+                      {loadingRoute ? "Routing…" : "Directions"}
+                    </span>
+                  </button>
 
                   <button
                     onClick={handleReportIssue}
