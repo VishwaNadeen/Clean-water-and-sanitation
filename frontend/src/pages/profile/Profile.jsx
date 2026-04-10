@@ -172,6 +172,22 @@ export default function Profile() {
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={() => navigate("/issues/me")}
+          className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-4 text-left transition hover:bg-sky-100"
+        >
+          <p className="text-xs font-semibold uppercase tracking-[0.3px] text-sky-600">
+            Complaint Tracking
+          </p>
+          <p className="mt-1 text-sm font-semibold text-slate-900">
+            My Complaints
+          </p>
+          <p className="mt-1 text-sm text-slate-600">
+            View the complaints you have submitted and check their status.
+          </p>
+        </button>
+
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4">
           <p className="text-xs font-semibold uppercase tracking-[0.3px] text-slate-500">
             First Name

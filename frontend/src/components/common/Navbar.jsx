@@ -392,6 +392,34 @@ export default function Navbar() {
                           Profile
                         </button>
 
+                        <button
+                          className="flex w-full items-center gap-[10px] rounded-[12px] bg-transparent px-3 py-[11px] text-left text-[13px] font-semibold text-slate-900 transition-all duration-200 hover:-translate-y-[1px] hover:bg-white/35"
+                          role="menuitem"
+                          onClick={() => {
+                            setProfileMenuState("closed");
+                            navigate("/issues/me");
+                          }}
+                        >
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M8 6h13" />
+                            <path d="M8 12h13" />
+                            <path d="M8 18h13" />
+                            <path d="M3 6h.01" />
+                            <path d="M3 12h.01" />
+                            <path d="M3 18h.01" />
+                          </svg>
+                          My Complaints
+                        </button>
+
                         <div className="mx-[6px] my-1 h-px bg-black/30" />
 
                         <button

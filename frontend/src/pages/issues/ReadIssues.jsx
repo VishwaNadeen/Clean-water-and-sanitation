@@ -17,6 +17,10 @@ export default function ReadIssues() {
   const [searchInput, setSearchInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const pageNumbers = buildPageNumbers(
+    pagination?.currentPage || 1,
+    pagination?.totalPages || 1
+  );
 
   useEffect(() => {
     async function loadIssues() {
@@ -108,33 +112,26 @@ export default function ReadIssues() {
   return (
     <section className="min-h-[calc(100vh-160px)] bg-[linear-gradient(180deg,rgba(255,255,255,1)_0%,rgba(240,249,255,1)_55%,rgba(224,242,254,1)_100%)] px-4 py-10 text-slate-800">
       <div className="mx-auto max-w-6xl rounded-[28px] border border-sky-200 bg-white/95 p-6 shadow-[0_16px_50px_rgba(56,189,248,0.12)] md:p-8">
-        <div className="flex flex-col gap-4 border-b border-sky-100 pb-6 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex flex-col gap-4 border-b border-sky-100 pb-6">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.3px] text-sky-600">
-              Issue Reporting
+              Complaint Reporting
             </p>
             <h1 className="mt-3 text-3xl font-bold text-slate-900">
-              My Issues
+              My Complaints
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
-              Review the issues you have reported, filter by status, and search
-              by issue number.
+              Review the complaints you have submitted, filter by status, and
+              search by complaint number.
             </p>
           </div>
-
-          <Link
-            to="/issues/create"
-            className="rounded-xl border border-sky-300 bg-gradient-to-r from-sky-500 to-blue-500 px-5 py-3 text-center text-sm font-semibold text-white shadow-[0_10px_28px_rgba(56,189,248,0.24)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(56,189,248,0.3)]"
-          >
-            Create New Issue
-          </Link>
         </div>
 
         <div className="mt-8 space-y-6">
-          <div className="grid gap-4 rounded-3xl border border-sky-100 bg-sky-50/60 p-5 lg:grid-cols-[1.2fr_0.8fr_auto] lg:items-end">
+          <div className="grid gap-4 rounded-3xl border border-sky-100 bg-sky-50/60 p-5 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
             <form onSubmit={handleSearchSubmit} className="space-y-2">
               <label className="block text-sm font-medium text-slate-700">
-                Search by Issue Number
+                Search by Complaint Number
               </label>
               <input
                 type="text"
@@ -189,22 +186,22 @@ export default function ReadIssues() {
 
           {loading ? (
             <div className="rounded-2xl border border-sky-100 bg-sky-50/70 px-5 py-10 text-sm text-slate-500">
-              Loading your issues...
+              Loading your complaints...
             </div>
           ) : issues.length === 0 ? (
             <div className="rounded-3xl border border-slate-200 bg-slate-50 px-6 py-12 text-center">
               <h2 className="text-xl font-semibold text-slate-900">
-                No issues found
+                No complaints found
               </h2>
               <p className="mt-3 text-sm leading-7 text-slate-600">
-                Create your first issue report, or adjust the current filters to
+                Submit your first complaint, or adjust the current filters to
                 see more results.
               </p>
               <Link
-                to="/issues/create"
+                to="/complaints/report"
                 className="mt-6 inline-flex rounded-xl border border-sky-300 bg-gradient-to-r from-sky-500 to-blue-500 px-5 py-3 text-sm font-semibold text-white shadow-[0_10px_28px_rgba(56,189,248,0.24)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(56,189,248,0.3)]"
               >
-                Create Issue
+                Report Complaint
               </Link>
             </div>
           ) : (
@@ -215,10 +212,15 @@ export default function ReadIssues() {
                     key={issue._id}
                     className="rounded-3xl border border-sky-100 bg-white p-6 shadow-sm"
                   >
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                      <div>
+                    <div className="space-y-5">
+                      <div className="border-b border-slate-100 pb-4">
+                        <ComplaintProgress status={issue.status} />
+                      </div>
+
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div>
                         <p className="text-xs font-semibold uppercase tracking-[0.3px] text-sky-600">
-                          Issue #{issue.issueNumber || "Pending"}
+                          Complaint #{issue.issueNumber || "Pending"}
                         </p>
                         <h2 className="mt-2 text-2xl font-bold text-slate-900">
                           {issue.title}
@@ -226,11 +228,11 @@ export default function ReadIssues() {
                         <p className="mt-3 text-sm leading-7 text-slate-600">
                           {issue.description}
                         </p>
-                      </div>
+                        </div>
 
-                      <div className="flex flex-wrap gap-2">
-                        <Badge color="blue">{issue.status}</Badge>
-                        <Badge color="amber">{issue.priority}</Badge>
+                        <div className="flex flex-col items-start gap-3 lg:items-end">
+                          <Badge color="amber">{issue.priority}</Badge>
+                        </div>
                       </div>
                     </div>
 
@@ -265,16 +267,16 @@ export default function ReadIssues() {
                       </p>
                       <div className="flex flex-col gap-3 sm:flex-row">
                         <Link
-                          to={`/issues/me/${issue._id}`}
+                          to={`/my-complaints/${issue._id}`}
                           className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
                         >
-                          View Issue
+                          View Complaint
                         </Link>
                         <Link
-                          to={`/issues/me/${issue._id}/edit`}
+                          to={`/my-complaints/${issue._id}/edit`}
                           className="rounded-xl border border-sky-300 bg-gradient-to-r from-sky-500 to-blue-500 px-5 py-3 text-center text-sm font-semibold text-white shadow-[0_10px_28px_rgba(56,189,248,0.24)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(56,189,248,0.3)]"
                         >
-                          Edit Issue
+                          Edit Complaint
                         </Link>
                       </div>
                     </div>
@@ -288,7 +290,7 @@ export default function ReadIssues() {
                     Page {pagination.currentPage} of {pagination.totalPages}
                   </p>
 
-                  <div className="flex gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
                       disabled={pagination.currentPage <= 1}
@@ -297,6 +299,35 @@ export default function ReadIssues() {
                     >
                       Previous
                     </button>
+
+                    {pageNumbers.map((pageNumber, index) => {
+                      const previousPage = pageNumbers[index - 1];
+                      const showGap =
+                        typeof previousPage === "number" &&
+                        pageNumber - previousPage > 1;
+
+                      return (
+                        <div key={pageNumber} className="flex items-center gap-2">
+                          {showGap ? (
+                            <span className="px-1 text-sm font-medium text-slate-400">
+                              ...
+                            </span>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => changePage(pageNumber)}
+                            className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                              pageNumber === pagination.currentPage
+                                ? "border border-sky-300 bg-gradient-to-r from-sky-500 to-blue-500 text-white shadow-[0_10px_24px_rgba(56,189,248,0.22)]"
+                                : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                            }`}
+                          >
+                            {pageNumber}
+                          </button>
+                        </div>
+                      );
+                    })}
+
                     <button
                       type="button"
                       disabled={pagination.currentPage >= pagination.totalPages}
@@ -339,6 +370,94 @@ function Badge({ color, children }) {
     >
       {children}
     </span>
+  );
+}
+
+function buildPageNumbers(currentPage, totalPages) {
+  if (totalPages <= 1) return [1];
+
+  const pages = new Set([1, totalPages, currentPage]);
+
+  if (currentPage - 1 > 1) pages.add(currentPage - 1);
+  if (currentPage + 1 < totalPages) pages.add(currentPage + 1);
+
+  if (currentPage <= 2) {
+    pages.add(2);
+    if (totalPages >= 3) pages.add(3);
+  }
+
+  if (currentPage >= totalPages - 1) {
+    if (totalPages - 1 > 1) pages.add(totalPages - 1);
+    if (totalPages - 2 > 1) pages.add(totalPages - 2);
+  }
+
+  return Array.from(pages)
+    .filter((page) => page >= 1 && page <= totalPages)
+    .sort((a, b) => a - b);
+}
+
+function ComplaintProgress({ status }) {
+  const steps = [
+    {
+      key: "OPEN",
+      label: "Open",
+      activeClasses: "text-sky-700",
+      barClasses: "bg-sky-500",
+    },
+    {
+      key: "IN_PROGRESS",
+      label: "In Progress",
+      activeClasses: "text-amber-700",
+      barClasses: "bg-amber-500",
+    },
+    {
+      key: "RESOLVED",
+      label: "Resolved",
+      activeClasses: "text-green-700",
+      barClasses: "bg-green-500",
+    },
+  ];
+
+  return (
+    <div className="w-full">
+      <div className="mb-3 grid grid-cols-3 gap-3 text-sm font-semibold">
+        {steps.map((step) => {
+          const isActive = step.key === status;
+
+          return (
+            <span
+              key={step.key}
+              className={`text-center ${
+                isActive ? step.activeClasses : "text-slate-400"
+              }`}
+            >
+              {step.label}
+            </span>
+          );
+        })}
+      </div>
+
+      <div className="grid w-full grid-cols-3 gap-3">
+        {steps.map((step) => {
+          const isActive = step.key === status;
+
+          return (
+            <div
+              key={step.key}
+              className={`h-1.5 flex-1 rounded-full ${
+                isActive ? step.barClasses : "bg-slate-100"
+              }`}
+            />
+          );
+        })}
+      </div>
+
+      {status === "CLOSED" ? (
+        <p className="mt-2 text-center text-xs font-medium text-slate-500">
+          This complaint has been closed.
+        </p>
+      ) : null}
+    </div>
   );
 }
 

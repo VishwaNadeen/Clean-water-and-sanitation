@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 function CloseIcon() {
   return (
     <svg
@@ -199,6 +201,24 @@ export default function ViewComplaint({
                     </option>
                   ))}
                 </select>
+                {issue.restroomId?._id && issue.status !== "RESOLVED" && issue.status !== "CLOSED" ? (
+                  <Link
+                    to={`/admin/staff/issues?issueId=${encodeURIComponent(
+                      issue._id
+                    )}&issueNumber=${encodeURIComponent(
+                      issue.issueNumber || ""
+                    )}&title=${encodeURIComponent(
+                      issue.title || ""
+                    )}&restroomId=${encodeURIComponent(
+                      issue.restroomId._id
+                    )}&restroomLabel=${encodeURIComponent(
+                      issue.restroomId?.name || ""
+                    )}`}
+                    className="block w-full rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-center text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
+                  >
+                    Assign to Staff
+                  </Link>
+                ) : null}
               </div>
             </div>
 
