@@ -4,7 +4,7 @@ import RequireStaff from "../components/auth/RequireStaff";
 import Dashboard from "../pages/staff/Dashboard";
 import WorkSummary from "../pages/staff/WorkSummary";
 import MySchedules from "../pages/staff/MySchedules";
-import Profile from "../pages/staff/Profile.jsx";
+import Profile from "../pages/staff/profile/StaffProfile.jsx";
 
 const StaffRoutes = (
   <Route

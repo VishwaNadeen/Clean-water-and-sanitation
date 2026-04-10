@@ -25,6 +25,10 @@ const AssignIssues = () => {
 
   const [toast, setToast] = useState(null);
 
+  const activeStaffMembers = staffMembers.filter(
+    (staff) => String(staff.status || "").toLowerCase() === "active"
+  );
+
   useEffect(() => {
     if (!toast) {
       return undefined;
@@ -128,7 +132,7 @@ const AssignIssues = () => {
             required
           >
             <option value="">Select staff member</option>
-            {staffMembers.map((staff) => (
+            {activeStaffMembers.map((staff) => (
               <option key={staff._id} value={staff._id}>
                 {staff.fullName || staff.name || "Unnamed"} - {staff.role || "Staff"}
               </option>
