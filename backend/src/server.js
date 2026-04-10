@@ -3,7 +3,7 @@ import app from "./app.js";
 import { connectDb } from "./config/db.js";
 
 // Load environment variables
-dotenv.config();
+dotenv.config({ quiet: true });
 
 const PORT = process.env.PORT || 5001;
 
