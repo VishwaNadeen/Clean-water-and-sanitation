@@ -19,6 +19,8 @@ import {
   validateStaffForm,
 } from "../../../utils/staffFormValidation";
 
+const getTodayDateString = () => new Date().toISOString().split("T")[0];
+
 const initialForm = {
   fullName: "",
   nic: "",
@@ -32,7 +34,7 @@ const initialForm = {
   baseDistrict: "",
   address: "",
   dob: "",
-  joinDate: "",
+  joinDate: getTodayDateString(),
 };
 
 const roleOptions = ["Cleaner", "Supervisor", "Technician"];
@@ -100,7 +102,7 @@ const StaffRegister = () => {
   const [countryError, setCountryError] = useState("");
   const [countryOpen, setCountryOpen] = useState(false);
   const [countrySearch, setCountrySearch] = useState("");
-  const today = new Date().toISOString().split("T")[0];
+  const today = getTodayDateString();
 
   const districtOptions = provinceDistrictMap[formData.baseProvince] || [];
 
@@ -361,13 +363,17 @@ const StaffRegister = () => {
         },
       });
 
+      const successText = data?.emailSent === false
+        ? "Staff member registered successfully."
+        : data?.message || "Staff member registered successfully.";
+
       handleReset();
       navigate("/admin/staff", {
         replace: true,
         state: {
           toast: {
             type: "success",
-            text: data?.message || "Staff member registered successfully",
+            text: successText,
           },
         },
       });
@@ -668,12 +674,13 @@ const StaffRegister = () => {
                 name="joinDate"
                 value={formData.joinDate}
                 onChange={handleChange}
-                max={today}
+                min={today}
                 onKeyDown={(event) => event.preventDefault()}
                 onPaste={(event) => event.preventDefault()}
                 onDrop={(event) => event.preventDefault()}
                 className={inputClass}
               />
+              {errors.joinDate && <p className={errorClass}>{errors.joinDate}</p>}
             </div>
 
           </div>

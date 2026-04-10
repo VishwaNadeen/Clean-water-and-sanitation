@@ -10,6 +10,19 @@ function isFutureDate(value) {
   return date > now;
 }
 
+function isPastDate(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+
+  const inputDay = new Date(date);
+  inputDay.setHours(0, 0, 0, 0);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return inputDay < today;
+}
+
 export function sanitizePhone(value) {
   return String(value || "").replace(/\D/g, "");
 }
@@ -165,8 +178,8 @@ export function validateStaffForm(data, { requireEmail = true } = {}) {
   if (String(data.joinDate || "").trim()) {
     if (Number.isNaN(new Date(data.joinDate).getTime())) {
       errors.joinDate = "Invalid join date";
-    } else if (isFutureDate(data.joinDate)) {
-      errors.joinDate = "Join date cannot be in the future";
+    } else if (isPastDate(data.joinDate)) {
+      errors.joinDate = "Join date cannot be in the past";
     }
   }
 

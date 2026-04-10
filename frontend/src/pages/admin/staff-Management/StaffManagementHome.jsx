@@ -161,6 +161,9 @@ export default function StaffManagementHome() {
         (item) => item.status !== "Cancelled"
       ).length;
 
+      const inProgressAssignment =
+        staffSchedules.find((item) => item.status === "InProgress") || null;
+
       const currentAssignment =
         staffSchedules.find(
           (item) => item.status === "InProgress" || item.status === "Assigned"
@@ -172,7 +175,7 @@ export default function StaffManagementHome() {
           ? "On Leave"
           : normalizedStatus === "inactive"
             ? "Inactive"
-            : currentAssignment
+            : inProgressAssignment
               ? "Busy"
               : normalizedStatus === "active"
                 ? "Active"
@@ -268,12 +271,12 @@ export default function StaffManagementHome() {
       },
       {
         key: "issues",
-        label: "Pending Issues",
-        value: pendingIssuesCount,
-        note: "Open issues waiting action",
+        label: "Delete Requests",
+        value: staffRows.filter((staff) => Boolean(staff.deleteRequest?.requested)).length,
+        note: "Staff delete requests waiting approval",
       },
     ];
-  }, [pendingIssuesCount, schedules, staffRows]);
+  }, [schedules, staffRows]);
 
   const roleOptions = useMemo(() => {
     const values = [...new Set(staffRows.map((staff) => staff.role).filter(Boolean))];
@@ -512,6 +515,7 @@ function StaffActionModal({ staff, onClose }) {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileToast, setProfileToast] = useState(null);
   const [imageFailed, setImageFailed] = useState(false);
+  const [openingAction, setOpeningAction] = useState("");
 
   const resolvedProfile = profile || staff || {};
   const displayStatus =
@@ -559,6 +563,7 @@ function StaffActionModal({ staff, onClose }) {
     setProfileLoading(false);
     setProfileToast(null);
     setImageFailed(false);
+    setOpeningAction("");
 
     if (staff?._id) {
       handleViewProfile();
@@ -729,10 +734,16 @@ function StaffActionModal({ staff, onClose }) {
                             status: resolvedProfile.status || staff.status || "",
                           },
                         }}
-                        onClick={onClose}
+                        onClick={() => {
+                          setOpeningAction("work");
+                          onClose();
+                        }}
                         className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
                       >
-                        Assign Work
+                        <span className="inline-flex items-center gap-2">
+                          Assign Work
+                          {openingAction === "work" ? <LoadingIcon /> : null}
+                        </span>
                       </Link>
                     ) : (
                       <button
@@ -751,10 +762,16 @@ function StaffActionModal({ staff, onClose }) {
                     {canAssignActions ? (
                       <Link
                         to="/admin/staff/issues"
-                        onClick={onClose}
+                        onClick={() => {
+                          setOpeningAction("issue");
+                          onClose();
+                        }}
                         className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm font-semibold text-amber-700 transition hover:bg-amber-100"
                       >
-                        Assign Issue
+                        <span className="inline-flex items-center gap-2">
+                          Assign Issue
+                          {openingAction === "issue" ? <LoadingIcon /> : null}
+                        </span>
                       </Link>
                     ) : (
                       <button
@@ -900,6 +917,23 @@ function StatusPill({ status }) {
     <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase ${tone}`}>
       {status}
     </span>
+  );
+}
+
+function LoadingIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-4 w-4 animate-spin"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M21 12a9 9 0 1 1-9-9" />
+    </svg>
   );
 }
 

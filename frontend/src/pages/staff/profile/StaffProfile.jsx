@@ -135,6 +135,23 @@ function EyeOffIcon() {
   );
 }
 
+function LoadingIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-4 w-4 animate-spin"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M21 12a9 9 0 1 1-9-9" />
+    </svg>
+  );
+}
+
 export default function StaffProfile() {
   const fileInputRef = useRef(null);
   const countryDropdownRef = useRef(null);
@@ -142,6 +159,7 @@ export default function StaffProfile() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [toast, setToast] = useState(null);
   const [showRemovePhotoConfirm, setShowRemovePhotoConfirm] = useState(false);
+  const [openingAction, setOpeningAction] = useState("");
   const [activeModal, setActiveModal] = useState("");
   const [savingModal, setSavingModal] = useState(false);
   const [editErrors, setEditErrors] = useState({});
@@ -357,6 +375,15 @@ export default function StaffProfile() {
     setCountryOpen(false);
     setCountrySearch("");
     setEditErrors({});
+    setOpeningAction("");
+  };
+
+  const openProfileAction = (modalKey) => {
+    setOpeningAction(modalKey);
+    window.setTimeout(() => {
+      setActiveModal(modalKey);
+      setOpeningAction("");
+    }, 120);
   };
 
   async function handleProfileImageChange(event) {
@@ -710,25 +737,34 @@ export default function StaffProfile() {
               <div className="mt-4 flex flex-wrap gap-3">
               <button
                 type="button"
-                onClick={() => setActiveModal("edit")}
+                onClick={() => openProfileAction("edit")}
                 className="rounded-2xl bg-blue-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-800"
               >
-                Edit Staff Profile
+                <span className="inline-flex items-center gap-2">
+                  Edit Staff Profile
+                  {openingAction === "edit" ? <LoadingIcon /> : null}
+                </span>
               </button>
               <button
                 type="button"
-                onClick={() => setActiveModal("password")}
+                onClick={() => openProfileAction("password")}
                 className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-3 text-sm font-semibold text-amber-700 transition hover:bg-amber-100"
               >
-                Change Password
+                <span className="inline-flex items-center gap-2">
+                  Change Password
+                  {openingAction === "password" ? <LoadingIcon /> : null}
+                </span>
               </button>
               <button
                 type="button"
-                onClick={() => setActiveModal("delete")}
+                onClick={() => openProfileAction("delete")}
                 disabled={isDeleteRequestPending}
                 className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
               >
-                {isDeleteRequestPending ? "Request Sent" : "Delete Request"}
+                <span className="inline-flex items-center gap-2">
+                  {isDeleteRequestPending ? "Request Sent" : "Delete Request"}
+                  {openingAction === "delete" ? <LoadingIcon /> : null}
+                </span>
               </button>
               </div>
             </div>
