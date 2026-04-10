@@ -96,6 +96,21 @@ const getProofImageSrc = (imagePath) => {
   return `${normalizedBase}${normalizedPath}`;
 };
 
+const formatDateTime = (value) => {
+  if (!value) return "N/A";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "N/A";
+
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+};
+
 export default function ManageSchedules() {
   const [searchParams] = useSearchParams();
   const [schedules, setSchedules] = useState([]);
@@ -373,8 +388,26 @@ export default function ManageSchedules() {
   };
 
   const handleReject = async (id) => {
+    const reason = window.prompt(
+      "Enter rejection reason (required).",
+      "Cleaning not completed properly"
+    );
+
+    if (reason === null) {
+      return;
+    }
+
+    const trimmedReason = reason.trim();
+    if (!trimmedReason) {
+      setToast({
+        type: "error",
+        text: "Rejection reason is required",
+      });
+      return;
+    }
+
     try {
-      await rejectSchedule(id, "Rejected by admin");
+      await rejectSchedule(id, trimmedReason);
       setToast({ type: "success", text: "Schedule rejected successfully" });
       await loadSchedules();
     } catch (error) {
@@ -684,20 +717,6 @@ export default function ManageSchedules() {
             ) : (
               groupedSchedules.map((group) => (
                 <section key={group.key} className="space-y-4">
-                  <div className="sticky top-0 z-10 rounded-3xl border border-blue-100 bg-gradient-to-r from-slate-50 via-white to-blue-50/70 px-5 py-4 backdrop-blur">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <h4 className="text-xl font-bold text-slate-800">{group.label}</h4>
-                        <p className="mt-1 text-sm text-slate-500">
-                          Scheduled work for this date
-                        </p>
-                      </div>
-                      <span className="rounded-full border border-blue-200 bg-white px-3 py-1 text-sm font-semibold text-blue-700">
-                        {group.items.length} item{group.items.length > 1 ? "s" : ""}
-                      </span>
-                    </div>
-                  </div>
-
                   {group.items.map((item) => (
                     <div
                       key={item._id}
@@ -748,14 +767,94 @@ export default function ManageSchedules() {
 
                             <div className="rounded-2xl bg-slate-50 px-4 py-3">
                               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                Staff
+                                Completed By
                               </p>
                               <p className="mt-1 text-sm font-semibold text-slate-800">
                                 {item.staffId?.fullName || item.staffName || "N/A"}
                               </p>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {item.staffId?.role || "Staff"}
+                              </p>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {item.staffId?.email || item.staffId?.phone || "No contact details"}
+                              </p>
                             </div>
                           </div>
                         </div>
+
+                        {item.status === "Completed" ? (
+                          <div className="rounded-3xl border border-violet-200 bg-violet-50/70 p-4">
+                            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                              <div className="rounded-2xl border border-violet-100 bg-white px-4 py-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-violet-700">
+                                  Completed At
+                                </p>
+                                <p className="mt-1 text-sm font-semibold text-slate-800">
+                                  {formatDateTime(item.completedAt)}
+                                </p>
+                              </div>
+                              <div className="rounded-2xl border border-violet-100 bg-white px-4 py-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-violet-700">
+                                  Staff Name
+                                </p>
+                                <p className="mt-1 text-sm font-semibold text-slate-800">
+                                  {item.staffId?.fullName || item.staffName || "N/A"}
+                                </p>
+                              </div>
+                              <div className="rounded-2xl border border-violet-100 bg-white px-4 py-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-violet-700">
+                                  Staff Role
+                                </p>
+                                <p className="mt-1 text-sm font-semibold text-slate-800">
+                                  {item.staffId?.role || "Staff"}
+                                </p>
+                              </div>
+                              <div className="rounded-2xl border border-violet-100 bg-white px-4 py-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-violet-700">
+                                  Contact
+                                </p>
+                                <p className="mt-1 text-sm font-semibold text-slate-800">
+                                  {item.staffId?.email || item.staffId?.phone || "No contact details"}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ) : null}
+
+                        {item.status === "Completed" &&
+                        (item.staffNote || item.materialsUsed || item.issuesFound) ? (
+                          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                            <h5 className="text-sm font-semibold text-slate-800">
+                              Completion Details From Staff
+                            </h5>
+                            <div className="mt-3 grid gap-3 md:grid-cols-3">
+                              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                  Staff Note
+                                </p>
+                                <p className="mt-1 text-sm text-slate-700">
+                                  {item.staffNote || "No note provided"}
+                                </p>
+                              </div>
+                              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                  Materials Used
+                                </p>
+                                <p className="mt-1 text-sm text-slate-700">
+                                  {item.materialsUsed || "Not specified"}
+                                </p>
+                              </div>
+                              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                  Issues Found
+                                </p>
+                                <p className="mt-1 text-sm text-slate-700">
+                                  {item.issuesFound || "No issues reported"}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ) : null}
 
                         {Array.isArray(item.proofImages) && item.proofImages.length > 0 ? (
                           <div className="rounded-3xl border border-blue-100 bg-blue-50/50 p-4">

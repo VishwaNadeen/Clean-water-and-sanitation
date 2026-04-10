@@ -5,6 +5,7 @@ import {
   getStaffById,
   updateStaff,
   deleteStaff,
+  rejectDeleteRequest,
   requestDeleteProfile,
   updateStaffPassword,
 
@@ -51,6 +52,7 @@ router.patch("/:id/password", updateStaffPassword);
 
 // Request delete by id (admin or self)
 router.post("/:id/delete-request", requestDeleteProfile);
+router.patch("/:id/delete-request/reject", authorizeRoles("ADMIN"), rejectDeleteRequest);
 
 // ✅ ONLY ADMIN CAN DELETE
 router.delete("/:id", authorizeRoles("ADMIN"), deleteStaff);

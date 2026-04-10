@@ -1,5 +1,6 @@
 import WorkSchedule from "../../models/Staff-Management/WorkScheduleModel.js";
 import { uploadBufferToCloudinary } from "../../utils/staff-Management/Staffcloudinary.js";
+import cloudinary from "../../config/cloudinary.js";
 
 // Staff: Get my schedules
 // GET /api/staff/work-schedules/me
@@ -193,6 +194,113 @@ export const completeWork = async (req, res) => {
     await schedule.save();
     return res.json(schedule);
   } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+// Staff: Remove uploaded proof image
+// DELETE /api/staff/work-schedules/:id/proof
+export const removeProof = async (req, res) => {
+  try {
+    const staffId = req.user.id;
+    const { id } = req.params;
+    const { publicId } = req.body || {};
+
+    if (!publicId) {
+      return res.status(400).json({ message: "Proof image publicId is required" });
+    }
+
+    const schedule = await WorkSchedule.findById(id);
+    if (!schedule) return res.status(404).json({ message: "Schedule not found" });
+
+    if (schedule.staffId.toString() !== staffId) {
+      return res.status(403).json({ message: "Not your schedule" });
+    }
+
+    if (schedule.status !== "InProgress") {
+      return res
+        .status(400)
+        .json({ message: "Proof images can only be removed while work is in progress" });
+    }
+
+    const proofExists = Array.isArray(schedule.proofImages)
+      ? schedule.proofImages.some((image) => image.publicId === publicId)
+      : false;
+
+    if (!proofExists) {
+      return res.status(404).json({ message: "Proof image not found" });
+    }
+
+    schedule.proofImages = schedule.proofImages.filter((image) => image.publicId !== publicId);
+
+    if (!String(publicId).startsWith("local_")) {
+      try {
+        await cloudinary.uploader.destroy(publicId);
+      } catch (error) {
+        console.error("Failed to remove proof image from cloudinary:", error.message);
+      }
+    }
+
+    await schedule.save();
+
+    return res.status(200).json({
+      message: "Proof image removed successfully",
+      schedule,
+    });
+  } catch (err) {
+    console.error("removeProof ERROR:", err);
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+// Staff: Rework rejected task (Rejected -> InProgress)
+// PATCH /api/staff/work-schedules/:id/rework
+export const reworkRejected = async (req, res) => {
+  try {
+    const staffId = req.user.id;
+    const { id } = req.params;
+
+    const schedule = await WorkSchedule.findById(id);
+    if (!schedule) return res.status(404).json({ message: "Schedule not found" });
+
+    if (schedule.staffId.toString() !== staffId) {
+      return res.status(403).json({ message: "Not your schedule" });
+    }
+
+    if (schedule.status !== "Rejected") {
+      return res.status(400).json({ message: "Only rejected tasks can be reworked" });
+    }
+
+    if (Array.isArray(schedule.proofImages) && schedule.proofImages.length > 0) {
+      await Promise.all(
+        schedule.proofImages.map(async (image) => {
+          if (image?.publicId && !String(image.publicId).startsWith("local_")) {
+            try {
+              await cloudinary.uploader.destroy(image.publicId);
+            } catch (error) {
+              console.error("Failed to remove old rework proof from cloudinary:", error.message);
+            }
+          }
+        })
+      );
+    }
+
+    schedule.status = "InProgress";
+    schedule.startedAt = new Date();
+    schedule.completedAt = undefined;
+    schedule.proofImages = [];
+    schedule.staffNote = "";
+    schedule.materialsUsed = "";
+    schedule.issuesFound = "";
+
+    await schedule.save();
+
+    return res.status(200).json({
+      message: "Task moved to rework. Please do the work again and submit proof.",
+      schedule,
+    });
+  } catch (err) {
+    console.error("reworkRejected ERROR:", err);
     return res.status(500).json({ message: err.message });
   }
 };

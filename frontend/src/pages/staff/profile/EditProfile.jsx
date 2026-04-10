@@ -1,3 +1,39 @@
+function CountryFlag({ src, alt }) {
+  if (!src) {
+    return (
+      <span className="grid h-5 w-7 place-items-center rounded-[6px] bg-slate-200 text-[10px] font-bold text-slate-500">
+        --
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="h-5 w-7 rounded-[6px] border border-slate-200 object-cover shadow-sm"
+      loading="lazy"
+    />
+  );
+}
+
+function ChevronIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m5 7 5 5 5-5" />
+    </svg>
+  );
+}
+
 export default function EditProfile({
   editForm,
   setEditForm,
@@ -15,8 +51,6 @@ export default function EditProfile({
   setCountrySearch,
   selectedCountry,
   filteredCountries,
-  CountryFlag,
-  ChevronIcon,
 }) {
   const districtOptions = provinceDistrictMap[editForm.baseProvince] || [];
 
@@ -29,46 +63,65 @@ export default function EditProfile({
 
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-medium text-slate-700">Full Name</label>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Full Name
+            </label>
             <input
               type="text"
               value={editForm.fullName}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, fullName: e.target.value }))}
+              onChange={(e) =>
+                setEditForm((prev) => ({ ...prev, fullName: e.target.value }))
+              }
               className={inputClass}
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">NIC</label>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              NIC
+            </label>
             <input
               type="text"
               value={editForm.nic}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, nic: e.target.value }))}
+              onChange={(e) =>
+                setEditForm((prev) => ({ ...prev, nic: e.target.value }))
+              }
               className={inputClass}
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Email</label>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Email
+            </label>
             <input
               type="email"
               value={editForm.email}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, email: e.target.value }))}
+              onChange={(e) =>
+                setEditForm((prev) => ({ ...prev, email: e.target.value }))
+              }
               className={inputClass}
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Country Code</label>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Country Code
+            </label>
             <div ref={countryDropdownRef} className="relative">
               <button
                 type="button"
                 onClick={() => setCountryOpen((prev) => !prev)}
-                className="flex w-full items-center rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm shadow-sm outline-none transition hover:border-slate-300 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
+                className="flex w-full items-center rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-left text-sm shadow-sm outline-none transition hover:border-blue-200 focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
               >
                 <span className="flex min-w-0 items-center gap-2">
-                  <CountryFlag src={selectedCountry.flagUrl} alt={`${selectedCountry.name} flag`} />
-                  <span className="truncate font-medium text-slate-800">{selectedCountry.dialCode}</span>
+                  <CountryFlag
+                    src={selectedCountry.flagUrl}
+                    alt={`${selectedCountry.name} flag`}
+                  />
+                  <span className="truncate font-medium text-slate-800">
+                    {selectedCountry.dialCode}
+                  </span>
                 </span>
                 <span className="ml-auto text-slate-500">
                   <ChevronIcon />
@@ -76,14 +129,14 @@ export default function EditProfile({
               </button>
 
               {countryOpen ? (
-                <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-                  <div className="border-b border-slate-100 p-3">
+                <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-xl">
+                  <div className="border-b border-blue-100 p-3">
                     <input
                       type="text"
                       value={countrySearch}
                       onChange={(e) => setCountrySearch(e.target.value)}
                       placeholder="Search country"
-                      className="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:bg-white"
+                      className="w-full rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-300 focus:bg-white"
                     />
                   </div>
 
@@ -93,17 +146,27 @@ export default function EditProfile({
                         key={`${country.code}-${country.dialCode}`}
                         type="button"
                         onClick={() => {
-                          setEditForm((prev) => ({ ...prev, countryCode: country.dialCode }));
+                          setEditForm((prev) => ({
+                            ...prev,
+                            countryCode: country.dialCode,
+                          }));
                           setCountryOpen(false);
                           setCountrySearch("");
                         }}
-                        className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left transition hover:bg-slate-50"
+                        className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left transition hover:bg-blue-50"
                       >
                         <span className="flex min-w-0 items-center gap-3">
-                          <CountryFlag src={country.flagUrl} alt={`${country.name} flag`} />
-                          <span className="truncate text-sm text-slate-700">{country.name}</span>
+                          <CountryFlag
+                            src={country.flagUrl}
+                            alt={`${country.name} flag`}
+                          />
+                          <span className="truncate text-sm text-slate-700">
+                            {country.name}
+                          </span>
                         </span>
-                        <span className="ml-3 text-sm font-medium text-slate-500">{country.dialCode}</span>
+                        <span className="ml-3 text-sm font-medium text-slate-500">
+                          {country.dialCode}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -113,20 +176,28 @@ export default function EditProfile({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Phone</label>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Phone
+            </label>
             <input
               type="text"
               value={editForm.phone}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, phone: e.target.value }))}
+              onChange={(e) =>
+                setEditForm((prev) => ({ ...prev, phone: e.target.value }))
+              }
               className={inputClass}
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Gender</label>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Gender
+            </label>
             <select
               value={editForm.gender}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, gender: e.target.value }))}
+              onChange={(e) =>
+                setEditForm((prev) => ({ ...prev, gender: e.target.value }))
+              }
               className={inputClass}
             >
               <option value="">Select gender</option>
@@ -136,11 +207,15 @@ export default function EditProfile({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Date of Birth</label>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Date of Birth
+            </label>
             <input
               type="date"
               value={editForm.dob}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, dob: e.target.value }))}
+              onChange={(e) =>
+                setEditForm((prev) => ({ ...prev, dob: e.target.value }))
+              }
               className={inputClass}
             />
           </div>
@@ -154,10 +229,14 @@ export default function EditProfile({
 
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Role</label>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Role
+            </label>
             <select
               value={editForm.role}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, role: e.target.value }))}
+              onChange={(e) =>
+                setEditForm((prev) => ({ ...prev, role: e.target.value }))
+              }
               className={inputClass}
             >
               {roleOptions.map((role) => (
@@ -169,10 +248,14 @@ export default function EditProfile({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Status</label>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Status
+            </label>
             <select
               value={editForm.status}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, status: e.target.value }))}
+              onChange={(e) =>
+                setEditForm((prev) => ({ ...prev, status: e.target.value }))
+              }
               className={inputClass}
             >
               {statusOptions.map((status) => (
@@ -184,7 +267,9 @@ export default function EditProfile({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Base Province</label>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Base Province
+            </label>
             <select
               value={editForm.baseProvince}
               onChange={(e) =>
@@ -206,10 +291,14 @@ export default function EditProfile({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Base District</label>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Base District
+            </label>
             <select
               value={editForm.baseDistrict}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, baseDistrict: e.target.value }))}
+              onChange={(e) =>
+                setEditForm((prev) => ({ ...prev, baseDistrict: e.target.value }))
+              }
               className={inputClass}
               disabled={!editForm.baseProvince}
             >
@@ -223,11 +312,15 @@ export default function EditProfile({
           </div>
 
           <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-medium text-slate-700">Join Date</label>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Join Date
+            </label>
             <input
               type="date"
               value={editForm.joinDate}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, joinDate: e.target.value }))}
+              onChange={(e) =>
+                setEditForm((prev) => ({ ...prev, joinDate: e.target.value }))
+              }
               className={inputClass}
             />
           </div>
@@ -240,11 +333,15 @@ export default function EditProfile({
         </p>
 
         <div className="mt-4">
-          <label className="mb-2 block text-sm font-medium text-slate-700">Full Address</label>
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            Full Address
+          </label>
           <textarea
             rows="4"
             value={editForm.address}
-            onChange={(e) => setEditForm((prev) => ({ ...prev, address: e.target.value }))}
+            onChange={(e) =>
+              setEditForm((prev) => ({ ...prev, address: e.target.value }))
+            }
             className={inputClass}
           />
         </div>
@@ -254,7 +351,7 @@ export default function EditProfile({
         <button
           type="submit"
           disabled={savingModal}
-          className="rounded-xl bg-blue-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:opacity-60"
+          className="rounded-xl bg-blue-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-600 disabled:opacity-60"
         >
           {savingModal ? "Saving..." : "Save Changes"}
         </button>
@@ -262,7 +359,7 @@ export default function EditProfile({
         <button
           type="button"
           onClick={closeModal}
-          className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+          className="rounded-xl border border-blue-100 bg-blue-50 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-blue-100"
         >
           Cancel
         </button>

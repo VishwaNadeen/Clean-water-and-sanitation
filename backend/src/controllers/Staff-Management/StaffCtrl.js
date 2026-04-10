@@ -126,6 +126,25 @@ async function sendStaffRegistrationEmail({ email, fullName, initialPassword, ro
   return true;
 }
 
+async function sendDeleteApprovalEmail({ email, fullName }) {
+  await sendEmail({
+    to: email,
+    subject: "Your Profile Deletion Request Has Been Approved",
+    text: `Hello ${fullName}, your profile deletion request has been approved by the staff manager/admin. Your staff profile will now be deleted from Clean Water & Sanitation.`,
+    html: `
+      <div style="font-family: Arial, sans-serif; color: #1e293b; line-height: 1.6;">
+        <h2 style="margin-bottom: 12px;">Profile Deletion Approved</h2>
+        <p>Hello ${fullName},</p>
+        <p>Your profile deletion request has been approved by the staff manager/admin.</p>
+        <p>Your staff profile will now be removed from Clean Water & Sanitation.</p>
+        <p>If you did not expect this action, please contact the administrator immediately.</p>
+      </div>
+    `,
+  });
+
+  return true;
+}
+
 /* ===================== CREATE STAFF ===================== */
 export async function createStaff(req, res) {
   const parsed = staffCreateSchema.safeParse(req.body);
@@ -499,6 +518,45 @@ export async function requestDeleteProfile(req, res) {
   }
 }
 
+/* ===================== REJECT DELETE REQUEST (ADMIN ONLY) ===================== */
+export async function rejectDeleteRequest(req, res) {
+  if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
+  if (!isAdmin(req)) return res.status(403).json({ message: "Forbidden: only admin can reject delete requests" });
+
+  const { id } = req.params;
+  if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: "Invalid staff id" });
+
+  try {
+    const staff = await Staff.findById(id);
+    if (!staff) return res.status(404).json({ message: "Staff not found" });
+
+    if (!staff?.deleteRequest?.requested) {
+      return res.status(400).json({ message: "No pending delete request found for this staff member" });
+    }
+
+    staff.deleteRequest = {
+      requested: false,
+      status: "rejected",
+      reason: staff.deleteRequest?.reason || "",
+      requestedAt: staff.deleteRequest?.requestedAt,
+      requestedBy: staff.deleteRequest?.requestedBy,
+      adminResponse: "Your profile deletion request was reviewed and rejected by admin.",
+      reviewedAt: new Date(),
+      reviewedBy: req.auth?._id,
+    };
+
+    await staff.save();
+
+    return res.status(200).json({
+      message: "Delete request rejected successfully",
+      staff,
+    });
+  } catch (err) {
+    console.error("❌ rejectDeleteRequest:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+}
+
 /* ===================== DELETE STAFF (ADMIN ONLY) ===================== */
 export async function deleteStaff(req, res) {
   if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
@@ -515,10 +573,29 @@ export async function deleteStaff(req, res) {
       return res.status(400).json({ message: "Cannot delete: no delete request found for this profile" });
     }
 
+    if (!staff.email) {
+      return res.status(400).json({ message: "Cannot approve deletion: staff email is missing" });
+    }
+
+    try {
+      await sendDeleteApprovalEmail({
+        email: staff.email,
+        fullName: staff.fullName || "Staff member",
+      });
+    } catch (emailError) {
+      console.error("Delete approval email failed:", emailError.message);
+      return res.status(500).json({
+        message: "Delete approval email could not be sent. Profile was not deleted.",
+      });
+    }
+
     await Login.deleteOne({ userId: id });
     const deleted = await Staff.findByIdAndDelete(id);
 
-    return res.status(200).json({ message: "Staff deleted by admin", staff: deleted });
+    return res.status(200).json({
+      message: "Staff deleted by admin and notification email sent",
+      staff: deleted,
+    });
   } catch (err) {
     console.error("❌ deleteStaff:", err);
     return res.status(500).json({ message: "Server error" });
@@ -609,3 +686,5 @@ export async function removeMyStaffProfileImage(req, res) {
     return res.status(500).json({ message: "Server error" });
   }
 }
+
+

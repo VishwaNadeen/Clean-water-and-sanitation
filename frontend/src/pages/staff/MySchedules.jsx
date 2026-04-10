@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from "react";
-import FloatingToast from "../../components/common/FloatingToast";
 import useMySchedules from "../../hooks/staffManagement/useMySchedules";
 import EmptyState from "../../components/staffManagement/staff/EmptyState";
 import ScheduleCard from "../../components/staffManagement/staff/ScheduleCard";
@@ -54,13 +53,16 @@ const MySchedules = () => {
     searchTerm,
     setSearchTerm,
     proofFiles,
+    proofMessageById,
+    taskMessageById,
     formState,
-    message,
     loadSchedules,
     handleStart,
     handleRevertStart,
+    handleRedoTask,
     handleFileChange,
     handleUploadProof,
+    handleRemoveProof,
     handleFormChange,
     handleComplete,
   } = useMySchedules();
@@ -110,8 +112,6 @@ const MySchedules = () => {
           setTimeFilter={setTimeFilter}
           onRefresh={loadSchedules}
         />
-
-        {message.text ? <FloatingToast toast={message} /> : null}
 
         <div className="mt-6">
           {loading ? (
@@ -233,14 +233,18 @@ const MySchedules = () => {
                 schedule={selectedSchedule}
                 formState={formState}
                 proofFile={proofFiles[selectedSchedule._id]}
+                proofMessage={proofMessageById[selectedSchedule._id]}
+                taskMessage={taskMessageById[selectedSchedule._id]}
                 busyAction={busyAction}
                 embedded
                 onStart={handleStart}
                 onRevertStart={handleRevertStart}
                 onFileChange={handleFileChange}
                 onUploadProof={handleUploadProof}
+                onRemoveProof={handleRemoveProof}
                 onFormChange={handleFormChange}
                 onComplete={handleComplete}
+                onRedoTask={handleRedoTask}
               />
             </div>
           </div>

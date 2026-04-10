@@ -3,3 +3,8 @@
 /* optional minimal base */
 html, body, #root { height: 100%; }
 body { margin: 0; }
+
+.staff-password-input::-ms-reveal,
+.staff-password-input::-ms-clear {
+  display: none;
+}

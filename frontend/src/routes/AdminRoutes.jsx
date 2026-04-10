@@ -7,6 +7,7 @@ import StaffManagementHome from "../pages/admin/staff-Management/StaffManagement
 import StaffRegister from "../pages/admin/staff-Management/StaffRegister";
 import ManageSchedules from "../pages/admin/staff-Management/ManageSchedules";
 import AssignIssues from "../pages/admin/staff-Management/AssignIssues";
+import DeleteRequests from "../pages/admin/staff-Management/DeleteRequests";
 import RestroomList   from "../pages/admin/restrooms/RestroomList";
 import CreateRestroom from "../pages/admin/restrooms/CreateRestroom";
 import EditRestroom   from "../pages/admin/restrooms/EditRestroom";
@@ -25,6 +26,7 @@ const AdminRoutes = (
     <Route path="/admin/register-staff"         element={<StaffRegister />} />
     <Route path="/admin/staff/schedules"        element={<ManageSchedules />} />
     <Route path="/admin/staff/issues"           element={<AssignIssues />} />
+    <Route path="/admin/staff/delete-requests"  element={<DeleteRequests />} />
     <Route path="/admin/restrooms"              element={<RestroomList />} />
     <Route path="/admin/restrooms/create"       element={<CreateRestroom />} />
     <Route path="/admin/restrooms/:id/edit"     element={<EditRestroom />} />

@@ -349,6 +349,10 @@ export const rejectSchedule = async (req, res) => {
 
     if (!isValidObjectId(id)) return res.status(400).json({ message: "Invalid id" });
 
+    if (!String(managerReviewNote || "").trim()) {
+      return res.status(400).json({ message: "Rejection reason is required" });
+    }
+
     const schedule = await WorkSchedule.findById(id);
     if (!schedule) return res.status(404).json({ message: "Not found" });
 
@@ -357,7 +361,7 @@ export const rejectSchedule = async (req, res) => {
     }
 
     schedule.status = "Rejected";
-    schedule.managerReviewNote = managerReviewNote || "Rejected by manager";
+    schedule.managerReviewNote = String(managerReviewNote).trim();
     await schedule.save();
 
     const populated = await WorkSchedule.findById(id).populate(

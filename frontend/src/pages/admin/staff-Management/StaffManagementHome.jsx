@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import FloatingToast from "../../../components/common/FloatingToast";
 import API_BASE_URL from "../../../config/api";
@@ -31,6 +31,58 @@ export default function StaffManagementHome() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
 
+  const loadDashboardData = useCallback(async ({ showPartialErrorToast = true } = {}) => {
+    try {
+      setLoading(true);
+
+      const [staffResult, scheduleResult, issueResult] = await Promise.allSettled([
+        getManagerStaff(),
+        getAllSchedules(),
+        staffApi.get("/issues"),
+      ]);
+
+      const nextStaff =
+        staffResult.status === "fulfilled" && Array.isArray(staffResult.value)
+          ? staffResult.value
+          : [];
+
+      const nextSchedules =
+        scheduleResult.status === "fulfilled" && Array.isArray(scheduleResult.value)
+          ? scheduleResult.value
+          : [];
+
+      const nextIssues =
+        issueResult.status === "fulfilled" &&
+        Array.isArray(issueResult.value?.data?.data)
+          ? issueResult.value.data.data
+          : [];
+
+      setStaffMembers(nextStaff);
+      setSchedules(nextSchedules);
+      setIssues(nextIssues);
+
+      if (staffResult.status === "rejected") {
+        setToast({
+          type: "error",
+          text:
+            staffResult.reason?.response?.data?.message ||
+            staffResult.reason?.message ||
+            "Failed to load staff members from database.",
+        });
+      } else if (
+        showPartialErrorToast &&
+        (scheduleResult.status === "rejected" || issueResult.status === "rejected")
+      ) {
+        setToast({
+          type: "error",
+          text: "Some dashboard sections could not be loaded, but staff data is shown.",
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     const nextToast = location.state?.toast;
 
@@ -52,57 +104,28 @@ export default function StaffManagementHome() {
   }, [location.pathname, location.state, navigate]);
 
   useEffect(() => {
-    async function loadDashboardData() {
-      try {
-        setLoading(true);
-
-        const [staffResult, scheduleResult, issueResult] = await Promise.allSettled([
-          getManagerStaff(),
-          getAllSchedules(),
-          staffApi.get("/issues"),
-        ]);
-
-        const nextStaff =
-          staffResult.status === "fulfilled" && Array.isArray(staffResult.value)
-            ? staffResult.value
-            : [];
-
-        const nextSchedules =
-          scheduleResult.status === "fulfilled" && Array.isArray(scheduleResult.value)
-            ? scheduleResult.value
-            : [];
-
-        const nextIssues =
-          issueResult.status === "fulfilled" &&
-          Array.isArray(issueResult.value?.data?.data)
-            ? issueResult.value.data.data
-            : [];
-
-        setStaffMembers(nextStaff);
-        setSchedules(nextSchedules);
-        setIssues(nextIssues);
-
-        if (staffResult.status === "rejected") {
-          setToast({
-            type: "error",
-            text:
-              staffResult.reason?.response?.data?.message ||
-              staffResult.reason?.message ||
-              "Failed to load staff members from database.",
-          });
-        } else if (scheduleResult.status === "rejected" || issueResult.status === "rejected") {
-          setToast({
-            type: "error",
-            text: "Some dashboard sections could not be loaded, but staff data is shown.",
-          });
-        }
-      } finally {
-        setLoading(false);
-      }
-    }
-
     loadDashboardData();
-  }, []);
+
+    const handleRefresh = () => {
+      loadDashboardData({ showPartialErrorToast: false });
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        loadDashboardData({ showPartialErrorToast: false });
+      }
+    };
+
+    window.addEventListener("focus", handleRefresh);
+    window.addEventListener("auth-changed", handleRefresh);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("focus", handleRefresh);
+      window.removeEventListener("auth-changed", handleRefresh);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [loadDashboardData]);
 
   const staffRows = useMemo(() => {
     return staffMembers.map((staff) => {
@@ -162,6 +185,17 @@ export default function StaffManagementHome() {
     });
   }, [staffRows, search, roleFilter, statusFilter]);
 
+  const pendingIssuesCount = useMemo(() => {
+    return issues.filter((issue) => {
+      const status = String(issue.status || "").toLowerCase();
+      return !["resolved", "closed", "completed"].includes(status);
+    }).length;
+  }, [issues]);
+
+  const pendingReviewCount = useMemo(() => {
+    return schedules.filter((item) => item.status === "Completed").length;
+  }, [schedules]);
+
   const overviewStats = useMemo(() => {
     const totalStaff = staffRows.length;
     const activeStaff = staffRows.filter(
@@ -176,11 +210,6 @@ export default function StaffManagementHome() {
     const totalAssignedTasks = schedules.filter(
       (item) => item.status !== "Cancelled"
     ).length;
-    const pendingIssues = issues.filter((issue) => {
-      const status = String(issue.status || "").toLowerCase();
-      return !["resolved", "closed", "completed"].includes(status);
-    }).length;
-
     return [
       {
         key: "total",
@@ -215,11 +244,11 @@ export default function StaffManagementHome() {
       {
         key: "issues",
         label: "Pending Issues",
-        value: pendingIssues,
+        value: pendingIssuesCount,
         note: "Open issues waiting action",
       },
     ];
-  }, [issues, schedules, staffRows]);
+  }, [pendingIssuesCount, schedules, staffRows]);
 
   const roleOptions = useMemo(() => {
     const values = [...new Set(staffRows.map((staff) => staff.role).filter(Boolean))];
@@ -227,6 +256,9 @@ export default function StaffManagementHome() {
   }, [staffRows]);
 
   const statusOptions = ["All", "Active", "Busy", "Off Duty", "Unknown"];
+  const pendingDeleteRequestsCount = staffRows.filter(
+    (staff) => Boolean(staff.deleteRequest?.requested)
+  ).length;
 
   return (
     <div className="space-y-6">
@@ -264,11 +296,11 @@ export default function StaffManagementHome() {
           </div>
 
           <span className="inline-flex w-fit rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
-            3 Actions
+            4 Actions
           </span>
         </div>
 
-        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <QuickLink
             to="/admin/staff/schedules?mode=assign"
             title="Assign New Work"
@@ -278,11 +310,22 @@ export default function StaffManagementHome() {
             to="/admin/staff/issues"
             title="Assign Reported Issues"
             note="Send open issues to the correct staff member."
+            badgeCount={pendingIssuesCount}
+            badgeTone="rose"
           />
           <QuickLink
             to="/admin/staff/schedules?mode=reviews"
             title="Review Completed Work"
             note="Approve or reject tasks after staff proof upload."
+            badgeCount={pendingReviewCount}
+            badgeTone="rose"
+          />
+          <QuickLink
+            to="/admin/staff/delete-requests"
+            title="Delete Requests"
+            note="Review staff profile deletion requests waiting admin approval."
+            badgeCount={pendingDeleteRequestsCount}
+            badgeTone="rose"
           />
         </div>
       </section>
@@ -389,9 +432,12 @@ export default function StaffManagementHome() {
                         }`}
                       >
                         <td className="px-5 py-4">
-                          <p className="font-semibold text-slate-900">
-                            {staff.fullName || staff.name || "Unnamed staff"}
-                          </p>
+                          <div className="flex items-center gap-3">
+                            <StaffAvatar staff={staff} sizeClass="h-11 w-11" textClass="text-base" />
+                            <p className="font-semibold text-slate-900">
+                              {staff.fullName || staff.name || "Unnamed staff"}
+                            </p>
+                          </div>
                         </td>
 
                         <td className="px-5 py-4">
@@ -633,26 +679,6 @@ function StaffActionModal({ staff, onClose }) {
                     >
                       Assign Issue
                     </Link>
-                    <Link
-                      to="/admin/staff/schedules"
-                      onClick={onClose}
-                      className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-                    >
-                      Edit
-                    </Link>
-                    <button
-                      type="button"
-                      className="rounded-2xl border border-red-200 bg-red-50 px-4 py-4 text-sm font-semibold text-red-700 transition hover:bg-red-100"
-                    >
-                      Remove
-                    </button>
-                    <button
-                      type="button"
-                      onClick={onClose}
-                      className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                    >
-                      Close
-                    </button>
                   </div>
                 </div>
               </div>
@@ -669,13 +695,42 @@ function getProfileImageSrc(imagePath) {
     return "";
   }
 
-  if (/^https?:\/\//i.test(imagePath)) {
+  if (/^(https?:\/\/|data:|blob:)/i.test(imagePath)) {
     return imagePath;
   }
 
   const normalizedBase = String(API_BASE_URL || "").replace(/\/api\/?$/, "");
   const normalizedPath = imagePath.startsWith("/") ? imagePath : `/${imagePath}`;
   return `${normalizedBase}${normalizedPath}`;
+}
+
+function StaffAvatar({
+  staff,
+  sizeClass = "h-12 w-12",
+  textClass = "text-lg",
+}) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const imageSrc = imageFailed ? "" : getProfileImageSrc(staff?.profileImageUrl);
+  const label = staff?.fullName || staff?.name || "Staff";
+
+  if (imageSrc) {
+    return (
+      <img
+        src={imageSrc}
+        alt={label}
+        className={`${sizeClass} rounded-full border border-slate-200 object-cover shadow-sm`}
+        onError={() => setImageFailed(true)}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={`${sizeClass} grid place-items-center rounded-full border border-slate-200 bg-blue-50 font-bold text-blue-700 shadow-sm ${textClass}`}
+    >
+      {String(label).charAt(0).toUpperCase()}
+    </div>
+  );
 }
 
 function ProfileTile({ label, value }) {
@@ -689,22 +744,52 @@ function ProfileTile({ label, value }) {
   );
 }
 
-function QuickLink({ to, title, note }) {
-  return (
-    <Link
-      to={to}
-      className="group rounded-[24px] border border-slate-200 bg-white px-5 py-5 shadow-sm transition duration-200 hover:-translate-y-1 hover:border-blue-200 hover:shadow-md"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div>
+function QuickLink({ to, title, note, onClick, badgeCount = 0, badgeTone = "blue" }) {
+  const badgeToneClass =
+    badgeTone === "rose"
+      ? "border-rose-200 bg-rose-50 text-rose-700 group-hover:bg-rose-100"
+      : "border-blue-200 bg-blue-50 text-blue-700 group-hover:bg-blue-100";
+
+  const content = (
+    <div className="flex items-start justify-between gap-3">
+      <div>
+        <div className="flex flex-wrap items-center gap-2">
           <p className="text-lg font-semibold text-slate-900">{title}</p>
-          <p className="mt-2 text-sm leading-7 text-slate-500">{note}</p>
+          {badgeCount > 0 && badgeTone !== "rose" ? (
+            <span className="inline-flex min-h-6 min-w-6 items-center justify-center rounded-full bg-rose-500 px-2 text-xs font-bold text-white shadow-sm">
+              {badgeCount}
+            </span>
+          ) : null}
         </div>
-        <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700 transition group-hover:bg-blue-100">
+        <p className="mt-2 text-sm leading-7 text-slate-500">{note}</p>
+      </div>
+      {badgeTone === "rose" ? (
+        <span className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-full border border-rose-200 bg-rose-50 px-3 text-sm font-bold text-rose-700 transition group-hover:bg-rose-100">
+          {badgeCount}
+        </span>
+      ) : (
+        <span className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] transition ${badgeToneClass}`}>
           Open
         </span>
-      </div>
-    </Link>
+      )}
+    </div>
+  );
+
+  const sharedClassName =
+    "group rounded-[24px] border border-slate-200 bg-white px-5 py-5 text-left shadow-sm transition duration-200 hover:-translate-y-1 hover:border-blue-200 hover:shadow-md";
+
+  if (to) {
+    return (
+      <Link to={to} className={sharedClassName}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <button type="button" onClick={onClick} className={sharedClassName}>
+      {content}
+    </button>
   );
 }
 
@@ -722,5 +807,16 @@ function StatusPill({ status }) {
     <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase ${tone}`}>
       {status}
     </span>
+  );
+}
+
+function RequestInfo({ label, value }) {
+  return (
+    <div className="rounded-2xl border border-white bg-white px-4 py-3">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+        {label}
+      </p>
+      <p className="mt-2 text-sm font-medium text-slate-800">{value || "N/A"}</p>
+    </div>
   );
 }

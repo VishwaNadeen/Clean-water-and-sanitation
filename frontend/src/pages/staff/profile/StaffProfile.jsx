@@ -168,6 +168,11 @@ export default function StaffProfile() {
     newPassword: "",
     confirmPassword: "",
   });
+  const [passwordErrors, setPasswordErrors] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
 
   const [passwordVisibility, setPasswordVisibility] = useState({
     currentPassword: false,
@@ -179,7 +184,7 @@ export default function StaffProfile() {
     reason: "",
   });
 
-  const { profile, setProfile, loading, storedUser } = useProfileData();
+  const { profile, setProfile , storedUser } = useProfileData();
 
   const staff = profile?.originalData || {};
 
@@ -189,11 +194,20 @@ export default function StaffProfile() {
     storedUser?.fullName ||
     "Staff Member";
 
-  const profileImageSrc = profile?.profileImageUrl || "";
+  const profileImageSrc =
+    profile?.profileImageUrl ||
+    profile?.originalData?.profileImageUrl ||
+    storedUser?.profileImageUrl ||
+    "";
   const profileImageInitial = String(displayName || "S").trim().charAt(0).toUpperCase();
   const locationLabel = [staff.baseDistrict, staff.baseProvince].filter(Boolean).join(", ");
   const phoneLabel = [staff.countryCode, staff.phone].filter(Boolean).join(" ");
   const mustChangePassword = Boolean(profile?.mustChangePassword || staff.mustChangePassword);
+  const deleteRequest = staff.deleteRequest || {};
+  const isDeleteRequestPending =
+    Boolean(deleteRequest.requested) || deleteRequest.status === "pending";
+  const hasDeleteRequestResponse =
+    deleteRequest.status === "rejected" && Boolean(deleteRequest.adminResponse);
 
   const selectedCountry = useMemo(() => {
     return (
@@ -324,6 +338,11 @@ export default function StaffProfile() {
       newPassword: "",
       confirmPassword: "",
     });
+    setPasswordErrors({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
 
     setPasswordVisibility({
       currentPassword: false,
@@ -417,22 +436,56 @@ export default function StaffProfile() {
   async function handlePasswordSave(event) {
     event.preventDefault();
 
+    const trimmedNewPassword = passwordForm.newPassword.trim();
+    const passwordRule = /^(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{6,}$/;
+    const nextErrors = {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    };
+
     if (!passwordForm.currentPassword || !passwordForm.newPassword) {
-      showToast("error", "Current password and new password are required.");
-      return;
+      if (!passwordForm.currentPassword) {
+        nextErrors.currentPassword = "Current password is required.";
+      }
+      if (!passwordForm.newPassword) {
+        nextErrors.newPassword = "New password is required.";
+      }
     }
 
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      showToast("error", "New password and confirm password do not match.");
+    if (!passwordForm.confirmPassword) {
+      nextErrors.confirmPassword = "Please confirm your new password.";
+    }
+
+    if (passwordForm.newPassword && !passwordRule.test(trimmedNewPassword)) {
+      nextErrors.newPassword =
+        "Use at least 6 characters with one uppercase letter and one special character.";
+    }
+
+    if (
+      passwordForm.newPassword &&
+      passwordForm.confirmPassword &&
+      trimmedNewPassword !== passwordForm.confirmPassword.trim()
+    ) {
+      nextErrors.confirmPassword = "New password and confirm new password do not match.";
+    }
+
+    if (nextErrors.currentPassword || nextErrors.newPassword || nextErrors.confirmPassword) {
+      setPasswordErrors(nextErrors);
       return;
     }
 
     try {
       setSavingModal(true);
+      setPasswordErrors({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
 
       await changeMyPassword({
         currentPassword: passwordForm.currentPassword,
-        newPassword: passwordForm.newPassword,
+        newPassword: trimmedNewPassword,
       });
 
       updateStoredUser({ mustChangePassword: false });
@@ -470,33 +523,12 @@ export default function StaffProfile() {
 
   const inputClass =
     "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100";
-
-  if (loading) {
-    return (
-      <div className="min-h-full bg-gradient-to-br from-blue-50 via-white to-blue-100 px-4 pb-6 pt-2 md:px-6 md:pb-8 md:pt-3">
-        <div className="mx-auto max-w-7xl rounded-[30px] border border-blue-100 bg-white p-8 shadow-sm">
-          <p className="text-slate-600">Loading staff profile...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-full bg-gradient-to-br from-blue-50 via-white to-blue-100 px-4 pb-6 pt-2 md:px-6 md:pb-8 md:pt-3">
       <div className="mx-auto max-w-7xl">
         {toast ? <FloatingToast toast={toast} onClose={() => setToast(null)} /> : null}
 
-        <div className="overflow-hidden rounded-[32px] bg-gradient-to-r from-blue-800 to-blue-600 p-6 text-white shadow-lg">
-          <p className="text-sm font-medium uppercase tracking-[0.2em] text-blue-100">
-            Staff Panel
-          </p>
-          <h1 className="mt-2 text-3xl font-bold md:text-4xl">My Staff Profile</h1>
-          <p className="mt-2 max-w-3xl text-sm text-blue-100 md:text-base">
-            View your staff account details, assigned role, work base, and contact information.
-          </p>
-        </div>
-
-        <div className="mt-6 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
           <section className="rounded-[30px] border border-blue-100 bg-white p-6 shadow-sm">
             {mustChangePassword ? (
               <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
@@ -520,67 +552,118 @@ export default function StaffProfile() {
               </div>
             ) : null}
 
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-              <div className="flex items-center gap-4">
-                {profileImageSrc ? (
-                  <img
-                    src={profileImageSrc}
-                    alt={displayName}
-                    className="h-24 w-24 rounded-[28px] border border-blue-100 object-cover shadow-sm"
-                  />
-                ) : (
-                  <div className="grid h-24 w-24 place-items-center rounded-[28px] border border-blue-100 bg-blue-50 text-4xl font-bold text-blue-700 shadow-sm">
-                    {profileImageInitial}
-                  </div>
-                )}
-
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-600">
-                    Staff Member
+            {isDeleteRequestPending ? (
+              <div className="mb-6 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-4">
+                <div className="flex flex-col gap-2">
+                  <p className="text-sm font-semibold text-rose-800">
+                    Delete request sent to admin
                   </p>
-                  <h2 className="mt-2 text-2xl font-bold text-slate-900">{displayName}</h2>
-                  <p className="mt-2 text-sm text-slate-500">
+                  <p className="text-sm text-rose-700">
+                    Your profile deletion request is waiting for admin review.
+                  </p>
+                  <p className="text-sm text-rose-700">
+                    Requested on:{" "}
+                    {deleteRequest.requestedAt
+                      ? formatDate(deleteRequest.requestedAt)
+                      : "Recently submitted"}
+                  </p>
+                  {deleteRequest.reason ? (
+                    <p className="text-sm text-rose-700">
+                      Reason: {deleteRequest.reason}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+
+            {hasDeleteRequestResponse ? (
+              <div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-4">
+                <div className="flex flex-col gap-2">
+                  <p className="text-sm font-semibold text-blue-800">
+                    Admin response for your delete request
+                  </p>
+                  <p className="text-sm text-blue-700">{deleteRequest.adminResponse}</p>
+                  <p className="text-sm text-blue-700">
+                    Reviewed on:{" "}
+                    {deleteRequest.reviewedAt
+                      ? formatDate(deleteRequest.reviewedAt)
+                      : "Recently updated"}
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="mb-6 rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-50/80 via-white to-blue-50/60 p-5 md:p-6">
+              <div className="grid gap-5 lg:grid-cols-[auto_1fr_auto] lg:items-center">
+                <div className="mx-auto lg:mx-0">
+                  {profileImageSrc ? (
+                    <img
+                      src={profileImageSrc}
+                      alt={displayName}
+                      className="h-28 w-28 rounded-3xl border border-blue-200 object-cover shadow-[0_12px_28px_rgba(37,99,235,0.14)]"
+                    />
+                  ) : (
+                    <div className="grid h-28 w-28 place-items-center rounded-3xl border border-blue-200 bg-gradient-to-br from-blue-100 to-sky-100 text-4xl font-semibold text-blue-900 shadow-[0_12px_28px_rgba(37,99,235,0.14)]">
+                      {profileImageInitial}
+                    </div>
+                  )}
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
+                    Staff Profile Photo
+                  </p>
+                  <h2 className="mt-2 text-3xl font-bold leading-tight text-slate-900">
+                    {displayName}
+                  </h2>
+                  <p className="mt-2 break-all text-base text-slate-600">
                     {staff.email || storedUser?.email || "-"}
                   </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-blue-700">
+
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <span className="rounded-full border border-blue-200 bg-blue-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-blue-700">
                       {staff.role || "Staff"}
                     </span>
-                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                    <span className="rounded-full border border-emerald-200 bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700">
                       {staff.status || "Active"}
                     </span>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex flex-wrap gap-3">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleProfileImageChange}
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadingImage}
-                  className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {uploadingImage ? "Working..." : profileImageSrc ? "Change Photo" : "Upload Photo"}
-                </button>
-
-                {profileImageSrc ? (
+                <div className="flex w-full flex-col gap-3 lg:w-auto lg:min-w-[230px]">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleProfileImageChange}
+                  />
                   <button
                     type="button"
-                    onClick={handleRemoveProfileImage}
+                    onClick={() => fileInputRef.current?.click()}
                     disabled={uploadingImage}
-                    className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="rounded-xl border border-blue-300 bg-white px-4 py-2.5 text-sm font-semibold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-70"
                   >
-                    Remove Photo
+                    {uploadingImage ? "Working..." : profileImageSrc ? "Change Photo" : "Upload Photo"}
                   </button>
-                ) : null}
+                  {profileImageSrc ? (
+                    <button
+                      type="button"
+                      onClick={handleRemoveProfileImage}
+                      disabled={uploadingImage}
+                      className="rounded-xl border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      Remove Photo
+                    </button>
+                  ) : null}
+                </div>
               </div>
+
+              <p className="mt-4 text-xs text-slate-500">
+                {profileImageSrc
+                  ? "You can change or remove your uploaded photo at any time."
+                  : "Upload a profile photo now. After upload, a remove option will appear here."}
+              </p>
             </div>
 
             <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -594,28 +677,34 @@ export default function StaffProfile() {
               ))}
             </div>
 
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="mt-6 rounded-[24px] border border-slate-100 bg-slate-50/80 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                Profile Actions
+              </p>
+              <div className="mt-4 flex flex-wrap gap-3">
               <button
                 type="button"
                 onClick={() => setActiveModal("edit")}
-                className="rounded-xl bg-blue-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-800"
+                className="rounded-2xl bg-blue-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-800"
               >
                 Edit Staff Profile
               </button>
               <button
                 type="button"
                 onClick={() => setActiveModal("password")}
-                className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-3 text-sm font-semibold text-amber-700 transition hover:bg-amber-100"
+                className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-3 text-sm font-semibold text-amber-700 transition hover:bg-amber-100"
               >
                 Change Password
               </button>
               <button
                 type="button"
                 onClick={() => setActiveModal("delete")}
-                className="rounded-xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
+                disabled={isDeleteRequestPending}
+                className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
               >
-                Delete Request
+                {isDeleteRequestPending ? "Request Sent" : "Delete Request"}
               </button>
+              </div>
             </div>
           </section>
 
@@ -687,6 +776,8 @@ export default function StaffProfile() {
                   <PasswordProfile
                     passwordForm={passwordForm}
                     setPasswordForm={setPasswordForm}
+                    passwordErrors={passwordErrors}
+                    setPasswordErrors={setPasswordErrors}
                     passwordVisibility={passwordVisibility}
                     setPasswordVisibility={setPasswordVisibility}
                     handlePasswordSave={handlePasswordSave}
