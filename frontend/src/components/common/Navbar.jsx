@@ -278,7 +278,14 @@ export default function Navbar() {
             }}
           >
             <div
-              className={`mx-auto flex max-w-[1200px] items-center justify-between gap-4 transition-all duration-300 ${
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background:
+                  "linear-gradient(0deg, rgb(143,208,251) 0%, rgb(83,179,245) 45%, rgb(67,160,232) 100%)",
+              }}
+            />
+            <div
+              className={`relative z-[1] mx-auto flex max-w-[1200px] items-center justify-between gap-4 transition-all duration-300 ${
                 scrolled ? "px-6 py-[10px]" : "px-6 py-[13px]"
               }`}
             >
