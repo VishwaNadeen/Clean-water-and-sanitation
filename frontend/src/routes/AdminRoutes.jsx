@@ -1,4 +1,4 @@
-import { Route } from "react-router-dom";
+import { Navigate, Route } from "react-router-dom";
 import AdminLayout    from "../layouts/AdminLayout";
 import RequireAdmin   from "../components/auth/RequireAdmin";
 import AdminDashboard from "../pages/admin/AdminDashboard";
@@ -10,6 +10,9 @@ import AssignIssues from "../pages/admin/staff-Management/AssignIssues";
 import RestroomList   from "../pages/admin/restrooms/RestroomList";
 import CreateRestroom from "../pages/admin/restrooms/CreateRestroom";
 import EditRestroom   from "../pages/admin/restrooms/EditRestroom";
+import ComplaintList  from "../pages/admin/complaints/ComplaintList";
+import CreateCategoryPage from "../pages/admin/categories/CreateCategoryPage";
+import ViewCategoriesPage from "../pages/admin/categories/ViewCategoriesPage";
 
 const AdminRoutes = (
   <Route
@@ -28,6 +31,10 @@ const AdminRoutes = (
     <Route path="/admin/restrooms"              element={<RestroomList />} />
     <Route path="/admin/restrooms/create"       element={<CreateRestroom />} />
     <Route path="/admin/restrooms/:id/edit"     element={<EditRestroom />} />
+    <Route path="/admin/complaints"             element={<ComplaintList />} />
+    <Route path="/admin/categories"             element={<Navigate to="/admin/categories/view" replace />} />
+    <Route path="/admin/categories/create"      element={<CreateCategoryPage />} />
+    <Route path="/admin/categories/view"        element={<ViewCategoriesPage />} />
   </Route>
 );
 

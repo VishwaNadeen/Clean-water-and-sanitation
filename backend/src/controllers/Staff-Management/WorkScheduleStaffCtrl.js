@@ -93,9 +93,9 @@ export const uploadProof = async (req, res) => {
 
     // Check Cloudinary config
     console.log("Cloudinary config:", {
-      cloud_name: process.env.CLOUDINARY_CLOUD_NAME ? "SET" : "NOT SET",
+      cloud_name: process.env.CLOUDINARY_NAME ? "SET" : "NOT SET",
       api_key: process.env.CLOUDINARY_API_KEY ? "SET" : "NOT SET",
-      api_secret: process.env.CLOUDINARY_API_SECRET ? "SET" : "NOT SET",
+      api_secret: process.env.CLOUDINARY_SECRET_KEY ? "SET" : "NOT SET",
     });
 
     const schedule = await WorkSchedule.findById(id);
@@ -112,7 +112,7 @@ export const uploadProof = async (req, res) => {
     let result;
     
     // Try Cloudinary upload first, fallback to base64 if not configured
-    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_SECRET) {
+    if (process.env.CLOUDINARY_NAME && process.env.CLOUDINARY_SECRET_KEY) {
       console.log("Attempting to upload to Cloudinary...");
       try {
         result = await uploadBufferToCloudinary(req.file.buffer, "work-proofs");

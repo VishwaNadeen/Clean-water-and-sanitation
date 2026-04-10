@@ -19,10 +19,11 @@ export default function Navbar() {
     storedUser?.profileImageUrl || ""
   );
   const [scrolled, setScrolled] = useState(false);
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [profileMenuState, setProfileMenuState] = useState("closed");
   const [ripples, setRipples] = useState([]);
   const rippleId = useRef(0);
   const profileMenuRef = useRef(null);
+  const profileMenuTimeoutRef = useRef(null);
 
   useEffect(() => {
     const syncAuth = () => {
@@ -68,13 +69,13 @@ export default function Navbar() {
   useEffect(() => {
     const handlePointerDown = (event) => {
       if (!profileMenuRef.current?.contains(event.target)) {
-        setProfileMenuOpen(false);
+        closeProfileMenu();
       }
     };
 
     const handleKeyDown = (event) => {
       if (event.key === "Escape") {
-        setProfileMenuOpen(false);
+        closeProfileMenu();
       }
     };
 
@@ -86,6 +87,22 @@ export default function Navbar() {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, []);
+
+  useEffect(() => {
+    if (profileMenuState !== "closing") return;
+
+    profileMenuTimeoutRef.current = window.setTimeout(() => {
+      setProfileMenuState("closed");
+      profileMenuTimeoutRef.current = null;
+    }, 180);
+
+    return () => {
+      if (profileMenuTimeoutRef.current) {
+        window.clearTimeout(profileMenuTimeoutRef.current);
+        profileMenuTimeoutRef.current = null;
+      }
+    };
+  }, [profileMenuState]);
 
   async function handleLogout() {
     const token = localStorage.getItem("token");
@@ -99,9 +116,27 @@ export default function Navbar() {
       clearAuthSession();
       setLoggedIn(false);
       setProfileImageUrl("");
-      setProfileMenuOpen(false);
+      setProfileMenuState("closed");
       navigate("/login");
     }
+  }
+
+  function closeProfileMenu() {
+    setProfileMenuState((currentState) =>
+      currentState === "open" ? "closing" : currentState
+    );
+  }
+
+  function toggleProfileMenu() {
+    setProfileMenuState((currentState) => {
+      if (profileMenuTimeoutRef.current) {
+        window.clearTimeout(profileMenuTimeoutRef.current);
+        profileMenuTimeoutRef.current = null;
+      }
+
+      if (currentState === "open") return "closing";
+      return "open";
+    });
   }
 
   function addRipple(e) {
@@ -161,9 +196,14 @@ export default function Navbar() {
           from { opacity: 0; transform: translateY(-8px) scale(0.98); }
           to   { opacity: 1; transform: translateY(0) scale(1); }
         }
+
+        @keyframes nb2-menu-out {
+          from { opacity: 1; transform: translateY(0) scale(1); }
+          to   { opacity: 0; transform: translateY(-8px) scale(0.98); }
+        }
       `}</style>
 
-      <header className="relative z-[200] font-['Poppins',sans-serif]">
+      <header className="sticky top-0 isolate z-[1000] font-['Poppins',sans-serif]">
         <div
           className="relative overflow-visible"
           style={{
@@ -286,15 +326,13 @@ export default function Navbar() {
                     </button>
                   </>
                 ) : (
-                  <div ref={profileMenuRef} className="relative">
+                  <div ref={profileMenuRef} className="relative z-[1100]">
                     <button
                       className="grid h-[38px] w-[38px] place-items-center overflow-hidden rounded-full border-[1.5px] border-white/65 bg-white/20 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] transition-all duration-200 hover:-translate-y-[1px] hover:scale-[1.03] hover:border-white hover:bg-white/30"
                       title="Account menu"
                       aria-haspopup="menu"
-                      aria-expanded={profileMenuOpen}
-                      onClick={() => {
-                        setProfileMenuOpen((open) => !open);
-                      }}
+                      aria-expanded={profileMenuState === "open"}
+                      onClick={toggleProfileMenu}
                     >
                       {profileImageUrl ? (
                         <img
@@ -319,18 +357,23 @@ export default function Navbar() {
                       )}
                     </button>
 
-                    {profileMenuOpen ? (
+                    {profileMenuState !== "closed" ? (
                       <div
-                        className="absolute right-0 top-[calc(100%+10px)] min-w-[176px] rounded-[18px] border border-white/45 bg-white/80 p-2 shadow-[0_18px_36px_rgba(15,23,42,0.16)] backdrop-blur-[12px]"
-                        style={{ animation: "nb2-menu-in 0.18s ease-out both" }}
+                        className="absolute right-0 top-[calc(100%+10px)] z-[1200] min-w-[176px] rounded-[18px] border border-white/45 bg-white/80 p-2 shadow-[0_18px_36px_rgba(15,23,42,0.16)] backdrop-blur-[12px]"
+                        style={{
+                          animation:
+                            profileMenuState === "closing"
+                              ? "nb2-menu-out 0.18s ease-in both"
+                              : "nb2-menu-in 0.18s ease-out both",
+                        }}
                         role="menu"
                       >
                         <button
                           className="flex w-full items-center gap-[10px] rounded-[12px] bg-transparent px-3 py-[11px] text-left text-[13px] font-semibold text-slate-900 transition-all duration-200 hover:-translate-y-[1px] hover:bg-white/35"
                           role="menuitem"
                           onClick={() => {
-                            setProfileMenuOpen(false);
-                            navigate(profilePath);
+                            setProfileMenuState("closed");
+                            navigate("/profile");
                           }}
                         >
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
