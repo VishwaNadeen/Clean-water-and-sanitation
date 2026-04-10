@@ -4,7 +4,7 @@ import Staff from "../../models/Staff-Management/StaffModel.js";
 
 const ROLE_TASK_RULES = {
   Cleaner: ["Cleaning"],
-  Technician: ["Maintenance", "Inspection"],
+  Technician: ["Maintenance"],
   Supervisor: ["Inspection"],
 };
 
@@ -52,6 +52,47 @@ const hasOverlap = async ({ staffId, date, startTime, endTime, excludeId }) => {
   return existing.some((s) => isTimeOverlap(startTime, endTime, s.startTime, s.endTime));
 };
 
+const normalizeOptionalObjectId = (value) => {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  const text = String(value).trim();
+  if (!text) return null;
+  return text;
+};
+
+const getSafeErrorMessage = (err, fallback = "Something went wrong. Please try again.") => {
+  if (err?.name === "CastError") {
+    if (err.path === "issueId") return "Invalid issue selection.";
+    if (err.path === "staffId") return "Invalid staff member selection.";
+    if (err.path === "_id") return "Invalid record id.";
+    return "Invalid data format.";
+  }
+
+  if (err?.name === "ValidationError") {
+    return "Invalid schedule details. Please check the form fields.";
+  }
+
+  return fallback;
+};
+
+const getDailyAssignedCount = async ({ staffId, date, excludeId }) => {
+  const dayStart = new Date(date);
+  dayStart.setHours(0, 0, 0, 0);
+
+  const dayEnd = new Date(date);
+  dayEnd.setHours(24, 0, 0, 0);
+
+  const q = {
+    staffId,
+    status: { $ne: "Cancelled" },
+    date: { $gte: dayStart, $lt: dayEnd },
+  };
+
+  if (excludeId) q._id = { $ne: excludeId };
+
+  return WorkSchedule.countDocuments(q);
+};
+
 // ---------- Manager: Assign schedule ----------
 export const assignSchedule = async (req, res) => {
   try {
@@ -73,6 +114,8 @@ export const assignSchedule = async (req, res) => {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
+    const normalizedIssueId = normalizeOptionalObjectId(issueId);
+
     // ObjectId validations
     if (!isValidObjectId(staffId)) {
       return res.status(400).json({ message: "Invalid staffId" });
@@ -80,7 +123,7 @@ export const assignSchedule = async (req, res) => {
     if (restroomId && !isValidObjectId(restroomId)) {
       return res.status(400).json({ message: "Invalid restroomId" });
     }
-    if (issueId && !isValidObjectId(issueId)) {
+    if (normalizedIssueId && !isValidObjectId(normalizedIssueId)) {
       return res.status(400).json({ message: "Invalid issueId" });
     }
 
@@ -99,8 +142,12 @@ export const assignSchedule = async (req, res) => {
     const staff = await Staff.findById(staffId).select("role status fullName email phone");
     if (!staff) return res.status(404).json({ message: "Staff not found" });
 
-    if (String(staff.status) !== "Active") {
-      return res.status(400).json({ message: "Staff is not Active" });
+    const normalizedStaffStatus = String(staff.status || "").toLowerCase();
+    if (normalizedStaffStatus === "onleave") {
+      return res.status(400).json({ message: "Cannot assign work: staff member is On Leave" });
+    }
+    if (normalizedStaffStatus !== "active") {
+      return res.status(400).json({ message: "Cannot assign work: staff member is not Active" });
     }
 
     const allowed = ROLE_TASK_RULES[staff.role] || [];
@@ -112,7 +159,14 @@ export const assignSchedule = async (req, res) => {
     const overlap = await hasOverlap({ staffId, date, startTime, endTime });
     if (overlap) {
       return res.status(409).json({
-        message: "Schedule conflict: Staff already has a schedule during this time",
+        message: "This staff member is already assigned for the selected time slot.",
+      });
+    }
+
+    const dailyCount = await getDailyAssignedCount({ staffId, date });
+    if (dailyCount >= 4) {
+      return res.status(409).json({
+        message: "Cannot assign more work: staff member already has 4 schedules for this day",
       });
     }
 
@@ -128,7 +182,7 @@ export const assignSchedule = async (req, res) => {
       startTime,
       endTime,
       managerNote: managerNote || "",
-      issueId: issueId || null,
+      issueId: normalizedIssueId || null,
       status: "Assigned",
     });
 
@@ -138,7 +192,7 @@ export const assignSchedule = async (req, res) => {
 
     return res.status(201).json(schedule);
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    return res.status(500).json({ message: getSafeErrorMessage(err) });
   }
 };
 
@@ -174,7 +228,7 @@ export const listSchedules = async (req, res) => {
 
     return res.json(schedules);
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    return res.status(500).json({ message: getSafeErrorMessage(err) });
   }
 };
 
@@ -197,7 +251,7 @@ export const getSingleSchedule = async (req, res) => {
 
     return res.json(schedule);
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    return res.status(500).json({ message: getSafeErrorMessage(err) });
   }
 };
 
@@ -218,6 +272,12 @@ export const editSchedule = async (req, res) => {
     }
 
     const updates = { ...req.body };
+    if (Object.prototype.hasOwnProperty.call(updates, "issueId")) {
+      updates.issueId = normalizeOptionalObjectId(updates.issueId);
+      if (updates.issueId && !isValidObjectId(updates.issueId)) {
+        return res.status(400).json({ message: "Invalid issueId" });
+      }
+    }
 
     // if changing staffId/restroomId/date/time validate them
     if (updates.staffId && !isValidObjectId(updates.staffId))
@@ -249,7 +309,31 @@ export const editSchedule = async (req, res) => {
     });
     if (overlap) {
       return res.status(409).json({
-        message: "Schedule conflict: Staff already has a schedule during this time",
+        message: "This staff member is already assigned for the selected time slot.",
+      });
+    }
+
+    const nextStaff = await Staff.findById(newStaffId).select("status");
+    if (!nextStaff) {
+      return res.status(404).json({ message: "Staff not found" });
+    }
+
+    const normalizedStaffStatus = String(nextStaff.status || "").toLowerCase();
+    if (normalizedStaffStatus === "onleave") {
+      return res.status(400).json({ message: "Cannot assign work: staff member is On Leave" });
+    }
+    if (normalizedStaffStatus !== "active") {
+      return res.status(400).json({ message: "Cannot assign work: staff member is not Active" });
+    }
+
+    const dailyCount = await getDailyAssignedCount({
+      staffId: newStaffId,
+      date: newDate,
+      excludeId: id,
+    });
+    if (dailyCount >= 4) {
+      return res.status(409).json({
+        message: "Cannot assign more work: staff member already has 4 schedules for this day",
       });
     }
 
@@ -260,7 +344,7 @@ export const editSchedule = async (req, res) => {
 
     return res.json(updated);
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    return res.status(500).json({ message: getSafeErrorMessage(err) });
   }
 };
 
@@ -290,7 +374,7 @@ export const cancelSchedule = async (req, res) => {
 
     return res.json(populated);
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    return res.status(500).json({ message: getSafeErrorMessage(err) });
   }
 };
 
@@ -306,7 +390,7 @@ export const deleteSchedule = async (req, res) => {
 
     return res.json({ message: "Schedule deleted successfully" });
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    return res.status(500).json({ message: getSafeErrorMessage(err) });
   }
 };
 
@@ -337,7 +421,7 @@ export const approveSchedule = async (req, res) => {
 
     return res.json(populated);
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    return res.status(500).json({ message: getSafeErrorMessage(err) });
   }
 };
 
@@ -349,6 +433,10 @@ export const rejectSchedule = async (req, res) => {
 
     if (!isValidObjectId(id)) return res.status(400).json({ message: "Invalid id" });
 
+    if (!String(managerReviewNote || "").trim()) {
+      return res.status(400).json({ message: "Rejection reason is required" });
+    }
+
     const schedule = await WorkSchedule.findById(id);
     if (!schedule) return res.status(404).json({ message: "Not found" });
 
@@ -357,7 +445,7 @@ export const rejectSchedule = async (req, res) => {
     }
 
     schedule.status = "Rejected";
-    schedule.managerReviewNote = managerReviewNote || "Rejected by manager";
+    schedule.managerReviewNote = String(managerReviewNote).trim();
     await schedule.save();
 
     const populated = await WorkSchedule.findById(id).populate(
@@ -367,6 +455,6 @@ export const rejectSchedule = async (req, res) => {
 
     return res.json(populated);
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    return res.status(500).json({ message: getSafeErrorMessage(err) });
   }
 };

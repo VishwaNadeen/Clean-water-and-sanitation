@@ -31,6 +31,34 @@ function splitFullName(fullName) {
   return { firstName, lastName };
 }
 
+const nicRegex = /^(?:\d{9}[VvXx]|\d{12})$/;
+const countryCodeRegex = /^\+\d{1,4}$/;
+const fullNameRegex = /^[A-Za-z\s]+$/;
+
+function sanitizePhone(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function validatePhone(countryCode, phone) {
+  const safeCountryCode = String(countryCode || "").trim();
+  const digits = sanitizePhone(phone);
+
+  if (!digits) return "Phone number is required";
+
+  if (safeCountryCode === "+94") {
+    if (!/^\d{9}$/.test(digits)) {
+      return "Sri Lanka phone number must be exactly 9 digits with +94";
+    }
+    return "";
+  }
+
+  if (digits.length < 6 || digits.length > 15) {
+    return "Phone number must be 6 to 15 digits";
+  }
+
+  return "";
+}
+
 // NOW req.user is Staff profile doc (because protect loads Staff by role=STAFF)
 function getAuthUserId(req) {
   return String(req.user?._id || req.user?.id || "");
@@ -52,12 +80,29 @@ function isSelf(req, staffId) {
  * Zod Validation Schemas (match StaffModel.js)
  * --------------------------------------------- */
 const staffCreateSchema = z.object({
-  fullName: z.string().trim().min(2, "Full name is too short").max(80),
-  nic: z.string().trim().min(5, "NIC is too short").max(20),
+  fullName: z
+    .string()
+    .trim()
+    .min(2, "Full name is too short")
+    .max(80)
+    .refine((v) => fullNameRegex.test(v), "Full name can contain letters and spaces only"),
+  nic: z
+    .string()
+    .trim()
+    .min(5, "NIC is too short")
+    .max(20)
+    .refine((v) => nicRegex.test(v), "NIC must be old format (123456789V) or 12-digit format"),
 
-  countryCode: z.string().trim().min(2).max(6).optional().default("+94"),
+  countryCode: z
+    .string()
+    .trim()
+    .min(2)
+    .max(6)
+    .refine((v) => countryCodeRegex.test(v), "Country code must be like +94")
+    .optional()
+    .default("+94"),
 
-  phone: z.coerce.number(),
+  phone: z.string().trim().regex(/^\d+$/, "Phone must contain only digits"),
 
   email: z.string().trim().toLowerCase().email("Invalid email"),
 
@@ -75,11 +120,29 @@ const staffCreateSchema = z.object({
 });
 
 const staffUpdateSchema = z.object({
-  fullName: z.string().trim().min(2).max(80).optional(),
-  nic: z.string().trim().min(5).max(20).optional(),
+  fullName: z
+    .string()
+    .trim()
+    .min(2)
+    .max(80)
+    .refine((v) => fullNameRegex.test(v), "Full name can contain letters and spaces only")
+    .optional(),
+  nic: z
+    .string()
+    .trim()
+    .min(5)
+    .max(20)
+    .refine((v) => nicRegex.test(v), "NIC must be old format (123456789V) or 12-digit format")
+    .optional(),
 
-  countryCode: z.string().trim().min(2).max(6).optional(),
-  phone: z.coerce.number().optional(),
+  countryCode: z
+    .string()
+    .trim()
+    .min(2)
+    .max(6)
+    .refine((v) => countryCodeRegex.test(v), "Country code must be like +94")
+    .optional(),
+  phone: z.string().trim().regex(/^\d+$/, "Phone must contain only digits").optional(),
 
   email: z.string().trim().toLowerCase().email().optional(),
 
@@ -126,6 +189,25 @@ async function sendStaffRegistrationEmail({ email, fullName, initialPassword, ro
   return true;
 }
 
+async function sendDeleteApprovalEmail({ email, fullName }) {
+  await sendEmail({
+    to: email,
+    subject: "Your Profile Deletion Request Has Been Approved",
+    text: `Hello ${fullName}, your profile deletion request has been approved by the staff manager/admin. Your staff profile will now be deleted from Clean Water & Sanitation.`,
+    html: `
+      <div style="font-family: Arial, sans-serif; color: #1e293b; line-height: 1.6;">
+        <h2 style="margin-bottom: 12px;">Profile Deletion Approved</h2>
+        <p>Hello ${fullName},</p>
+        <p>Your profile deletion request has been approved by the staff manager/admin.</p>
+        <p>Your staff profile will now be removed from Clean Water & Sanitation.</p>
+        <p>If you did not expect this action, please contact the administrator immediately.</p>
+      </div>
+    `,
+  });
+
+  return true;
+}
+
 /* ===================== CREATE STAFF ===================== */
 export async function createStaff(req, res) {
   const parsed = staffCreateSchema.safeParse(req.body);
@@ -138,12 +220,21 @@ export async function createStaff(req, res) {
   }
 
   const staffPayload = parsed.data;
+  const phoneError = validatePhone(staffPayload.countryCode, staffPayload.phone);
+  if (phoneError) {
+    return res.status(422).json({
+      message: "Validation failed",
+      invalidParams: [{ name: "phone", reason: phoneError }],
+    });
+  }
+
   const initialPassword = staffPayload.nic.trim();
   const { firstName, lastName } = splitFullName(staffPayload.fullName);
 
   try {
     const staff = await Staff.create({
       ...staffPayload,
+      phone: Number(staffPayload.phone),
       email: staffPayload.email.toLowerCase().trim(),
       password: initialPassword,
       mustChangePassword: true,
@@ -278,6 +369,33 @@ export async function updateMyStaffProfile(req, res) {
   }
 
   try {
+    if (typeof parsed.data.dob !== "undefined") {
+      return res.status(400).json({ message: "Date of birth cannot be changed" });
+    }
+
+    if (typeof parsed.data.joinDate !== "undefined") {
+      return res.status(400).json({ message: "Join date cannot be changed" });
+    }
+
+    if (typeof parsed.data.email !== "undefined") {
+      return res.status(400).json({ message: "Email cannot be changed" });
+    }
+
+    const currentStaff = await Staff.findById(id).select("countryCode");
+    if (!currentStaff) return res.status(404).json({ message: "Staff not found" });
+
+    if (typeof parsed.data.phone !== "undefined") {
+      const effectiveCountryCode = parsed.data.countryCode || currentStaff.countryCode || "+94";
+      const phoneError = validatePhone(effectiveCountryCode, parsed.data.phone);
+      if (phoneError) {
+        return res.status(422).json({
+          message: "Validation failed",
+          invalidParams: [{ name: "phone", reason: phoneError }],
+        });
+      }
+      parsed.data.phone = Number(parsed.data.phone);
+    }
+
     const updated = await Staff.findByIdAndUpdate(id, parsed.data, { new: true, runValidators: true });
     if (!updated) return res.status(404).json({ message: "Staff not found" });
 
@@ -286,9 +404,6 @@ export async function updateMyStaffProfile(req, res) {
       const { firstName, lastName } = splitFullName(parsed.data.fullName);
       loginUpdate.firstName = firstName;
       loginUpdate.lastName = lastName;
-    }
-    if (parsed.data.email) {
-      loginUpdate.email = parsed.data.email.toLowerCase().trim();
     }
     if (Object.keys(loginUpdate).length > 0) {
       await Login.updateOne({ userId: updated._id }, { $set: loginUpdate });
@@ -324,6 +439,33 @@ export async function updateStaff(req, res) {
   }
 
   try {
+    if (typeof parsed.data.dob !== "undefined") {
+      return res.status(400).json({ message: "Date of birth cannot be changed" });
+    }
+
+    if (typeof parsed.data.joinDate !== "undefined") {
+      return res.status(400).json({ message: "Join date cannot be changed" });
+    }
+
+    if (typeof parsed.data.email !== "undefined") {
+      return res.status(400).json({ message: "Email cannot be changed" });
+    }
+
+    const currentStaff = await Staff.findById(id).select("countryCode");
+    if (!currentStaff) return res.status(404).json({ message: "Staff not found" });
+
+    if (typeof parsed.data.phone !== "undefined") {
+      const effectiveCountryCode = parsed.data.countryCode || currentStaff.countryCode || "+94";
+      const phoneError = validatePhone(effectiveCountryCode, parsed.data.phone);
+      if (phoneError) {
+        return res.status(422).json({
+          message: "Validation failed",
+          invalidParams: [{ name: "phone", reason: phoneError }],
+        });
+      }
+      parsed.data.phone = Number(parsed.data.phone);
+    }
+
     const updated = await Staff.findByIdAndUpdate(id, parsed.data, { new: true, runValidators: true });
     if (!updated) return res.status(404).json({ message: "Staff not found" });
 
@@ -333,8 +475,6 @@ export async function updateStaff(req, res) {
       loginUpdate.firstName = firstName;
       loginUpdate.lastName = lastName;
     }
-    if (parsed.data.email) loginUpdate.email = parsed.data.email.toLowerCase().trim();
-
     if (Object.keys(loginUpdate).length > 0) {
       await Login.updateOne({ userId: updated._id }, { $set: loginUpdate });
     }
@@ -499,6 +639,45 @@ export async function requestDeleteProfile(req, res) {
   }
 }
 
+/* ===================== REJECT DELETE REQUEST (ADMIN ONLY) ===================== */
+export async function rejectDeleteRequest(req, res) {
+  if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
+  if (!isAdmin(req)) return res.status(403).json({ message: "Forbidden: only admin can reject delete requests" });
+
+  const { id } = req.params;
+  if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: "Invalid staff id" });
+
+  try {
+    const staff = await Staff.findById(id);
+    if (!staff) return res.status(404).json({ message: "Staff not found" });
+
+    if (!staff?.deleteRequest?.requested) {
+      return res.status(400).json({ message: "No pending delete request found for this staff member" });
+    }
+
+    staff.deleteRequest = {
+      requested: false,
+      status: "rejected",
+      reason: staff.deleteRequest?.reason || "",
+      requestedAt: staff.deleteRequest?.requestedAt,
+      requestedBy: staff.deleteRequest?.requestedBy,
+      adminResponse: "Your profile deletion request was reviewed and rejected by admin.",
+      reviewedAt: new Date(),
+      reviewedBy: req.auth?._id,
+    };
+
+    await staff.save();
+
+    return res.status(200).json({
+      message: "Delete request rejected successfully",
+      staff,
+    });
+  } catch (err) {
+    console.error("❌ rejectDeleteRequest:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+}
+
 /* ===================== DELETE STAFF (ADMIN ONLY) ===================== */
 export async function deleteStaff(req, res) {
   if (!isLoggedIn(req)) return res.status(401).json({ message: "Unauthorized" });
@@ -515,10 +694,29 @@ export async function deleteStaff(req, res) {
       return res.status(400).json({ message: "Cannot delete: no delete request found for this profile" });
     }
 
+    if (!staff.email) {
+      return res.status(400).json({ message: "Cannot approve deletion: staff email is missing" });
+    }
+
+    try {
+      await sendDeleteApprovalEmail({
+        email: staff.email,
+        fullName: staff.fullName || "Staff member",
+      });
+    } catch (emailError) {
+      console.error("Delete approval email failed:", emailError.message);
+      return res.status(500).json({
+        message: "Delete approval email could not be sent. Profile was not deleted.",
+      });
+    }
+
     await Login.deleteOne({ userId: id });
     const deleted = await Staff.findByIdAndDelete(id);
 
-    return res.status(200).json({ message: "Staff deleted by admin", staff: deleted });
+    return res.status(200).json({
+      message: "Staff deleted by admin and notification email sent",
+      staff: deleted,
+    });
   } catch (err) {
     console.error("❌ deleteStaff:", err);
     return res.status(500).json({ message: "Server error" });
@@ -609,3 +807,5 @@ export async function removeMyStaffProfileImage(req, res) {
     return res.status(500).json({ message: "Server error" });
   }
 }
+
+

@@ -9,14 +9,54 @@ const statusStyles = {
   Cancelled: "bg-slate-100 text-slate-700 border border-slate-200",
 };
 
-const SchedulePreviewCard = ({ schedule, onDismiss, dismissLabel = "Close notification" }) => {
+const getStatusLabel = (status) => {
+  if (status === "Rejected") {
+    return "Rework Required";
+  }
+
+  return status;
+};
+
+const SchedulePreviewCard = ({
+  schedule,
+  onDismiss,
+  dismissLabel = "Close notification",
+  onClick,
+}) => {
   const reviewTone =
     schedule.status === "Verified"
       ? "border-emerald-200 bg-emerald-50 text-emerald-700"
       : "border-rose-200 bg-rose-50 text-rose-700";
 
+  const isClickable = typeof onClick === "function";
+
+  const handleCardClick = () => {
+    if (isClickable) {
+      onClick(schedule);
+    }
+  };
+
+  const handleCardKeyDown = (event) => {
+    if (!isClickable) {
+      return;
+    }
+
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onClick(schedule);
+    }
+  };
+
   return (
-    <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
+    <div
+      className={`rounded-2xl border border-blue-100 bg-white p-4 shadow-sm ${
+        isClickable ? "cursor-pointer transition hover:border-blue-300 hover:shadow-md" : ""
+      }`}
+      onClick={handleCardClick}
+      onKeyDown={handleCardKeyDown}
+      role={isClickable ? "button" : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-lg font-semibold text-slate-800">{schedule.title}</h3>
@@ -32,13 +72,16 @@ const SchedulePreviewCard = ({ schedule, onDismiss, dismissLabel = "Close notifi
               statusStyles[schedule.status] || "bg-slate-100 text-slate-700 border border-slate-200"
             }`}
           >
-            {schedule.status}
+            {getStatusLabel(schedule.status)}
           </span>
 
           {onDismiss ? (
             <button
               type="button"
-              onClick={() => onDismiss(schedule._id)}
+              onClick={(event) => {
+                event.stopPropagation();
+                onDismiss(schedule._id);
+              }}
               className="rounded-full border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
               aria-label={dismissLabel}
               title={dismissLabel}

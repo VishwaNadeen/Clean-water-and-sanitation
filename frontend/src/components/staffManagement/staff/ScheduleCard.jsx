@@ -10,6 +10,14 @@ const statusStyles = {
   Cancelled: "bg-slate-100 text-slate-700 border border-slate-200",
 };
 
+const getStatusLabel = (status) => {
+  if (status === "Rejected") {
+    return "Rework Required";
+  }
+
+  return status;
+};
+
 const getProofImageSrc = (imagePath) => {
   if (!imagePath) {
     return "";
@@ -28,14 +36,18 @@ const ScheduleCard = ({
   schedule,
   formState,
   proofFile,
+  proofMessage,
+  taskMessage,
   busyAction,
   embedded = false,
   onStart,
   onRevertStart,
   onFileChange,
   onUploadProof,
+  onRemoveProof,
   onFormChange,
   onComplete,
+  onRedoTask,
 }) => {
   const {
     _id,
@@ -62,6 +74,7 @@ const ScheduleCard = ({
 
   const formattedDate = new Date(date).toLocaleDateString();
   const isWorking = busyAction === _id;
+  const fileInputId = `proof-image-${_id}`;
 
   return (
     <div
@@ -85,12 +98,24 @@ const ScheduleCard = ({
               statusStyles[status] || "bg-slate-100 text-slate-700 border border-slate-200"
             }`}
           >
-            {status}
+            {getStatusLabel(status)}
           </span>
         </div>
       </div>
 
       <div className="p-5">
+        {taskMessage?.text ? (
+          <div
+            className={`mb-4 rounded-2xl border px-4 py-3 text-sm font-medium ${
+              taskMessage.type === "success"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                : "border-rose-200 bg-rose-50 text-rose-700"
+            }`}
+          >
+            {taskMessage.text}
+          </div>
+        ) : null}
+
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-2xl bg-blue-50 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">Date</p>
@@ -124,19 +149,43 @@ const ScheduleCard = ({
             <h4 className="mb-3 text-sm font-semibold text-slate-800">Uploaded proof</h4>
             <div className="flex flex-wrap gap-3">
               {proofImages.map((image, index) => (
-                <a
-                  key={index}
-                  href={getProofImageSrc(image.url)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block"
-                >
-                  <img
-                    src={getProofImageSrc(image.url)}
-                    alt={`proof-${index}`}
-                    className="h-24 w-24 rounded-2xl border border-blue-100 object-cover"
-                  />
-                </a>
+                <div key={`${image.publicId || index}`} className="group relative">
+                  <a
+                    href={getProofImageSrc(image.url)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block"
+                  >
+                    <img
+                      src={getProofImageSrc(image.url)}
+                      alt={`proof-${index}`}
+                      className="h-24 w-24 rounded-2xl border border-blue-100 object-cover"
+                    />
+                  </a>
+                  {status === "InProgress" ? (
+                    <button
+                      type="button"
+                      onClick={() => onRemoveProof(_id, image.publicId)}
+                      disabled={isWorking}
+                      className="absolute -right-2 -top-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-600 shadow-sm transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      title="Remove proof image"
+                      aria-label="Remove proof image"
+                    >
+                      <svg
+                        viewBox="0 0 20 20"
+                        aria-hidden="true"
+                        className="h-3.5 w-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.2"
+                        strokeLinecap="round"
+                      >
+                        <path d="M5 5L15 15" />
+                        <path d="M15 5L5 15" />
+                      </svg>
+                    </button>
+                  ) : null}
+                </div>
               ))}
             </div>
           </div>
@@ -177,20 +226,53 @@ const ScheduleCard = ({
                 <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Upload Proof Image
                 </label>
-                <div className="flex flex-col gap-3 md:flex-row">
+                {proofMessage?.text ? (
+                  <div
+                    className={`mb-3 rounded-2xl border px-4 py-3 text-sm font-medium ${
+                      proofMessage.type === "success"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        : "border-rose-200 bg-rose-50 text-rose-700"
+                    }`}
+                  >
+                    {proofMessage.text}
+                  </div>
+                ) : null}
+                <div className="flex flex-col gap-3">
                   <input
+                    id={fileInputId}
                     type="file"
                     accept="image/*"
                     onChange={(e) => onFileChange(_id, e.target.files?.[0] || null)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none file:mr-3 file:rounded-lg file:border-0 file:bg-blue-100 file:px-3 file:py-2 file:text-blue-700"
+                    className="hidden"
                   />
-                  <button
-                    onClick={() => onUploadProof(_id)}
-                    disabled={isWorking}
-                    className="rounded-xl border border-blue-200 bg-white px-5 py-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  <label
+                    htmlFor={fileInputId}
+                    className={`flex w-full cursor-pointer items-center justify-between gap-4 rounded-2xl border border-dashed px-4 py-4 text-sm transition ${
+                      isWorking
+                        ? "cursor-not-allowed border-blue-200 bg-slate-50 opacity-70"
+                        : "border-blue-300 bg-white hover:border-blue-500 hover:bg-blue-50"
+                    }`}
                   >
-                    {isWorking ? "Uploading..." : "Upload Proof"}
-                  </button>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-slate-800">
+                        {isWorking
+                          ? "Uploading proof image..."
+                          : proofFile
+                            ? "Proof image selected"
+                            : "Click here to choose a proof image"}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {isWorking
+                          ? "Please wait while your image is being uploaded."
+                          : proofFile
+                          ? proofFile.name
+                          : "Upload a clear photo of the completed work area."}
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-xl bg-blue-100 px-4 py-2 text-sm font-semibold text-blue-700">
+                      {isWorking ? "Uploading..." : "Choose File"}
+                    </span>
+                  </label>
                 </div>
                 {proofFile && (
                   <p className="mt-2 text-xs text-slate-500">Selected file: {proofFile.name}</p>
@@ -272,10 +354,22 @@ const ScheduleCard = ({
 
         {status === "Rejected" && (
           <div className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 p-4">
-            <p className="text-sm font-semibold text-rose-700">This task was rejected.</p>
+            <p className="text-sm font-semibold text-rose-700">
+              This task was rejected and needs rework.
+            </p>
             <p className="mt-1 text-sm text-rose-600">
               {managerReviewNote || "No manager review note provided."}
             </p>
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => onRedoTask?.(_id)}
+                disabled={isWorking || typeof onRedoTask !== "function"}
+                className="rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isWorking ? "Preparing..." : "Redo Task"}
+              </button>
+            </div>
           </div>
         )}
       </div>

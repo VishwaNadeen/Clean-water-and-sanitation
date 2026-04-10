@@ -1,5 +1,6 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import ConfirmDialog from "../components/common/ConfirmDialog";
 
 function DashboardIcon() {
   return (
@@ -115,16 +116,11 @@ function ChevronRightIcon() {
 export default function StaffLayout() {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const textTransition =
     "overflow-hidden whitespace-nowrap transition-all duration-300 ease-out";
 
-  const handleLogout = () => {
-    const shouldLogout = window.confirm("Are you sure you want to logout?");
-
-    if (!shouldLogout) {
-      return;
-    }
-
+  const performLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     navigate("/login");
@@ -188,7 +184,7 @@ export default function StaffLayout() {
             </button>
           </div>
 
-          <nav className="flex-1 space-y-2 overflow-y-auto px-2 py-6">
+          <nav className="no-scrollbar flex-1 space-y-2 overflow-y-auto px-2 py-6">
             {navItems.map((item) => (
               <NavLink
                 key={item.path}
@@ -216,7 +212,7 @@ export default function StaffLayout() {
 
           <div className="border-t border-white/10 p-3">
             <button
-              onClick={handleLogout}
+              onClick={() => setLogoutDialogOpen(true)}
               className={`flex h-12 w-full items-center overflow-hidden rounded-2xl bg-red-500 text-sm font-medium text-white transition-all duration-300 ease-out hover:bg-red-600 ${
                 collapsed
                   ? "justify-center px-0 shadow-[0_10px_24px_rgba(239,68,68,0.3)]"
@@ -250,7 +246,7 @@ export default function StaffLayout() {
                 Profile
               </NavLink>
               <button
-                onClick={handleLogout}
+                onClick={() => setLogoutDialogOpen(true)}
                 className="rounded bg-red-500 px-3 py-1 text-white"
               >
                 Logout
@@ -258,11 +254,25 @@ export default function StaffLayout() {
             </div>
           </header>
 
-          <main className="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 pt-2 md:px-6 md:pb-6 md:pt-3">
+          <main className="no-scrollbar flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 pt-2 md:px-6 md:pb-6 md:pt-3">
             <Outlet />
           </main>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={logoutDialogOpen}
+        title="Logout"
+        message="Are you sure you want to logout from your staff account?"
+        confirmText="Logout"
+        cancelText="Stay"
+        tone="danger"
+        onCancel={() => setLogoutDialogOpen(false)}
+        onConfirm={() => {
+          setLogoutDialogOpen(false);
+          performLogout();
+        }}
+      />
     </div>
   );
 }

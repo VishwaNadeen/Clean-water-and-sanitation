@@ -57,9 +57,17 @@ const StaffSchema = new Schema(
 
     deleteRequest: {
       requested: { type: Boolean, default: false },
+      status: {
+        type: String,
+        enum: ["idle", "pending", "rejected"],
+        default: "idle",
+      },
       reason: { type: String, default: "" },
       requestedAt: { type: Date },
       requestedBy: { type: Schema.Types.ObjectId },
+      adminResponse: { type: String, default: "" },
+      reviewedAt: { type: Date },
+      reviewedBy: { type: Schema.Types.ObjectId },
     },
   },
   { timestamps: true }
