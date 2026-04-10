@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import FloatingToast from "../../../components/common/FloatingToast";
 import {
   assignIssueToStaff,
@@ -9,9 +9,11 @@ import {
 const TOAST_DURATION_MS = 5000;
 
 const AssignIssues = () => {
+  const [searchParams] = useSearchParams();
   const [staffMembers, setStaffMembers] = useState([]);
   const [form, setForm] = useState({
     issueId: "",
+    issueNumber: "",
     staffId: "",
     date: "",
     startTime: "",
@@ -24,6 +26,30 @@ const AssignIssues = () => {
   });
 
   const [toast, setToast] = useState(null);
+
+  useEffect(() => {
+    const issueId = searchParams.get("issueId") || "";
+    const issueNumber = searchParams.get("issueNumber") || "";
+    const restroomId = searchParams.get("restroomId") || "";
+    const restroomLabel = searchParams.get("restroomLabel") || "";
+    const title = searchParams.get("title") || "";
+    const prefillsExist =
+      issueId || issueNumber || restroomId || restroomLabel || title;
+    const fallbackTitle = issueNumber || issueId ? `Complaint #${issueNumber || issueId}` : "";
+
+    if (!prefillsExist) {
+      return;
+    }
+
+    setForm((prev) => ({
+      ...prev,
+      issueId: issueId || prev.issueId,
+      issueNumber: issueNumber || prev.issueNumber,
+      restroomId: restroomId || prev.restroomId,
+      restroomLabel: restroomLabel || prev.restroomLabel,
+      title: title || fallbackTitle || prev.title,
+    }));
+  }, [searchParams]);
 
   useEffect(() => {
     if (!toast) {
@@ -73,6 +99,7 @@ const AssignIssues = () => {
 
       setForm({
         issueId: "",
+        issueNumber: "",
         staffId: "",
         date: "",
         startTime: "",
@@ -114,10 +141,23 @@ const AssignIssues = () => {
         <form onSubmit={handleSubmit} className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
           <input
             type="text"
-            placeholder="Issue ID"
-            value={form.issueId}
-            onChange={(e) => setForm({ ...form, issueId: e.target.value })}
-            className="rounded-xl border border-slate-200 px-4 py-3"
+            placeholder={form.issueNumber ? "Complaint title" : "Issue ID"}
+            value={
+              form.issueNumber
+                ? form.title || `Complaint #${form.issueNumber}`
+                : form.issueId
+            }
+            onChange={(e) =>
+              setForm({
+                ...form,
+                ...(form.issueNumber
+                  ? { title: e.target.value }
+                  : { issueId: e.target.value }),
+              })
+            }
+            className={`rounded-xl border border-slate-200 px-4 py-3 ${
+              form.issueNumber ? "bg-slate-50 text-slate-700" : ""
+            }`}
             required
           />
 
@@ -169,30 +209,32 @@ const AssignIssues = () => {
             required
           />
 
-          <input
-            type="text"
-            placeholder="Schedule Title"
-            value={form.title}
-            onChange={(e) => setForm({ ...form, title: e.target.value })}
-            className="rounded-xl border border-slate-200 px-4 py-3 md:col-span-2"
-            required
-          />
+          {form.restroomLabel ? (
+            <input
+              type="text"
+              value={form.restroomLabel}
+              readOnly
+              className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-700 md:col-span-2"
+            />
+          ) : (
+            <>
+              <input
+                type="text"
+                placeholder="Restroom ID (optional)"
+                value={form.restroomId}
+                onChange={(e) => setForm({ ...form, restroomId: e.target.value })}
+                className="rounded-xl border border-slate-200 px-4 py-3"
+              />
 
-          <input
-            type="text"
-            placeholder="Restroom ID (optional)"
-            value={form.restroomId}
-            onChange={(e) => setForm({ ...form, restroomId: e.target.value })}
-            className="rounded-xl border border-slate-200 px-4 py-3"
-          />
-
-          <input
-            type="text"
-            placeholder="Restroom Label"
-            value={form.restroomLabel}
-            onChange={(e) => setForm({ ...form, restroomLabel: e.target.value })}
-            className="rounded-xl border border-slate-200 px-4 py-3"
-          />
+              <input
+                type="text"
+                placeholder="Restroom Label"
+                value={form.restroomLabel}
+                onChange={(e) => setForm({ ...form, restroomLabel: e.target.value })}
+                className="rounded-xl border border-slate-200 px-4 py-3"
+              />
+            </>
+          )}
 
           <textarea
             placeholder="Manager Note"
