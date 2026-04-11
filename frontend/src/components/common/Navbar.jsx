@@ -43,15 +43,17 @@ function getProfileInitials(user) {
   return parts.map((part) => part.charAt(0).toUpperCase()).join("");
 }
 
+function getUserProfileImage(user) {
+  return user?.profilePhotoUrl || user?.profileImageUrl || user?.avatarUrl || "";
+}
+
 export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const storedUser = getStoredUser();
   const [loggedIn, setLoggedIn] = useState(isLoggedIn());
   const [currentUser, setCurrentUser] = useState(storedUser);
-  const [profileImageUrl, setProfileImageUrl] = useState(
-    storedUser?.profileImageUrl || ""
-  );
+  const [profileImageUrl, setProfileImageUrl] = useState(getUserProfileImage(storedUser));
   const [scrolled, setScrolled] = useState(false);
   const [profileMenuState, setProfileMenuState] = useState("closed");
   const profileMenuRef = useRef(null);
@@ -62,7 +64,7 @@ export default function Navbar() {
       const nextUser = getStoredUser();
       setLoggedIn(isLoggedIn());
       setCurrentUser(nextUser);
-      setProfileImageUrl(nextUser?.profileImageUrl || "");
+      setProfileImageUrl(getUserProfileImage(nextUser));
     };
 
     syncAuth();
@@ -95,14 +97,15 @@ export default function Navbar() {
             "",
           email: profile?.email || getStoredUser()?.email || "",
           role: profile?.role || getStoredUser()?.role || "",
-          profileImageUrl: profile?.profileImageUrl || "",
+          profileImageUrl: getUserProfileImage(profile),
+          profilePhotoUrl: getUserProfileImage(profile),
         };
 
         setCurrentUser(mergedUser);
-        setProfileImageUrl(profile?.profileImageUrl || "");
+        setProfileImageUrl(getUserProfileImage(profile));
       } catch {
         setCurrentUser(getStoredUser());
-        setProfileImageUrl(getStoredUser()?.profileImageUrl || "");
+        setProfileImageUrl(getUserProfileImage(getStoredUser()));
       }
     }
 
@@ -299,7 +302,7 @@ export default function Navbar() {
                     aria-expanded={profileMenuState === "open"}
                     onClick={toggleProfileMenu}
                   >
-                    <span className="grid h-[34px] w-[34px] shrink-0 place-items-center overflow-hidden rounded-full border border-white/65 bg-gradient-to-br from-white/95 via-sky-50 to-sky-100 text-[11px] font-bold tracking-[0.08em] text-sky-700 shadow-[0_6px_16px_rgba(15,23,42,0.14)]">
+                    <span className="grid h-[34px] w-[34px] shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-white/95 via-sky-50 to-sky-100 text-[11px] font-bold tracking-[0.08em] text-sky-700 shadow-[0_6px_16px_rgba(15,23,42,0.14)]">
                       {profileImageUrl ? (
                         <img src={profileImageUrl} alt="Profile" className="h-full w-full object-cover" />
                       ) : (

@@ -250,7 +250,7 @@ export default function Dashboard() {
 
               <div
                 onClick={handleProfilePhotoClick}
-                className={`relative h-28 w-28 overflow-hidden rounded-[28px] border-4 border-white bg-white shadow-[0_18px_38px_rgba(59,130,246,0.18)] ${
+                className={`relative h-28 w-28 overflow-hidden rounded-[28px] bg-white shadow-[0_18px_38px_rgba(59,130,246,0.18)] ${
                   isPhotoUploading ? "cursor-wait" : "cursor-pointer"
                 }`}
               >
@@ -275,6 +275,25 @@ export default function Dashboard() {
                 {isPhotoUploading ? (
                   <div className="absolute inset-0 flex items-center justify-center bg-white/60">
                     <div className="h-8 w-8 animate-spin rounded-full border-4 border-sky-200 border-t-sky-600" />
+                  </div>
+                ) : null}
+
+                {!isPhotoUploading ? (
+                  <div className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-sky-600 text-white shadow-[0_10px_20px_rgba(2,132,199,0.35)]">
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M16.862 4.487a2.1 2.1 0 1 1 2.97 2.97L8.75 18.54 4.5 19.5l.96-4.25L16.862 4.487Z"
+                      />
+                    </svg>
                   </div>
                 ) : null}
               </div>

@@ -5,11 +5,21 @@ import { getStoredUser, getToken } from "../utils/auth";
 
 let profileCache = null;
 let profileRequestPromise = null;
+let cachedUserKey = null;
 
 export default function useProfileData() {
   const navigate = useNavigate();
   const token = getToken();
   const storedUser = getStoredUser();
+
+  const currentUserKey =
+    storedUser?.id || storedUser?._id || storedUser?.email || token || null;
+
+  if (cachedUserKey !== currentUserKey) {
+    profileCache = null;
+    profileRequestPromise = null;
+    cachedUserKey = currentUserKey;
+  }
 
   const [profile, setProfile] = useState(profileCache);
   const [loading, setLoading] = useState(() => (!token ? false : !profileCache));
@@ -17,6 +27,12 @@ export default function useProfileData() {
 
   useEffect(() => {
     if (!token) {
+      profileCache = null;
+      profileRequestPromise = null;
+      cachedUserKey = null;
+      setProfile(null);
+      setLoading(false);
+      setPageError("");
       navigate("/login", { replace: true });
       return;
     }
@@ -32,6 +48,8 @@ export default function useProfileData() {
           }
           return;
         }
+
+        setLoading(true);
 
         if (!profileRequestPromise) {
           profileRequestPromise = getMyProfile();
@@ -61,7 +79,7 @@ export default function useProfileData() {
     return () => {
       isMounted = false;
     };
-  }, [token, navigate]);
+  }, [token, navigate, currentUserKey]);
 
   function updateProfileState(nextProfile) {
     profileCache = nextProfile;
@@ -71,6 +89,7 @@ export default function useProfileData() {
   function clearProfileState() {
     profileCache = null;
     profileRequestPromise = null;
+    cachedUserKey = null;
     setProfile(null);
     setLoading(false);
     setPageError("");
