@@ -1,222 +1,134 @@
-import { useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import ProfileLayout from "../../components/profile/ProfileLayout";
-import useProfileData from "../../hooks/useProfileData";
-import {
-  removeMyProfileImage,
-  uploadMyProfileImage,
-} from "../../services/profileService";
-import { updateStoredUser } from "../../utils/auth";
+import { useNavigate, useOutletContext } from "react-router-dom";
+
+function formatProfileDate(value) {
+  if (!value) return "-";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(date);
+}
 
 export default function Profile() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const fileInputRef = useRef(null);
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const { profile, setProfile, loading, pageError, setPageError, storedUser, token } =
-    useProfileData();
-  const profileBasePath = location.pathname.startsWith("/staff/profile")
-    ? "/staff/profile"
-    : "/profile";
 
-  const profileImageSrc = profile?.profileImageUrl || "";
-  const profileImageInitial = String(
-    profile?.firstName || storedUser?.fullName || storedUser?.email || "U"
-  )
-    .trim()
-    .charAt(0)
-    .toUpperCase();
+  const { profile, storedUser, profileBasePath } = useOutletContext();
 
-  async function handleProfileImageChange(event) {
-    const file = event.target.files?.[0];
+  const fullName =
+    `${profile?.firstName || ""} ${profile?.lastName || ""}`.trim() ||
+    storedUser?.fullName ||
+    "User";
 
-    if (!file) {
-      return;
-    }
-
-    try {
-      setUploadingImage(true);
-      setPageError("");
-
-      const updatedProfile = await uploadMyProfileImage(file);
-      setProfile(updatedProfile);
-      updateStoredUser({
-        profileImageUrl: updatedProfile.profileImageUrl || "",
-      });
-    } catch (error) {
-      setPageError(error.message || "Failed to upload profile image.");
-    } finally {
-      setUploadingImage(false);
-      event.target.value = "";
-    }
-  }
-
-  async function handleRemoveProfileImage() {
-    const shouldRemove = window.confirm("Do you want to remove your profile photo?");
-
-    if (!shouldRemove) {
-      return;
-    }
-
-    try {
-      setUploadingImage(true);
-      setPageError("");
-
-      const updatedProfile = await removeMyProfileImage();
-      setProfile(updatedProfile);
-      updateStoredUser({
-        profileImageUrl: "",
-      });
-    } catch (error) {
-      setPageError(error.message || "Failed to remove profile image.");
-    } finally {
-      setUploadingImage(false);
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-[calc(100vh-160px)] px-4 py-10">
-        <div className="mx-auto max-w-6xl rounded-[28px] border border-sky-200 bg-white/95 p-6">
-          <p className="text-slate-600">Loading profile...</p>
-        </div>
-      </div>
-    );
-  }
+  const email = profile?.email || storedUser?.email || "-";
+  const firstName = profile?.firstName || "-";
+  const lastName = profile?.lastName || "-";
+  const phone = profile?.phone || "-";
+  const gender = profile?.gender || "-";
+  const address = profile?.address || "-";
+  const city = profile?.city || "-";
+  const country = profile?.country || "-";
+  const provinceState = profile?.provinceState || "-";
+  const district = profile?.district || "-";
+  const dateOfBirth = formatProfileDate(profile?.dob);
+  const profileCreatedAt = formatProfileDate(profile?.createdAt);
 
   return (
-    <ProfileLayout
-      title="Profile Details"
-      subtitle="View your account information here."
-      token={token}
-      profile={profile}
-      storedUser={storedUser}
-    >
-      {pageError ? (
-        <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-          {pageError}
-        </div>
-      ) : null}
-
-      <div className="mb-6 flex flex-col gap-5 rounded-2xl border border-sky-200 bg-sky-50/60 p-5 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-4">
-          {profileImageSrc ? (
-            <img
-              src={profileImageSrc}
-              alt="Profile"
-              className="h-24 w-24 rounded-3xl border border-sky-200 object-cover shadow-[0_10px_24px_rgba(56,189,248,0.14)]"
-            />
-          ) : (
-            <div className="grid h-24 w-24 place-items-center rounded-3xl border border-sky-200 bg-gradient-to-br from-sky-100 to-blue-100 text-4xl font-semibold text-sky-900 shadow-[0_10px_24px_rgba(56,189,248,0.14)]">
-              {profileImageInitial}
-            </div>
-          )}
+    <section className="flex h-full flex-col">
+      <div className="flex flex-col gap-3 border-b border-slate-200 pb-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-100 text-sky-700">
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.9"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15.75 6.75a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.5 19.125a7.5 7.5 0 0 1 15 0"
+              />
+            </svg>
+          </div>
 
           <div>
-            <p className="text-sm font-medium text-slate-500">Profile photo</p>
+            <h3 className="text-xl font-bold tracking-tight text-slate-900">
+              Profile Information
+            </h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Review your personal information and keep it up to date.
+            </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-3">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleProfileImageChange}
-          />
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploadingImage}
-            className="rounded-xl border border-sky-300 bg-white px-4 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {uploadingImage ? "Working..." : profileImageSrc ? "Change" : "Upload"}
-          </button>
-          {profileImageSrc ? (
-            <button
-              type="button"
-              onClick={handleRemoveProfileImage}
-              disabled={uploadingImage}
-              className="rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              Remove
-            </button>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between rounded-2xl border border-sky-200 bg-sky-50/70 p-4">
-        <div>
-          <p className="text-sm font-medium text-slate-500">
-            Personal information
-          </p>
-          <p className="mt-1 text-base font-semibold text-slate-900">
-            Keep your profile details updated
-          </p>
-        </div>
-
         <button
+          type="button"
           onClick={() => navigate(`${profileBasePath}/edit`)}
-          className="inline-flex items-center gap-2 rounded-xl border border-sky-300 bg-sky-100 px-4 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-200"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700"
         >
-          <span>✏️</span>
-          <span>Edit</span>
-        </button>
-        <button
-          onClick={() => navigate(`${profileBasePath}/delete`)}
-          className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-100"
-        >
-          <span>Delete</span>
+          <svg
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M16.862 4.487a2.1 2.1 0 1 1 2.97 2.97L8.75 18.54 4.5 19.5l.96-4.25L16.862 4.487Z"
+            />
+          </svg>
+          Edit Information
         </button>
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.3px] text-slate-500">
-            First Name
-          </p>
-          <p className="mt-1 text-sm font-medium text-slate-800">
-            {profile?.firstName || "-"}
-          </p>
+      <div className="mt-6 flex-1 space-y-6">
+        <div className="grid gap-4 md:grid-cols-2">
+          <InfoCard label="First Name" value={firstName} />
+          <InfoCard label="Last Name" value={lastName} />
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.3px] text-slate-500">
-            Last Name
-          </p>
-          <p className="mt-1 text-sm font-medium text-slate-800">
-            {profile?.lastName || "-"}
-          </p>
+        <div className="grid gap-4 md:grid-cols-2">
+          <InfoCard label="Email Address" value={email} breakWord />
+          <InfoCard label="Phone Number" value={phone} />
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.3px] text-slate-500">
-            Email
-          </p>
-          <p className="mt-1 text-sm font-medium text-slate-800">
-            {profile?.email || storedUser?.email || "-"}
-          </p>
+        <div className="grid gap-4 md:grid-cols-2">
+          <InfoCard label="Gender" value={gender} />
+          <InfoCard label="Date of Birth" value={dateOfBirth} />
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.3px] text-slate-500">
-            Phone
-          </p>
-          <p className="mt-1 text-sm font-medium text-slate-800">
-            {profile?.phone || "-"}
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 sm:col-span-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.3px] text-slate-500">
-            Gender
-          </p>
-          <p className="mt-1 text-sm font-medium text-slate-800">
-            {profile?.gender || "-"}
-          </p>
+        <div className="grid gap-4 md:grid-cols-2">
+          <InfoCard label="Address" value={address} className="md:col-span-2" />
+          <InfoCard label="City" value={city} />
+          <InfoCard label="District" value={district} />
+          <InfoCard label="Province / State" value={provinceState} />
+          <InfoCard label="Country" value={country} />
         </div>
       </div>
-    </ProfileLayout>
+    </section>
+  );
+}
+
+function InfoCard({ label, value, className = "", breakWord = false }) {
+  return (
+    <div className={className}>
+      <p className="mb-2 text-sm font-medium text-slate-700">{label}</p>
+      <div className="rounded-2xl border border-slate-100 bg-slate-50 px-5 py-4">
+        <p
+          className={`text-sm font-semibold text-slate-900 ${
+            breakWord ? "break-all" : ""
+          }`}
+        >
+          {value || "-"}
+        </p>
+      </div>
+    </div>
   );
 }

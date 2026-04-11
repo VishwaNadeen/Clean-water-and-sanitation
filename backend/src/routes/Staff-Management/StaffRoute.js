@@ -5,6 +5,7 @@ import {
   getStaffById,
   updateStaff,
   deleteStaff,
+  rejectDeleteRequest,
   requestDeleteProfile,
   updateStaffPassword,
 
@@ -27,6 +28,7 @@ router.use(protect);
 
 // ✅ staff self endpoints (NO user id)
 router.get("/me", getMyStaffProfile);
+router.put("/me", updateMyStaffProfile);
 router.patch("/me", updateMyStaffProfile);
 router.post("/me/profile-image", upload.single("profileImage"), uploadMyStaffProfileImage);
 router.delete("/me/profile-image", removeMyStaffProfileImage);
@@ -51,6 +53,7 @@ router.patch("/:id/password", updateStaffPassword);
 
 // Request delete by id (admin or self)
 router.post("/:id/delete-request", requestDeleteProfile);
+router.patch("/:id/delete-request/reject", authorizeRoles("ADMIN"), rejectDeleteRequest);
 
 // ✅ ONLY ADMIN CAN DELETE
 router.delete("/:id", authorizeRoles("ADMIN"), deleteStaff);

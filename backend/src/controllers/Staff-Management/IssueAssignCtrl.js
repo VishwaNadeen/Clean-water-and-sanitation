@@ -16,8 +16,23 @@ const getIssueModel = () => {
 // role -> allowed task types
 const ROLE_TASK_RULES = {
   Cleaner: ["Cleaning"],
-  Technician: ["Maintenance", "Inspection"],
+  Technician: ["Maintenance"],
   Supervisor: ["Inspection"],
+};
+
+const getSafeErrorMessage = (err, fallback = "Something went wrong. Please try again.") => {
+  if (err?.name === "CastError") {
+    if (err.path === "issueId") return "Invalid issue selection.";
+    if (err.path === "staffId") return "Invalid staff member selection.";
+    if (err.path === "_id") return "Invalid record id.";
+    return "Invalid data format.";
+  }
+
+  if (err?.name === "ValidationError") {
+    return "Invalid assignment data. Please review the form fields.";
+  }
+
+  return fallback;
 };
 
 // ---------- helpers ----------
@@ -178,7 +193,7 @@ export const assignIssueToStaff = async (req, res) => {
       });
     }
 
-    // -------- time conflict check (same staff, same day) --------
+    // -------- time overlap check (same staff, same day) --------
     const dayStart = new Date(date);
     dayStart.setHours(0, 0, 0, 0);
 
@@ -197,7 +212,7 @@ export const assignIssueToStaff = async (req, res) => {
 
     if (clash) {
       return res.status(409).json({
-        message: "Schedule conflict: Staff already has a schedule during this time",
+        message: "This staff member is already assigned for the selected time slot.",
       });
     }
 
@@ -235,6 +250,6 @@ export const assignIssueToStaff = async (req, res) => {
       issue,
     });
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    return res.status(500).json({ message: getSafeErrorMessage(err) });
   }
 };

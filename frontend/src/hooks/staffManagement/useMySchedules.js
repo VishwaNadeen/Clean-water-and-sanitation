@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import {
   completeWork,
   getMySchedules,
+  removeProof,
+  reworkRejectedTask,
   revertStartWork,
   startWork,
   uploadProof,
@@ -10,10 +12,44 @@ import {
 const ACTIVE_STATUSES = ["Assigned", "InProgress"];
 const TOAST_DURATION_MS = 5000;
 
-const getScheduleDateTime = (schedule) => {
-  const date = new Date(schedule?.date);
+const getScheduleList = (data) => {
+  if (Array.isArray(data)) {
+    return data;
+  }
 
-  if (Number.isNaN(date.getTime())) {
+  if (Array.isArray(data?.schedules)) {
+    return data.schedules;
+  }
+
+  return [];
+};
+
+const parseScheduleDate = (value) => {
+  if (!value) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : new Date(value);
+  }
+
+  if (typeof value === "string") {
+    const dateOnlyMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+    if (dateOnlyMatch) {
+      const [, year, month, day] = dateOnlyMatch;
+      return new Date(Number(year), Number(month) - 1, Number(day));
+    }
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const getScheduleDateTime = (schedule) => {
+  const date = parseScheduleDate(schedule?.date);
+
+  if (!date) {
     return null;
   }
 
@@ -63,6 +99,8 @@ const useMySchedules = () => {
   const [proofFiles, setProofFiles] = useState({});
   const [formState, setFormState] = useState({});
   const [message, setMessage] = useState({ type: "", text: "" });
+  const [proofMessageById, setProofMessageById] = useState({});
+  const [taskMessageById, setTaskMessageById] = useState({});
 
   const showMessage = (type, text) => {
     setMessage({ type, text });
@@ -71,11 +109,57 @@ const useMySchedules = () => {
     }, TOAST_DURATION_MS);
   };
 
+  const showProofMessage = (id, type, text) => {
+    if (!id) {
+      return;
+    }
+
+    setProofMessageById((prev) => ({
+      ...prev,
+      [id]: { type, text },
+    }));
+
+    setTimeout(() => {
+      setProofMessageById((prev) => {
+        if (!prev[id]) {
+          return prev;
+        }
+
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    }, TOAST_DURATION_MS);
+  };
+
+  const showTaskMessage = (id, type, text) => {
+    if (!id) {
+      return;
+    }
+
+    setTaskMessageById((prev) => ({
+      ...prev,
+      [id]: { type, text },
+    }));
+
+    setTimeout(() => {
+      setTaskMessageById((prev) => {
+        if (!prev[id]) {
+          return prev;
+        }
+
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    }, TOAST_DURATION_MS);
+  };
+
   const loadSchedules = async () => {
     try {
       setLoading(true);
       const data = await getMySchedules();
-      const scheduleList = Array.isArray(data) ? data : [];
+      const scheduleList = getScheduleList(data);
       setSchedules(scheduleList);
 
       const initialForm = {};
@@ -112,8 +196,8 @@ const useMySchedules = () => {
 
     if (timeFilter !== "All") {
       list = list.filter((item) => {
-        const scheduleDate = new Date(item.date);
-        if (Number.isNaN(scheduleDate.getTime())) {
+        const scheduleDate = parseScheduleDate(item.date);
+        if (!scheduleDate) {
           return false;
         }
 
@@ -164,10 +248,8 @@ const useMySchedules = () => {
     const endOfWeek = getEndOfWeek(now);
 
     const weeklySchedules = schedules.filter((schedule) => {
-      const scheduleDate = new Date(schedule.date);
-      return !Number.isNaN(scheduleDate.getTime()) &&
-        scheduleDate >= startOfWeek &&
-        scheduleDate <= endOfWeek;
+      const scheduleDate = parseScheduleDate(schedule.date);
+      return scheduleDate && scheduleDate >= startOfWeek && scheduleDate <= endOfWeek;
     });
 
     return {
@@ -186,10 +268,10 @@ const useMySchedules = () => {
 
     return schedules
       .filter((item) => {
-        const scheduleDate = new Date(item.date);
+        const scheduleDate = parseScheduleDate(item.date);
         return (
           ACTIVE_STATUSES.includes(item.status) &&
-          !Number.isNaN(scheduleDate.getTime()) &&
+          scheduleDate &&
           scheduleDate.toDateString() === now.toDateString()
         );
       })
@@ -227,10 +309,10 @@ const useMySchedules = () => {
     try {
       setBusyAction(id);
       await startWork(id);
-      showMessage("success", "Work started successfully");
+      showTaskMessage(id, "success", "Work started successfully");
       await loadSchedules();
     } catch (error) {
-      showMessage("error", error?.response?.data?.message || "Failed to start work");
+      showTaskMessage(id, "error", error?.response?.data?.message || "Failed to start work");
     } finally {
       setBusyAction("");
     }
@@ -240,27 +322,32 @@ const useMySchedules = () => {
     try {
       setBusyAction(id);
       await revertStartWork(id);
-      showMessage("success", "Task moved back to assigned");
+      showTaskMessage(id, "success", "Task moved back to assigned");
       await loadSchedules();
     } catch (error) {
-      showMessage("error", error?.response?.data?.message || "Failed to change status");
+      showTaskMessage(id, "error", error?.response?.data?.message || "Failed to change status");
     } finally {
       setBusyAction("");
     }
   };
 
-  const handleFileChange = (id, file) => {
-    setProofFiles((prev) => ({
-      ...prev,
-      [id]: file,
-    }));
+  const handleRedoTask = async (id) => {
+    try {
+      setBusyAction(id);
+      await reworkRejectedTask(id);
+      showTaskMessage(id, "success", "Task moved to rework. Please complete and resubmit.");
+      await loadSchedules();
+    } catch (error) {
+      showTaskMessage(id, "error", error?.response?.data?.message || "Failed to start rework");
+    } finally {
+      setBusyAction("");
+    }
   };
 
-  const handleUploadProof = async (id) => {
+  const uploadSelectedProof = async (id, file) => {
     try {
-      const file = proofFiles[id];
       if (!file) {
-        showMessage("error", "Please select a proof image first");
+        showProofMessage(id, "error", "Please select a proof image first");
         return;
       }
 
@@ -272,10 +359,43 @@ const useMySchedules = () => {
         [id]: null,
       }));
 
-      showMessage("success", "Proof image uploaded successfully");
+      showProofMessage(id, "success", "Proof image uploaded successfully");
       await loadSchedules();
     } catch (error) {
-      showMessage("error", error?.response?.data?.message || "Failed to upload proof");
+      showProofMessage(id, "error", error?.response?.data?.message || "Failed to upload proof");
+    } finally {
+      setBusyAction("");
+    }
+  };
+
+  const handleFileChange = async (id, file) => {
+    setProofFiles((prev) => ({
+      ...prev,
+      [id]: file,
+    }));
+
+    if (file) {
+      await uploadSelectedProof(id, file);
+    }
+  };
+
+  const handleUploadProof = async (id) => {
+    await uploadSelectedProof(id, proofFiles[id]);
+  };
+
+  const handleRemoveProof = async (id, publicId) => {
+    try {
+      if (!publicId) {
+        showProofMessage(id, "error", "Unable to remove image");
+        return;
+      }
+
+      setBusyAction(id);
+      await removeProof(id, publicId);
+      showProofMessage(id, "success", "Proof image removed successfully");
+      await loadSchedules();
+    } catch (error) {
+      showProofMessage(id, "error", error?.response?.data?.message || error?.message || "Failed to remove proof image");
     } finally {
       setBusyAction("");
     }
@@ -301,10 +421,11 @@ const useMySchedules = () => {
       };
 
       await completeWork(id, payload);
-      showMessage("success", "Work completed successfully");
+      setMessage({ type: "", text: "" });
+      showTaskMessage(id, "success", "Work completed and submitted for manager review.");
       await loadSchedules();
     } catch (error) {
-      showMessage("error", error?.response?.data?.message || "Failed to complete work");
+      showTaskMessage(id, "error", error?.response?.data?.message || "Failed to complete work");
     } finally {
       setBusyAction("");
     }
@@ -325,6 +446,8 @@ const useMySchedules = () => {
     searchTerm,
     setSearchTerm,
     proofFiles,
+    proofMessageById,
+    taskMessageById,
     formState,
     message,
     stats,
@@ -332,8 +455,10 @@ const useMySchedules = () => {
     loadSchedules,
     handleStart,
     handleRevertStart,
+    handleRedoTask,
     handleFileChange,
     handleUploadProof,
+    handleRemoveProof,
     handleFormChange,
     handleComplete,
   };

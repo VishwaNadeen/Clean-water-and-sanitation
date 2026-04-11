@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import FloatingToast from "../../components/common/FloatingToast";
 import useMySchedules from "../../hooks/staffManagement/useMySchedules";
 import { getStoredUser } from "../../utils/auth";
@@ -10,6 +10,7 @@ import StatCard from "../../components/staffManagement/staff/StatCard";
 const DISMISSED_FEEDBACK_KEY = "staffDismissedFeedback";
 
 const StaffDashboard = () => {
+  const navigate = useNavigate();
   const {
     loading,
     message,
@@ -37,6 +38,10 @@ const StaffDashboard = () => {
     return reviewedSchedules.filter((schedule) => !dismissedFeedbackIds.includes(schedule._id));
   }, [reviewedSchedules, dismissedFeedbackIds]);
 
+  const latestRejectedFeedback = useMemo(() => {
+    return visibleReviewedSchedules.find((schedule) => schedule.status === "Rejected") || null;
+  }, [visibleReviewedSchedules]);
+
   const handleDismissFeedback = (id) => {
     setDismissedFeedbackIds((current) => {
       if (current.includes(id)) {
@@ -47,6 +52,10 @@ const StaffDashboard = () => {
       localStorage.setItem(DISMISSED_FEEDBACK_KEY, JSON.stringify(next));
       return next;
     });
+  };
+
+  const handleOpenMySchedules = () => {
+    navigate("/staff/my-schedules");
   };
 
   return (
@@ -96,6 +105,22 @@ const StaffDashboard = () => {
                 Change Password
               </Link>
             </div>
+          </div>
+        ) : null}
+
+        {latestRejectedFeedback ? (
+          <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-4">
+            <p className="text-sm font-semibold text-rose-800">Your task has been rejected</p>
+            <p className="mt-1 text-sm text-rose-700">
+              {latestRejectedFeedback.managerReviewNote || "Please check feedback and redo the task."}
+            </p>
+            <button
+              type="button"
+              onClick={handleOpenMySchedules}
+              className="mt-3 rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700"
+            >
+              Open Rework Task
+            </button>
           </div>
         ) : null}
 
@@ -182,7 +207,11 @@ const StaffDashboard = () => {
             ) : (
               <div className="space-y-4">
                 {todaySchedules.slice(0, 3).map((schedule) => (
-                  <SchedulePreviewCard key={schedule._id} schedule={schedule} />
+                  <SchedulePreviewCard
+                    key={schedule._id}
+                    schedule={schedule}
+                    onClick={handleOpenMySchedules}
+                  />
                 ))}
               </div>
             )}

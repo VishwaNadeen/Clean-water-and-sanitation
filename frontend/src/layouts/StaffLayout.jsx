@@ -1,5 +1,7 @@
-import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { NavLink, useNavigate, useLocation, Outlet } from "react-router-dom";
+import { useState, useLayoutEffect, useRef } from "react";
+import ConfirmDialog from "../components/common/ConfirmDialog";
+import PageTransition from "../components/common/PageTransition";
 
 function DashboardIcon() {
   return (
@@ -114,17 +116,26 @@ function ChevronRightIcon() {
 
 export default function StaffLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const contentRef = useRef(null);
+
   const [collapsed, setCollapsed] = useState(false);
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+
   const textTransition =
     "overflow-hidden whitespace-nowrap transition-all duration-300 ease-out";
 
-  const handleLogout = () => {
-    const shouldLogout = window.confirm("Are you sure you want to logout?");
-
-    if (!shouldLogout) {
-      return;
+  useLayoutEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: "auto",
+      });
     }
+  }, [location.pathname, location.search]);
 
+  const performLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     navigate("/login");
@@ -160,23 +171,29 @@ export default function StaffLayout() {
           collapsed ? "lg:grid-cols-[80px_1fr]" : "lg:grid-cols-[260px_1fr]"
         }`}
       >
-        <aside className="hidden h-screen overflow-hidden lg:flex lg:flex-col bg-gradient-to-b from-cyan-900 via-sky-900 to-blue-900 text-white shadow-xl transition-all duration-500 ease-out">
+        <aside className="hidden h-screen overflow-hidden bg-gradient-to-b from-cyan-900 via-sky-900 to-blue-900 text-white shadow-xl transition-all duration-500 ease-out lg:flex lg:flex-col">
           <div className="flex items-center justify-between border-b border-white/10 px-4 py-5">
             <div
               className={`min-w-0 transition-all duration-300 ease-out ${
-                collapsed ? "max-w-0 -translate-x-3 opacity-0" : "max-w-[180px] translate-x-0 opacity-100"
+                collapsed
+                  ? "max-w-0 -translate-x-3 opacity-0"
+                  : "max-w-[180px] translate-x-0 opacity-100"
               }`}
             >
               <div className={textTransition}>
                 <h1 className="text-lg font-bold">Staff Panel</h1>
-                <p className="text-xs text-cyan-200">Clean Water and Sanitation</p>
+                <p className="text-xs text-cyan-200">
+                  Clean Water and Sanitation
+                </p>
               </div>
             </div>
 
             <button
               onClick={() => setCollapsed(!collapsed)}
               className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/5 text-white transition-all duration-300 hover:bg-white/10"
-              aria-label={collapsed ? "Expand staff sidebar" : "Collapse staff sidebar"}
+              aria-label={
+                collapsed ? "Expand staff sidebar" : "Collapse staff sidebar"
+              }
             >
               <span
                 className={`transition-transform duration-300 ease-out ${
@@ -188,7 +205,7 @@ export default function StaffLayout() {
             </button>
           </div>
 
-          <nav className="flex-1 space-y-2 overflow-y-auto px-2 py-6">
+          <nav className="no-scrollbar flex-1 space-y-2 overflow-y-auto px-2 py-6">
             {navItems.map((item) => (
               <NavLink
                 key={item.path}
@@ -197,15 +214,17 @@ export default function StaffLayout() {
                 className={({ isActive }) =>
                   `flex items-center rounded-xl py-3 transition-all duration-300 ease-out ${
                     isActive
-                    ? "bg-white text-cyan-900"
-                    : "text-white hover:bg-white/10"
+                      ? "bg-white text-cyan-900"
+                      : "text-white hover:bg-white/10"
                   } ${collapsed ? "justify-center px-2" : "justify-start gap-3 px-4"}`
                 }
               >
                 <span className="shrink-0">{item.icon}</span>
                 <span
                   className={`${textTransition} text-sm font-medium ${
-                    collapsed ? "max-w-0 translate-x-2 opacity-0" : "max-w-[160px] translate-x-0 opacity-100"
+                    collapsed
+                      ? "max-w-0 translate-x-2 opacity-0"
+                      : "max-w-[160px] translate-x-0 opacity-100"
                   }`}
                 >
                   {item.label}
@@ -216,7 +235,7 @@ export default function StaffLayout() {
 
           <div className="border-t border-white/10 p-3">
             <button
-              onClick={handleLogout}
+              onClick={() => setLogoutDialogOpen(true)}
               className={`flex h-12 w-full items-center overflow-hidden rounded-2xl bg-red-500 text-sm font-medium text-white transition-all duration-300 ease-out hover:bg-red-600 ${
                 collapsed
                   ? "justify-center px-0 shadow-[0_10px_24px_rgba(239,68,68,0.3)]"
@@ -230,7 +249,9 @@ export default function StaffLayout() {
               </span>
               <span
                 className={`${textTransition} ${
-                  collapsed ? "max-w-0 translate-x-2 opacity-0" : "max-w-[100px] translate-x-0 opacity-100"
+                  collapsed
+                    ? "max-w-0 translate-x-2 opacity-0"
+                    : "max-w-[100px] translate-x-0 opacity-100"
                 }`}
               >
                 Logout
@@ -242,6 +263,7 @@ export default function StaffLayout() {
         <div className="flex min-w-0 h-screen flex-col overflow-hidden">
           <header className="flex items-center justify-between border-b bg-white px-4 py-3 lg:hidden">
             <h1 className="font-bold text-sky-900">Staff Panel</h1>
+
             <div className="flex items-center gap-2">
               <NavLink
                 to="/staff/profile"
@@ -249,8 +271,9 @@ export default function StaffLayout() {
               >
                 Profile
               </NavLink>
+
               <button
-                onClick={handleLogout}
+                onClick={() => setLogoutDialogOpen(true)}
                 className="rounded bg-red-500 px-3 py-1 text-white"
               >
                 Logout
@@ -258,11 +281,33 @@ export default function StaffLayout() {
             </div>
           </header>
 
-          <main className="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 pt-2 md:px-6 md:pb-6 md:pt-3">
-            <Outlet />
+          <main
+            ref={contentRef}
+            className="no-scrollbar flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 pt-2 md:px-6 md:pb-6 md:pt-3"
+          >
+            <PageTransition
+              routeKey={`${location.pathname}${location.search}`}
+              className="h-full w-full"
+            >
+              <Outlet />
+            </PageTransition>
           </main>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={logoutDialogOpen}
+        title="Logout"
+        message="Are you sure you want to logout from your staff account?"
+        confirmText="Logout"
+        cancelText="Stay"
+        tone="danger"
+        onCancel={() => setLogoutDialogOpen(false)}
+        onConfirm={() => {
+          setLogoutDialogOpen(false);
+          performLogout();
+        }}
+      />
     </div>
   );
 }

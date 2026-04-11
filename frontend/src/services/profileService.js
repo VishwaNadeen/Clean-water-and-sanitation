@@ -55,12 +55,20 @@ function normalizeProfileResponse(data, role, storedUser) {
       lastName:
         raw.lastName ||
         (splitName.length > 1 ? splitName.slice(1).join(" ") : ""),
+      fullName: fullName || [raw.firstName, raw.lastName].filter(Boolean).join(" "),
       email: raw.email || storedUser?.email || "",
       phone: raw.phone || raw.mobile || raw.contactNumber || "",
       gender: raw.gender || "",
+      address: raw.address || raw.streetAddress || "",
+      city: raw.city || raw.town || "",
+      country: raw.country || "",
+      provinceState: raw.baseProvince || raw.province || raw.state || "",
+      district: raw.baseDistrict || raw.district || "",
+      dob: raw.dob || raw.dateOfBirth || raw.birthDate || "",
       role: raw.role || storedUser?.role || "staff",
       profileImageUrl: raw.profileImageUrl || raw.avatarUrl || "",
       mustChangePassword: Boolean(raw.mustChangePassword),
+      createdAt: raw.createdAt || raw.created_at || "",
       originalData: raw,
     };
   }
@@ -68,12 +76,22 @@ function normalizeProfileResponse(data, role, storedUser) {
   return {
     firstName: raw.firstName || "",
     lastName: raw.lastName || "",
+    fullName:
+      raw.fullName ||
+      [raw.firstName, raw.lastName].filter(Boolean).join(" "),
     email: raw.email || storedUser?.email || "",
     phone: raw.phone || "",
     gender: raw.gender || "",
+    address: raw.address || raw.streetAddress || "",
+    city: raw.city || raw.town || "",
+    country: raw.country || "",
+    provinceState: raw.province || raw.state || "",
+    district: raw.district || "",
+    dob: raw.dob || raw.dateOfBirth || raw.birthDate || "",
     role: raw.role || storedUser?.role || "user",
     profileImageUrl: raw.profileImageUrl || raw.avatarUrl || "",
     mustChangePassword: Boolean(raw.mustChangePassword),
+    createdAt: raw.createdAt || raw.created_at || "",
     originalData: raw,
   };
 }
@@ -148,9 +166,10 @@ export async function updateMyProfile(payload) {
   }
 
   const endpoint = getProfileEndpointByRole(storedUser?.role);
+  const isStaffProfile = normalizeRole(storedUser?.role) === "staff";
 
   const response = await fetch(endpoint, {
-    method: "PUT",
+    method: isStaffProfile ? "PATCH" : "PUT",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,

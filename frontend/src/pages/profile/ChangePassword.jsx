@@ -1,18 +1,12 @@
 import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import ProfileLayout from "../../components/profile/ProfileLayout";
-import useProfileData from "../../hooks/useProfileData";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import { changeMyPassword } from "../../services/profileService";
 import { updateStoredUser } from "../../utils/auth";
 
 export default function ChangePassword() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { profile, loading, pageError, setPageError, storedUser, token } =
-    useProfileData();
-  const profileBasePath = location.pathname.startsWith("/staff/profile")
-    ? "/staff/profile"
-    : "/profile";
+
+  const { setPageError, profileBasePath } = useOutletContext();
 
   const [formData, setFormData] = useState({
     currentPassword: "",
@@ -75,94 +69,84 @@ export default function ChangePassword() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-[calc(100vh-160px)] px-4 py-10">
-        <div className="mx-auto max-w-6xl rounded-[28px] border border-sky-200 bg-white/95 p-6">
-          <p className="text-slate-600">Loading profile...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <ProfileLayout
-      title="Change Password"
-      subtitle="Update your account password securely."
-      token={token}
-      profile={profile}
-      storedUser={storedUser}
-    >
-      {pageError ? (
-        <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-          {pageError}
-        </div>
-      ) : null}
-
-      {successMessage ? (
-        <div className="mb-5 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-600">
-          {successMessage}
-        </div>
-      ) : null}
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
-            Current Password
-          </label>
-          <input
-            type="password"
-            name="currentPassword"
-            value={formData.currentPassword}
-            onChange={handleChange}
-            className="w-full rounded-xl border border-sky-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100"
-          />
+    <div className="flex justify-center">
+      <div className="w-full max-w-2xl">
+        <div className="mb-10">
+          <h2 className="text-3xl font-bold tracking-tight text-slate-900">
+            Change Password
+          </h2>
+          <p className="mt-3 text-sm text-slate-600">
+            Update your password to keep your account secure. Enter your
+            current password, then choose a new one.
+          </p>
         </div>
 
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
-            New Password
-          </label>
-          <input
-            type="password"
-            name="newPassword"
-            value={formData.newPassword}
-            onChange={handleChange}
-            className="w-full rounded-xl border border-sky-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100"
-          />
-        </div>
+        {successMessage && (
+          <div className="mb-5 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-600">
+            {successMessage}
+          </div>
+        )}
 
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
-            Confirm New Password
-          </label>
-          <input
-            type="password"
-            name="confirmPassword"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-            className="w-full rounded-xl border border-sky-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100"
-          />
-        </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-900">
+              Current Password
+            </label>
+            <input
+              type="password"
+              name="currentPassword"
+              value={formData.currentPassword}
+              onChange={handleChange}
+              className="w-full rounded-2xl border border-sky-200 bg-white px-4 py-4 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
+            />
+          </div>
 
-        <div className="flex flex-col gap-3 pt-2 sm:flex-row">
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-xl border border-sky-300 bg-gradient-to-r from-sky-500 to-blue-500 px-5 py-3 text-sm font-semibold text-white disabled:opacity-70"
-          >
-            {saving ? "Saving..." : "Change Password"}
-          </button>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-900">
+              New Password
+            </label>
+            <input
+              type="password"
+              name="newPassword"
+              value={formData.newPassword}
+              onChange={handleChange}
+              className="w-full rounded-2xl border border-sky-200 bg-white px-4 py-4 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
+            />
+          </div>
 
-          <button
-            type="button"
-            onClick={() => navigate(profileBasePath)}
-            className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-          >
-            Cancel
-          </button>
-        </div>
-      </form>
-    </ProfileLayout>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-900">
+              Confirm New Password
+            </label>
+            <input
+              type="password"
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              className="w-full rounded-2xl border border-sky-200 bg-white px-4 py-4 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-3 pt-4">
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-2xl bg-gradient-to-r from-sky-500 to-blue-500 px-6 py-3.5 text-sm font-semibold text-white transition hover:from-sky-600 hover:to-blue-600 disabled:opacity-70"
+            >
+              {saving ? "Saving..." : "Change Password"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate(profileBasePath)}
+              className="rounded-2xl border border-slate-300 bg-white px-6 py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
-}
+  }

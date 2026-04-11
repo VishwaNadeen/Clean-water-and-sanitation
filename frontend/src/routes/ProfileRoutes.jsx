@@ -1,6 +1,6 @@
 import { Navigate, Route } from "react-router-dom";
-import MainLayout from "../layouts/MainLayout.jsx";
 import ProtectedRoute from "../components/common/ProtectedRoute.jsx";
+import Dashboard from "../pages/profile/Dashboard.jsx";
 import Profile from "../pages/profile/Profile.jsx";
 import EditProfile from "../pages/profile/EditProfile.jsx";
 import ChangePassword from "../pages/profile/ChangePassword.jsx";
@@ -20,44 +20,21 @@ function UserOnlyProfile({ children, fallbackPath }) {
 
 const ProfileRoutes = (
   <Route
-    element={
-      <ProtectedRoute>
-        <MainLayout />
-      </ProtectedRoute>
-    }
+    element={<ProtectedRoute />}
   >
     <Route
       path="/profile"
       element={
         <UserOnlyProfile fallbackPath="/staff/profile">
-          <Profile />
+          <Dashboard />
         </UserOnlyProfile>
       }
-    />
-    <Route
-      path="/profile/edit"
-      element={
-        <UserOnlyProfile fallbackPath="/staff/profile/edit">
-          <EditProfile />
-        </UserOnlyProfile>
-      }
-    />
-    <Route
-      path="/profile/password"
-      element={
-        <UserOnlyProfile fallbackPath="/staff/profile/password">
-          <ChangePassword />
-        </UserOnlyProfile>
-      }
-    />
-    <Route
-      path="/profile/delete"
-      element={
-        <UserOnlyProfile fallbackPath="/staff/profile/delete">
-          <DeleteProfile />
-        </UserOnlyProfile>
-      }
-    />
+    >
+      <Route index element={<Profile />} />
+      <Route path="edit" element={<EditProfile />} />
+      <Route path="password" element={<ChangePassword />} />
+      <Route path="delete" element={<DeleteProfile />} />
+    </Route>
   </Route>
 );
 

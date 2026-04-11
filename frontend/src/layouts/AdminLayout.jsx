@@ -1,5 +1,7 @@
 import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useLayoutEffect, useRef } from "react";
+import ConfirmDialog from "../components/common/ConfirmDialog";
+import PageTransition from "../components/common/PageTransition";
 
 function DashboardIcon() {
   return (
@@ -181,8 +183,15 @@ function ChevronDownIcon() {
 export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const contentRef = useRef(null);
+
   const [collapsed, setCollapsed] = useState(false);
-  const [categoriesOpen, setCategoriesOpen] = useState(true);
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+  const [expandedMenus, setExpandedMenus] = useState({
+    staff: true,
+    categories: true,
+  });
+
   const textTransition =
     "overflow-hidden whitespace-nowrap transition-all duration-300 ease-out";
 
@@ -196,11 +205,20 @@ export default function AdminLayout() {
 
   const displayRole = useMemo(() => {
     const role = String(user?.role || "admin").trim().toLowerCase();
-
     return role ? `${role.charAt(0).toUpperCase()}${role.slice(1)}` : "Admin";
   }, [user]);
 
-  const handleLogout = () => {
+  useLayoutEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: "auto",
+      });
+    }
+  }, [location.pathname, location.search]);
+
+  const performLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     navigate("/login");
@@ -218,9 +236,20 @@ export default function AdminLayout() {
       icon: <UsersIcon />,
     },
     {
+      menuKey: "staff",
       label: "Staff",
       path: "/admin/staff",
       icon: <StaffIcon />,
+      children: [
+        {
+          label: "Manage Staff",
+          path: "/admin/staff",
+        },
+        {
+          label: "Add Staff Member",
+          path: "/admin/register-staff",
+        },
+      ],
     },
     {
       label: "Restrooms",
@@ -233,6 +262,7 @@ export default function AdminLayout() {
       icon: <ComplaintsIcon />,
     },
     {
+      menuKey: "categories",
       label: "Categories",
       path: "/admin/categories/view",
       icon: <CategoriesIcon />,
@@ -250,9 +280,19 @@ export default function AdminLayout() {
   ];
 
   const isActive = (path) => location.pathname === path;
+
   const isParentActive = (item) =>
     item.children?.some((child) => location.pathname === child.path) ||
     location.pathname === item.path;
+
+  const isMenuExpanded = (menuKey) => Boolean(expandedMenus[menuKey]);
+
+  const toggleMenu = (menuKey) => {
+    setExpandedMenus((prev) => ({
+      ...prev,
+      [menuKey]: !prev[menuKey],
+    }));
+  };
 
   return (
     <div className="h-screen overflow-hidden bg-slate-100">
@@ -261,7 +301,6 @@ export default function AdminLayout() {
           collapsed ? "lg:grid-cols-[80px_1fr]" : "lg:grid-cols-[260px_1fr]"
         }`}
       >
-        {/* Sidebar */}
         <aside className="sticky top-0 hidden h-screen overflow-hidden bg-slate-900 text-white transition-all duration-500 ease-out lg:flex lg:flex-col">
           <div className="flex items-center justify-between border-b border-slate-800 px-4 py-5">
             <div
@@ -296,7 +335,7 @@ export default function AdminLayout() {
             </button>
           </div>
 
-          <nav className="flex-1 overflow-y-auto px-2 py-6">
+          <nav className="no-scrollbar flex-1 overflow-y-auto px-2 py-6">
             <ul className="space-y-2">
               {navItems.map((item) => (
                 <li key={item.path}>
@@ -309,7 +348,10 @@ export default function AdminLayout() {
                             navigate(item.path);
                             return;
                           }
-                          setCategoriesOpen((prev) => !prev);
+
+                          if (item.menuKey) {
+                            toggleMenu(item.menuKey);
+                          }
                         }}
                         title={collapsed ? item.label : undefined}
                         className={`flex w-full rounded-xl py-3 text-sm font-medium transition-all duration-300 ease-out hover:bg-blue-600 hover:text-white ${
@@ -332,10 +374,13 @@ export default function AdminLayout() {
                             {item.label}
                           </span>
                         </span>
+
                         {!collapsed ? (
                           <span
                             className={`transition-transform duration-300 ${
-                              categoriesOpen ? "rotate-0" : "-rotate-90"
+                              isMenuExpanded(item.menuKey)
+                                ? "rotate-0"
+                                : "-rotate-90"
                             }`}
                           >
                             <ChevronDownIcon />
@@ -343,7 +388,7 @@ export default function AdminLayout() {
                         ) : null}
                       </button>
 
-                      {!collapsed && categoriesOpen ? (
+                      {!collapsed && isMenuExpanded(item.menuKey) ? (
                         <ul className="space-y-1 pl-6">
                           {item.children.map((child) => (
                             <li key={child.path}>
@@ -417,7 +462,7 @@ export default function AdminLayout() {
             </div>
 
             <button
-              onClick={handleLogout}
+              onClick={() => setLogoutDialogOpen(true)}
               className={`mt-4 flex w-full items-center overflow-hidden rounded-lg bg-red-600 text-sm font-medium text-white transition-all duration-300 ease-out hover:bg-red-500 ${
                 collapsed
                   ? "justify-center px-0 py-3"
@@ -442,17 +487,38 @@ export default function AdminLayout() {
           </div>
         </aside>
 
-        {/* Page content */}
         <section className="flex h-screen min-h-0 flex-col overflow-hidden">
           <header className="shrink-0 border-b border-slate-200 bg-white px-6 py-5 shadow-sm">
             <h2 className="text-2xl font-bold text-slate-800">Admin Panel</h2>
           </header>
 
-          <main className="flex-1 overflow-y-auto overflow-x-hidden p-6">
-            <Outlet />
+          <main
+            ref={contentRef}
+            className="no-scrollbar flex-1 overflow-y-auto overflow-x-hidden p-6"
+          >
+            <PageTransition
+              routeKey={`${location.pathname}${location.search}`}
+              className="h-full w-full"
+            >
+              <Outlet />
+            </PageTransition>
           </main>
         </section>
       </div>
+
+      <ConfirmDialog
+        open={logoutDialogOpen}
+        title="Logout"
+        message="Are you sure you want to logout from your admin account?"
+        confirmText="Logout"
+        cancelText="Stay"
+        tone="danger"
+        onCancel={() => setLogoutDialogOpen(false)}
+        onConfirm={() => {
+          setLogoutDialogOpen(false);
+          performLogout();
+        }}
+      />
     </div>
   );
 }

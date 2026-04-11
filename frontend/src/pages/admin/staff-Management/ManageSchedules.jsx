@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
+import ConfirmDialog from "../../../components/common/ConfirmDialog";
 import FloatingToast from "../../../components/common/FloatingToast";
 import API_BASE_URL from "../../../config/api";
 import {
@@ -38,6 +39,11 @@ const statusStyle = {
 
 const timeTabs = ["Today", "This Week", "This Month", "All"];
 const taskTypeOptions = ["All", "Cleaning", "Maintenance", "Inspection"];
+const ROLE_TASK_OPTIONS = {
+  Cleaner: ["Cleaning"],
+  Technician: ["Maintenance"],
+  Supervisor: ["Inspection"],
+};
 const TOAST_DURATION_MS = 5000;
 
 const getStartOfWeek = (date) => {
@@ -96,7 +102,63 @@ const getProofImageSrc = (imagePath) => {
   return `${normalizedBase}${normalizedPath}`;
 };
 
+const formatDateTime = (value) => {
+  if (!value) return "N/A";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "N/A";
+
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+};
+
+const toScheduleTimestamp = (item) => {
+  const dateValue = item?.date ? new Date(item.date) : null;
+  if (!dateValue || Number.isNaN(dateValue.getTime())) {
+    return 0;
+  }
+
+  const [hoursRaw, minutesRaw] = String(item?.startTime || "00:00").split(":");
+  const hours = Number.parseInt(hoursRaw, 10);
+  const minutes = Number.parseInt(minutesRaw, 10);
+
+  dateValue.setHours(
+    Number.isNaN(hours) ? 0 : hours,
+    Number.isNaN(minutes) ? 0 : minutes,
+    0,
+    0
+  );
+
+  return dateValue.getTime();
+};
+
+const getFriendlyErrorText = (error, fallback) => {
+  const apiMessage = String(error?.response?.data?.message || "").trim();
+  const localMessage = String(error?.message || "").trim();
+  const rawMessage = apiMessage || localMessage;
+
+  if (!rawMessage) {
+    return fallback;
+  }
+
+  if (
+    /cast to objectid failed/i.test(rawMessage) ||
+    /bsonerror/i.test(rawMessage) ||
+    /issueid/i.test(rawMessage)
+  ) {
+    return "Invalid issue selection. Please choose a valid issue or leave it empty.";
+  }
+
+  return rawMessage;
+};
+
 export default function ManageSchedules() {
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const [schedules, setSchedules] = useState([]);
   const [staffMembers, setStaffMembers] = useState([]);
@@ -111,8 +173,15 @@ export default function ManageSchedules() {
   const [taskTypeFilter, setTaskTypeFilter] = useState("All");
   const [toast, setToast] = useState(null);
   const [previewImage, setPreviewImage] = useState("");
+  const [prefillApplied, setPrefillApplied] = useState(false);
+  const [rejectTargetId, setRejectTargetId] = useState("");
+  const [rejectReason, setRejectReason] = useState("Cleaning not completed properly");
+  const [rejectSubmitting, setRejectSubmitting] = useState(false);
+  const [cancelTargetId, setCancelTargetId] = useState("");
+  const [cancelSubmitting, setCancelSubmitting] = useState(false);
   const pageMode = searchParams.get("mode") === "reviews" ? "reviews" : "assign";
   const isReviewMode = pageMode === "reviews";
+  const preselectedStaff = location.state?.preselectedStaff || null;
 
   const roleOptions = useMemo(() => {
     return [...new Set(staffMembers.map((staff) => staff.role).filter(Boolean))];
@@ -123,8 +192,20 @@ export default function ManageSchedules() {
       return [];
     }
 
-    return staffMembers.filter((staff) => staff.role === form.staffRole);
+    return staffMembers.filter((staff) => {
+      const isRoleMatch = staff.role === form.staffRole;
+      const normalizedStatus = String(staff.status || "").toLowerCase();
+      const isAvailable = normalizedStatus === "active";
+      return isRoleMatch && isAvailable;
+    });
   }, [form.staffRole, staffMembers]);
+
+  const assignTaskTypeOptions = useMemo(() => {
+    if (!form.staffRole) {
+      return ["Cleaning", "Maintenance", "Inspection"];
+    }
+    return ROLE_TASK_OPTIONS[form.staffRole] || [];
+  }, [form.staffRole]);
 
   const restroomOptions = useMemo(() => {
     return restrooms.map((restroom) => ({
@@ -142,6 +223,14 @@ export default function ManageSchedules() {
       })),
     ];
   }, [staffMembers]);
+
+  const selectedStaffDetails = useMemo(() => {
+    if (form.staffId) {
+      const found = staffMembers.find((staff) => staff._id === form.staffId);
+      if (found) return found;
+    }
+    return null;
+  }, [form.staffId, staffMembers]);
 
   const loadSchedules = async () => {
     try {
@@ -188,8 +277,55 @@ export default function ManageSchedules() {
     }
   }, [isReviewMode]);
 
+  useEffect(() => {
+    if (!assignTaskTypeOptions.length) {
+      return;
+    }
+
+    if (!assignTaskTypeOptions.includes(form.taskType)) {
+      setForm((prev) => ({
+        ...prev,
+        taskType: assignTaskTypeOptions[0],
+      }));
+    }
+  }, [assignTaskTypeOptions, form.taskType]);
+
+  useEffect(() => {
+    if (isReviewMode || prefillApplied || !preselectedStaff?._id || editingId) {
+      return;
+    }
+
+    const matchedStaff =
+      staffMembers.find((staff) => staff._id === preselectedStaff._id) ||
+      preselectedStaff;
+
+    if (!matchedStaff?._id) {
+      return;
+    }
+
+    const normalizedStatus = String(matchedStaff.status || "").toLowerCase();
+    if (normalizedStatus !== "active") {
+      setToast({
+        type: "error",
+        text:
+          normalizedStatus === "onleave"
+            ? "Cannot assign work: selected staff member is On Leave."
+            : "Cannot assign work: selected staff member is not Active.",
+      });
+      setPrefillApplied(true);
+      return;
+    }
+
+    setForm((prev) => ({
+      ...prev,
+      staffRole: matchedStaff.role || prev.staffRole || "",
+      staffId: matchedStaff._id,
+    }));
+    setPrefillApplied(true);
+  }, [editingId, isReviewMode, prefillApplied, preselectedStaff, staffMembers]);
+
   const filteredSchedules = useMemo(() => {
-    let data = schedules.filter((item) => item.status !== "Cancelled");
+    let data = [...schedules];
     const now = new Date();
     const startOfWeek = getStartOfWeek(now);
     const endOfWeek = getEndOfWeek(now);
@@ -237,9 +373,20 @@ export default function ManageSchedules() {
     }
 
     return data.sort((a, b) => {
-      const aTime = new Date(a.createdAt || a.updatedAt || a.date || 0).getTime();
-      const bTime = new Date(b.createdAt || b.updatedAt || b.date || 0).getTime();
-      return bTime - aTime;
+      const aCreatedTime = new Date(a.createdAt || a.updatedAt || 0).getTime();
+      const bCreatedTime = new Date(b.createdAt || b.updatedAt || 0).getTime();
+
+      if (timeFilter === "All" && bCreatedTime !== aCreatedTime) {
+        return bCreatedTime - aCreatedTime;
+      }
+
+      const bScheduleTime = toScheduleTimestamp(b);
+      const aScheduleTime = toScheduleTimestamp(a);
+      if (bScheduleTime !== aScheduleTime) {
+        return bScheduleTime - aScheduleTime;
+      }
+
+      return bCreatedTime - aCreatedTime;
     });
   }, [schedules, timeFilter, statusFilter, staffFilter, restroomFilter, taskTypeFilter]);
 
@@ -264,12 +411,17 @@ export default function ManageSchedules() {
       groups.get(key).items.push(item);
     });
 
-    return Array.from(groups.values()).sort((a, b) => {
+    const grouped = Array.from(groups.values());
+    if (timeFilter === "All") {
+      return grouped;
+    }
+
+    return grouped.sort((a, b) => {
       if (!a.dateValue) return 1;
       if (!b.dateValue) return -1;
       return b.dateValue.getTime() - a.dateValue.getTime();
     });
-  }, [filteredSchedules]);
+  }, [filteredSchedules, timeFilter]);
 
   const workloadStats = useMemo(() => {
     const activeSchedules = schedules.filter((item) => item.status !== "Cancelled");
@@ -307,15 +459,29 @@ export default function ManageSchedules() {
     setToast({ type: "success", text: "Edit cancelled" });
   };
 
+  const handleCancelForm = () => {
+    if (editingId) {
+      handleCancelEdit();
+      return;
+    }
+    resetForm();
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
 
     try {
+      const issueIdText = String(form.issueId || "").trim();
+      const payload = {
+        ...form,
+        issueId: issueIdText || null,
+      };
+
       if (editingId) {
-        await editSchedule(editingId, form);
+        await editSchedule(editingId, payload);
         setToast({ type: "success", text: "Schedule updated successfully" });
       } else {
-        await assignSchedule(form);
+        await assignSchedule(payload);
         setToast({ type: "success", text: "Schedule assigned successfully" });
       }
 
@@ -324,7 +490,7 @@ export default function ManageSchedules() {
     } catch (error) {
       setToast({
         type: "error",
-        text: error?.response?.data?.message || "Operation failed",
+        text: getFriendlyErrorText(error, "Operation failed"),
       });
     }
   };
@@ -346,16 +512,31 @@ export default function ManageSchedules() {
     });
   };
 
-  const handleCancel = async (id) => {
+  const handleCancel = (id) => {
+    setCancelTargetId(id);
+  };
+
+  const closeCancelDialog = () => {
+    if (cancelSubmitting) return;
+    setCancelTargetId("");
+  };
+
+  const confirmCancelSchedule = async () => {
+    if (!cancelTargetId) return;
+
     try {
-      await cancelSchedule(id);
+      setCancelSubmitting(true);
+      await cancelSchedule(cancelTargetId);
       setToast({ type: "success", text: "Schedule cancelled successfully" });
+      setCancelTargetId("");
       await loadSchedules();
     } catch (error) {
       setToast({
         type: "error",
         text: error?.response?.data?.message || "Cancel failed",
       });
+    } finally {
+      setCancelSubmitting(false);
     }
   };
 
@@ -372,16 +553,40 @@ export default function ManageSchedules() {
     }
   };
 
-  const handleReject = async (id) => {
+  const closeRejectDialog = (force = false) => {
+    if (rejectSubmitting && !force) return;
+    setRejectTargetId("");
+    setRejectReason("Cleaning not completed properly");
+  };
+
+  const handleReject = (id) => {
+    setRejectTargetId(id);
+    setRejectReason("Cleaning not completed properly");
+  };
+
+  const submitReject = async () => {
+    const trimmedReason = rejectReason.trim();
+    if (!trimmedReason) {
+      setToast({
+        type: "error",
+        text: "Rejection reason is required",
+      });
+      return;
+    }
+
     try {
-      await rejectSchedule(id, "Rejected by admin");
+      setRejectSubmitting(true);
+      await rejectSchedule(rejectTargetId, trimmedReason);
       setToast({ type: "success", text: "Schedule rejected successfully" });
+      closeRejectDialog(true);
       await loadSchedules();
     } catch (error) {
       setToast({
         type: "error",
         text: error?.response?.data?.message || "Reject failed",
       });
+    } finally {
+      setRejectSubmitting(false);
     }
   };
 
@@ -445,6 +650,27 @@ export default function ManageSchedules() {
             ) : null}
 
             <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+              {selectedStaffDetails ? (
+                <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
+                    Selected Staff Member
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-slate-900">
+                    {selectedStaffDetails.fullName ||
+                      selectedStaffDetails.name ||
+                      "Staff member"}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-600">
+                    {selectedStaffDetails.role || "Staff"} |{" "}
+                    {selectedStaffDetails.status || "Unknown"}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-600">
+                    {selectedStaffDetails.email || "No email"} |{" "}
+                    {selectedStaffDetails.phone || "No phone"}
+                  </p>
+                </div>
+              ) : null}
+
               <select
                 value={form.staffRole}
                 onChange={(e) =>
@@ -477,6 +703,11 @@ export default function ManageSchedules() {
                   </option>
                 ))}
               </select>
+              {form.staffRole && filteredStaffMembers.length === 0 ? (
+                <p className="text-xs font-medium text-amber-700">
+                  No active staff available for this role.
+                </p>
+              ) : null}
 
               <select
                 value={form.restroomId}
@@ -497,9 +728,11 @@ export default function ManageSchedules() {
                 className="w-full rounded-xl border border-slate-200 px-4 py-3"
                 required
               >
-                <option value="Cleaning">Cleaning</option>
-                <option value="Maintenance">Maintenance</option>
-                <option value="Inspection">Inspection</option>
+                {assignTaskTypeOptions.map((taskType) => (
+                  <option key={taskType} value={taskType}>
+                    {taskType}
+                  </option>
+                ))}
               </select>
 
               <input
@@ -552,15 +785,13 @@ export default function ManageSchedules() {
                   {editingId ? "Update Schedule" : "Assign Schedule"}
                 </button>
 
-                {editingId ? (
-                  <button
-                    type="button"
-                    onClick={handleCancelEdit}
-                    className="rounded-xl border border-slate-300 px-5 py-3 font-semibold text-slate-700"
-                  >
-                    Cancel
-                  </button>
-                ) : null}
+                <button
+                  type="button"
+                  onClick={handleCancelForm}
+                  className="rounded-xl border border-slate-300 px-5 py-3 font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
+                >
+                  Cancel
+                </button>
               </div>
             </form>
           </div>
@@ -684,20 +915,6 @@ export default function ManageSchedules() {
             ) : (
               groupedSchedules.map((group) => (
                 <section key={group.key} className="space-y-4">
-                  <div className="sticky top-0 z-10 rounded-3xl border border-blue-100 bg-gradient-to-r from-slate-50 via-white to-blue-50/70 px-5 py-4 backdrop-blur">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <h4 className="text-xl font-bold text-slate-800">{group.label}</h4>
-                        <p className="mt-1 text-sm text-slate-500">
-                          Scheduled work for this date
-                        </p>
-                      </div>
-                      <span className="rounded-full border border-blue-200 bg-white px-3 py-1 text-sm font-semibold text-blue-700">
-                        {group.items.length} item{group.items.length > 1 ? "s" : ""}
-                      </span>
-                    </div>
-                  </div>
-
                   {group.items.map((item) => (
                     <div
                       key={item._id}
@@ -748,14 +965,94 @@ export default function ManageSchedules() {
 
                             <div className="rounded-2xl bg-slate-50 px-4 py-3">
                               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                Staff
+                                Completed By
                               </p>
                               <p className="mt-1 text-sm font-semibold text-slate-800">
                                 {item.staffId?.fullName || item.staffName || "N/A"}
                               </p>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {item.staffId?.role || "Staff"}
+                              </p>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {item.staffId?.email || item.staffId?.phone || "No contact details"}
+                              </p>
                             </div>
                           </div>
                         </div>
+
+                        {item.status === "Completed" ? (
+                          <div className="rounded-3xl border border-violet-200 bg-violet-50/70 p-4">
+                            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                              <div className="rounded-2xl border border-violet-100 bg-white px-4 py-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-violet-700">
+                                  Completed At
+                                </p>
+                                <p className="mt-1 text-sm font-semibold text-slate-800">
+                                  {formatDateTime(item.completedAt)}
+                                </p>
+                              </div>
+                              <div className="rounded-2xl border border-violet-100 bg-white px-4 py-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-violet-700">
+                                  Staff Name
+                                </p>
+                                <p className="mt-1 text-sm font-semibold text-slate-800">
+                                  {item.staffId?.fullName || item.staffName || "N/A"}
+                                </p>
+                              </div>
+                              <div className="rounded-2xl border border-violet-100 bg-white px-4 py-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-violet-700">
+                                  Staff Role
+                                </p>
+                                <p className="mt-1 text-sm font-semibold text-slate-800">
+                                  {item.staffId?.role || "Staff"}
+                                </p>
+                              </div>
+                              <div className="rounded-2xl border border-violet-100 bg-white px-4 py-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-violet-700">
+                                  Contact
+                                </p>
+                                <p className="mt-1 text-sm font-semibold text-slate-800">
+                                  {item.staffId?.email || item.staffId?.phone || "No contact details"}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ) : null}
+
+                        {item.status === "Completed" &&
+                        (item.staffNote || item.materialsUsed || item.issuesFound) ? (
+                          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                            <h5 className="text-sm font-semibold text-slate-800">
+                              Completion Details From Staff
+                            </h5>
+                            <div className="mt-3 grid gap-3 md:grid-cols-3">
+                              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                  Staff Note
+                                </p>
+                                <p className="mt-1 text-sm text-slate-700">
+                                  {item.staffNote || "No note provided"}
+                                </p>
+                              </div>
+                              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                  Materials Used
+                                </p>
+                                <p className="mt-1 text-sm text-slate-700">
+                                  {item.materialsUsed || "Not specified"}
+                                </p>
+                              </div>
+                              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                  Issues Found
+                                </p>
+                                <p className="mt-1 text-sm text-slate-700">
+                                  {item.issuesFound || "No issues reported"}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ) : null}
 
                         {Array.isArray(item.proofImages) && item.proofImages.length > 0 ? (
                           <div className="rounded-3xl border border-blue-100 bg-blue-50/50 p-4">
@@ -868,6 +1165,59 @@ export default function ManageSchedules() {
           </div>
         </div>
       ) : null}
+
+      {rejectTargetId ? (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
+            <h3 className="text-lg font-bold text-slate-900">Reject completed work</h3>
+            <p className="mt-2 text-sm text-slate-600">
+              Add a clear reason so the staff member can redo the task correctly.
+            </p>
+
+            <label className="mt-4 block text-sm font-semibold text-slate-700">
+              Rejection reason
+            </label>
+            <textarea
+              value={rejectReason}
+              onChange={(event) => setRejectReason(event.target.value)}
+              rows={4}
+              className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-red-300 focus:ring-4 focus:ring-red-100"
+              placeholder="Example: Cleaning not completed properly"
+            />
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={closeRejectDialog}
+                disabled={rejectSubmitting}
+                className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={submitReject}
+                disabled={rejectSubmitting}
+                className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {rejectSubmitting ? "Submitting..." : "Reject Work"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <ConfirmDialog
+        open={Boolean(cancelTargetId)}
+        title="Cancel schedule"
+        message="Are you sure you want to cancel this schedule?"
+        confirmText={cancelSubmitting ? "Cancelling..." : "Cancel Schedule"}
+        cancelText="Keep Schedule"
+        tone="danger"
+        onCancel={closeCancelDialog}
+        onConfirm={confirmCancelSchedule}
+      />
+
     </div>
   );
 }
