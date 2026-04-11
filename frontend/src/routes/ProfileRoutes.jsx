@@ -19,9 +19,7 @@ function UserOnlyProfile({ children, fallbackPath }) {
 }
 
 const ProfileRoutes = (
-  <Route
-    element={<ProtectedRoute />}
-  >
+  <Route element={<ProtectedRoute />}>
     <Route
       path="/profile"
       element={
