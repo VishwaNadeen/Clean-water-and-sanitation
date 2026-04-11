@@ -1,0 +1,36 @@
+config:
+  target: "http://localhost:5001"
+  phases:
+    - duration: 30
+      arrivalRate: 5
+      name: "Warm up"
+    - duration: 60
+      arrivalRate: 20
+      name: "Load test"
+    - duration: 30
+      arrivalRate: 50
+      name: "Stress test"
+  defaults:
+    headers:
+      Content-Type: "application/json"
+
+scenarios:
+  - name: "Get all restrooms"
+    weight: 40
+    flow:
+      - get:
+          url: "/api/restrooms"
+
+  - name: "Get nearby restrooms"
+    weight: 40
+    flow:
+      - get:
+          url: "/api/restrooms/nearby?lat=6.9271&lng=79.8612&radius=3000"
+
+  - name: "Get restroom by invalid id"
+    weight: 20
+    flow:
+      - get:
+          url: "/api/restrooms/507f1f77bcf86cd799439011"
+          expect:
+            - statusCode: 404
