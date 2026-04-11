@@ -9,6 +9,10 @@ import {
   fetchWorldStates,
 } from "../../services/worldLocationService";
 import API_BASE_URL from "../../config/api";
+import {
+  getPhoneMaxLengthByCountry,
+  normalizePhoneForCountry,
+} from "../../utils/staffFormValidation";
 
 /* ── Icons ────────────────────────────────────────────────────────── */
 
@@ -253,6 +257,113 @@ function FieldIcon({ children }) {
   );
 }
 
+function formatPhoneForDisplay(countryCode, value) {
+  const digits = String(value || "").replace(/\D/g, "");
+
+  if (!digits) return "";
+
+  if (countryCode === "+94") {
+    return digits.match(/.{1,3}/g)?.join(" ") || digits;
+  }
+
+  if (digits.length <= 6) {
+    return digits.match(/.{1,3}/g)?.join(" ") || digits;
+  }
+
+  const groups = [];
+  let cursor = 0;
+
+  while (digits.length - cursor > 4) {
+    groups.push(digits.slice(cursor, cursor + 3));
+    cursor += 3;
+  }
+
+  groups.push(digits.slice(cursor));
+  return groups.filter(Boolean).join(" ");
+}
+
+const WEEKDAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+function getMaxDobDate() {
+  const yesterday = new Date();
+  yesterday.setHours(0, 0, 0, 0);
+  yesterday.setDate(yesterday.getDate() - 1);
+  return yesterday;
+}
+
+function formatDobDisplay(value) {
+  if (!value) return "mm/dd/yyyy";
+
+  const [year, month, day] = String(value).split("-").map(Number);
+  if (!year || !month || !day) return "mm/dd/yyyy";
+
+  return `${String(month).padStart(2, "0")}/${String(day).padStart(
+    2,
+    "0"
+  )}/${year}`;
+}
+
+function createDobValue(year, monthIndex, day) {
+  return `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(
+    day
+  ).padStart(2, "0")}`;
+}
+
+function isSameMonth(left, right) {
+  return (
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth()
+  );
+}
+
+function isSameDay(left, right) {
+  return (
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate()
+  );
+}
+
+function buildCalendarDays(viewDate) {
+  const firstDay = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
+  const firstGridDay = new Date(firstDay);
+  firstGridDay.setDate(firstDay.getDate() - firstDay.getDay());
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(firstGridDay);
+    date.setDate(firstGridDay.getDate() + index);
+    return date;
+  });
+}
+
+function CalendarIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3.5" y="4.5" width="13" height="12" rx="2" />
+      <path d="M6.5 2.75v3.5M13.5 2.75v3.5M3.5 8.25h13" />
+    </svg>
+  );
+}
+
+function isPasswordValidationMessage(message) {
+  return [
+    "Password is required.",
+    "Please confirm your password.",
+    "Password must be 6–12 characters and include uppercase, lowercase, number, and special character.",
+    "Password must include uppercase, lowercase, number, and special character.",
+    "Passwords do not match.",
+  ].includes(message);
+}
+
 /* ── Searchable dropdown list ──────────────────────────────────────── */
 
 function DropdownList({
@@ -302,6 +413,167 @@ function DropdownList({
   );
 }
 
+function DobCalendar({
+  value,
+  isOpen,
+  onToggle,
+  onSelect,
+  onPrevMonth,
+  onNextMonth,
+  viewDate,
+  maxDate,
+}) {
+  const calendarDays = useMemo(() => buildCalendarDays(viewDate), [viewDate]);
+  const selectedDate = useMemo(() => {
+    if (!value) return null;
+    const [year, month, day] = String(value).split("-").map(Number);
+    if (!year || !month || !day) return null;
+    return new Date(year, month - 1, day);
+  }, [value]);
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`${dropdownBtnClass} ${
+          isOpen ? "border-sky-400 bg-white ring-4 ring-sky-100" : ""
+        }`}
+      >
+        <span className={value ? "text-sky-900" : "text-sky-300"}>
+          {formatDobDisplay(value)}
+        </span>
+      </button>
+
+      <FieldIcon>
+        <CalendarIcon />
+      </FieldIcon>
+
+      {isOpen ? (
+        <div className="absolute z-30 mt-2 w-full overflow-hidden rounded-2xl border border-sky-200 bg-white p-4 shadow-xl shadow-sky-100/40">
+          <div className="mb-4 flex items-center justify-between">
+            <p className="text-base font-semibold text-sky-900">
+              {viewDate.toLocaleString("en-US", {
+                month: "long",
+                year: "numeric",
+              })}
+            </p>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onPrevMonth}
+                className="grid h-9 w-9 place-items-center rounded-full border border-sky-200 bg-sky-50 text-sky-600 transition hover:border-sky-300 hover:bg-sky-100"
+                aria-label="Previous month"
+              >
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 20 20"
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="m12.5 5-5 5 5 5" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={onNextMonth}
+                disabled={
+                  viewDate.getFullYear() === maxDate.getFullYear() &&
+                  viewDate.getMonth() === maxDate.getMonth()
+                }
+                className="grid h-9 w-9 place-items-center rounded-full border border-sky-200 bg-sky-50 text-sky-600 transition hover:border-sky-300 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Next month"
+              >
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 20 20"
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="m7.5 5 5 5-5 5" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold uppercase tracking-wide text-sky-500">
+            {WEEKDAY_LABELS.map((label) => (
+              <span key={label} className="py-1">
+                {label}
+              </span>
+            ))}
+          </div>
+
+          <div className="mt-2 grid grid-cols-7 gap-1">
+            {calendarDays.map((day) => {
+              const inMonth = isSameMonth(day, viewDate);
+              const isSelected = selectedDate ? isSameDay(day, selectedDate) : false;
+              const isDisabled = day > maxDate;
+
+              return (
+                <button
+                  key={day.toISOString()}
+                  type="button"
+                  onClick={() =>
+                    !isDisabled &&
+                    onSelect(
+                      createDobValue(day.getFullYear(), day.getMonth(), day.getDate())
+                    )
+                  }
+                  disabled={isDisabled}
+                  className={`grid h-10 w-full place-items-center rounded-xl text-sm transition ${
+                    isSelected
+                      ? "bg-sky-600 font-semibold text-white shadow-sm"
+                      : inMonth
+                        ? "text-sky-900 hover:bg-sky-50"
+                        : "text-sky-300 hover:bg-sky-50"
+                  } ${isDisabled ? "cursor-not-allowed text-slate-300 hover:bg-transparent" : ""}`}
+                >
+                  {day.getDate()}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => onSelect("")}
+              className="text-sm font-medium text-sky-600 transition hover:text-sky-800"
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                onSelect(
+                  createDobValue(
+                    maxDate.getFullYear(),
+                    maxDate.getMonth(),
+                    maxDate.getDate()
+                  )
+                )
+              }
+              className="text-sm font-medium text-sky-600 transition hover:text-sky-800"
+            >
+              Yesterday
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 const SRI_LANKA_NAME = "Sri Lanka";
 
 /* ── Component ─────────────────────────────────────────────────────── */
@@ -312,6 +584,7 @@ export default function Register() {
   const photoInputRef = useRef(null);
   const countryDropdownRef = useRef(null);
   const genderDropdownRef = useRef(null);
+  const dobDropdownRef = useRef(null);
   const countryFieldDropdownRef = useRef(null);
   const provinceDropdownRef = useRef(null);
   const districtDropdownRef = useRef(null);
@@ -348,6 +621,8 @@ export default function Register() {
 
   /* gender */
   const [genderOpen, setGenderOpen] = useState(false);
+  const [dobOpen, setDobOpen] = useState(false);
+  const [dobViewDate, setDobViewDate] = useState(() => getMaxDobDate());
 
   /* password visibility */
   const [showPassword, setShowPassword] = useState(false);
@@ -378,6 +653,7 @@ export default function Register() {
 
   const passwordRule =
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{6,12}$/;
+  const maxDobDate = useMemo(() => getMaxDobDate(), []);
 
   useEffect(() => {
     return () => {
@@ -526,6 +802,10 @@ export default function Register() {
         setGenderOpen(false);
       }
 
+      if (dobDropdownRef.current && !dobDropdownRef.current.contains(e.target)) {
+        setDobOpen(false);
+      }
+
       if (
         countryFieldDropdownRef.current &&
         !countryFieldDropdownRef.current.contains(e.target)
@@ -593,6 +873,17 @@ export default function Register() {
     [form.gender, genderOptions]
   );
 
+  useEffect(() => {
+    if (!form.dob) {
+      setDobViewDate(maxDobDate);
+      return;
+    }
+
+    const [year, month, day] = String(form.dob).split("-").map(Number);
+    if (!year || !month || !day) return;
+    setDobViewDate(new Date(year, month - 1, day));
+  }, [form.dob, maxDobDate]);
+
   const filteredWorldCountries = useMemo(() => {
     const kw = countryFieldSearch.trim().toLowerCase();
     return kw
@@ -636,7 +927,7 @@ export default function Register() {
   const handlePhoneChange = (e) => {
     setForm((prev) => ({
       ...prev,
-      phone: e.target.value.replace(/\D/g, ""),
+      phone: normalizePhoneForCountry(prev.countryCode, e.target.value),
     }));
   };
 
@@ -644,6 +935,7 @@ export default function Register() {
     setForm((prev) => ({
       ...prev,
       countryCode: country.dialCode,
+      phone: normalizePhoneForCountry(country.dialCode, prev.phone),
     }));
     setCountryOpen(false);
     setCountrySearch("");
@@ -655,6 +947,15 @@ export default function Register() {
       gender: value,
     }));
     setGenderOpen(false);
+  };
+
+  const handleDobSelect = (value) => {
+    setForm((prev) => ({
+      ...prev,
+      dob: value,
+    }));
+    setDobOpen(false);
+    setError("");
   };
 
   const handleWorldCountrySelect = (value) => {
@@ -801,7 +1102,9 @@ export default function Register() {
 
     const validationError = validateForm();
     if (validationError) {
-      setError(validationError);
+      if (!isPasswordValidationMessage(validationError)) {
+        setError(validationError);
+      }
       return;
     }
 
@@ -1107,12 +1410,19 @@ export default function Register() {
                     <input
                       type="tel"
                       name="phone"
-                      value={form.phone}
+                      value={formatPhoneForDisplay(form.countryCode, form.phone)}
                       onChange={handlePhoneChange}
                       required
-                      placeholder="Phone number"
+                      placeholder="768 448 517"
                       inputMode="numeric"
-                      pattern="[0-9]*"
+                      pattern="[0-9 ]*"
+                      maxLength={Math.max(
+                        getPhoneMaxLengthByCountry(form.countryCode),
+                        formatPhoneForDisplay(
+                          form.countryCode,
+                          "9".repeat(getPhoneMaxLengthByCountry(form.countryCode))
+                        ).length
+                      )}
                       className={fieldClass}
                     />
                     <FieldIcon>
@@ -1143,10 +1453,10 @@ export default function Register() {
                       }`}
                     >
                       <span className="flex items-center gap-2">
-                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-sky-100/80 text-sky-500">
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sky-100/80 text-sky-500">
                           <GenderIcon />
                         </span>
-                        <span>{selectedGender.label}</span>
+                        <span className="leading-5">{selectedGender.label}</span>
                       </span>
                     </button>
 
@@ -1197,13 +1507,32 @@ export default function Register() {
 
                 <div>
                   <label className={labelClass}>Date of birth</label>
-                  <input
-                    type="date"
-                    name="dob"
-                    value={form.dob}
-                    onChange={handleChange}
-                    className="w-full rounded-xl border border-sky-200 bg-sky-50/70 px-4 py-3 text-sm text-sky-900 outline-none transition focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100"
-                  />
+                  <div ref={dobDropdownRef}>
+                    <DobCalendar
+                      value={form.dob}
+                      isOpen={dobOpen}
+                      onToggle={() => setDobOpen((prev) => !prev)}
+                      onSelect={handleDobSelect}
+                      onPrevMonth={() =>
+                        setDobViewDate(
+                          (prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1)
+                        )
+                      }
+                      onNextMonth={() =>
+                        setDobViewDate((prev) => {
+                          const next = new Date(prev.getFullYear(), prev.getMonth() + 1, 1);
+                          const limit = new Date(
+                            maxDobDate.getFullYear(),
+                            maxDobDate.getMonth(),
+                            1
+                          );
+                          return next > limit ? prev : next;
+                        })
+                      }
+                      viewDate={dobViewDate}
+                      maxDate={maxDobDate}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
