@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
+import { fetchCountries } from "../../services/countryService";
 import {
   fetchWorldCitiesByDistrict,
   fetchWorldCities,
@@ -9,8 +10,26 @@ import {
 } from "../../services/worldLocationService";
 import { updateMyProfile } from "../../services/profileService";
 import { updateStoredUser } from "../../utils/auth";
+import {
+  getPhoneMaxLengthByCountry,
+  normalizePhoneForCountry,
+  validatePhone,
+} from "../../utils/staffFormValidation";
 
 const SRI_LANKA_NAME = "Sri Lanka";
+const NAME_MAX_LENGTH = 50;
+
+function validateName(value) {
+  const name = String(value || "").trim();
+
+  if (name.length < 2) return "Must be at least 2 characters.";
+  if (name.length > NAME_MAX_LENGTH) return "Must be at most 50 characters.";
+  if (!/^[A-Za-z\s.'-]+$/.test(name)) {
+    return "Only letters and basic punctuation allowed.";
+  }
+
+  return "";
+}
 
 function formatDateForInput(value) {
   if (!value) return "";
@@ -21,32 +40,56 @@ function formatDateForInput(value) {
   return date.toISOString().split("T")[0];
 }
 
-function splitAddress(value) {
-  if (!value) {
-    return { addressLine1: "", addressLine2: "", addressLine3: "" };
-  }
+function getMaxAllowedDob() {
+  const yesterday = new Date();
+  yesterday.setHours(0, 0, 0, 0);
+  yesterday.setDate(yesterday.getDate() - 1);
 
-  const normalized = String(value).trim();
-  if (!normalized) {
-    return { addressLine1: "", addressLine2: "", addressLine3: "" };
-  }
+  const year = yesterday.getFullYear();
+  const month = String(yesterday.getMonth() + 1).padStart(2, "0");
+  const day = String(yesterday.getDate()).padStart(2, "0");
 
-  const [addressLine1 = "", addressLine2 = "", addressLine3 = ""] = normalized
-    .split(/\n|,/)
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .slice(0, 3);
-
-  return {
-    addressLine1,
-    addressLine2,
-    addressLine3,
-  };
+  return `${year}-${month}-${day}`;
 }
 
 function withCurrentOption(options, currentValue) {
   if (!currentValue) return options;
   return options.includes(currentValue) ? options : [currentValue, ...options];
+}
+
+function CountryFlag({ src, alt }) {
+  if (!src) {
+    return (
+      <span className="grid h-5 w-7 place-items-center rounded-[6px] bg-slate-200 text-[10px] font-bold text-slate-500">
+        --
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="h-5 w-7 rounded-[6px] object-cover shadow-sm"
+    />
+  );
+}
+
+function ChevronIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m5 7 5 5 5-5" />
+    </svg>
+  );
 }
 
 export default function EditProfile() {
@@ -58,6 +101,7 @@ export default function EditProfile() {
   const [editForm, setEditForm] = useState({
     firstName: "",
     lastName: "",
+    countryCode: "+94",
     phone: "",
     gender: "",
     addressLine1: "",
@@ -71,30 +115,40 @@ export default function EditProfile() {
   });
 
   const [saving, setSaving] = useState(false);
-  const [countries, setCountries] = useState([]);
+  const [locationCountries, setLocationCountries] = useState([]);
+  const [dialCodeCountries, setDialCodeCountries] = useState([]);
   const [states, setStates] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [cities, setCities] = useState([]);
+  const [firstNameError, setFirstNameError] = useState("");
+  const [lastNameError, setLastNameError] = useState("");
+  const [countryCodeError, setCountryCodeError] = useState("");
+  const [phoneError, setPhoneError] = useState("");
+  const [countryOpen, setCountryOpen] = useState(false);
+  const [countrySearch, setCountrySearch] = useState("");
+  const maxAllowedDob = useMemo(() => getMaxAllowedDob(), []);
+  const countryDropdownRef = useRef(null);
 
   useEffect(() => {
-    const { addressLine1, addressLine2, addressLine3 } = splitAddress(
-      profile?.address
-    );
-
     setEditForm({
       firstName: profile?.firstName || "",
       lastName: profile?.lastName || "",
+      countryCode: profile?.countryCode || "+94",
       phone: profile?.phone || "",
       gender: profile?.gender || "",
-      addressLine1,
-      addressLine2,
-      addressLine3,
+      addressLine1: profile?.addressLine1 || "",
+      addressLine2: profile?.addressLine2 || "",
+      addressLine3: profile?.addressLine3 || "",
       city: profile?.city || "",
       district: profile?.district || "",
       provinceState: profile?.provinceState || "",
       country: profile?.country || "",
       dob: formatDateForInput(profile?.dob),
     });
+    setFirstNameError("");
+    setLastNameError("");
+    setCountryCodeError("");
+    setPhoneError("");
   }, [profile]);
 
   useEffect(() => {
@@ -104,11 +158,11 @@ export default function EditProfile() {
       try {
         const data = await fetchWorldCountries();
         if (mounted) {
-          setCountries(Array.isArray(data) ? data : []);
+          setLocationCountries(Array.isArray(data) ? data : []);
         }
       } catch {
         if (mounted) {
-          setCountries([]);
+          setLocationCountries([]);
         }
       }
     }
@@ -119,6 +173,45 @@ export default function EditProfile() {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadDialCodeCountries() {
+      try {
+        const data = await fetchCountries();
+        if (mounted) {
+          setDialCodeCountries(Array.isArray(data) ? data : []);
+        }
+      } catch {
+        if (mounted) {
+          setDialCodeCountries([]);
+        }
+      }
+    }
+
+    loadDialCodeCountries();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!countryOpen) return undefined;
+
+    function handleClickOutside(event) {
+      if (!countryDropdownRef.current?.contains(event.target)) {
+        setCountryOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [countryOpen]);
 
   useEffect(() => {
     let mounted = true;
@@ -209,17 +302,9 @@ export default function EditProfile() {
     };
   }, [editForm.country, editForm.provinceState, editForm.district]);
 
-  const fullName = useMemo(() => {
-    return (
-      `${editForm.firstName || ""} ${editForm.lastName || ""}`.trim() ||
-      storedUser?.fullName ||
-      "User"
-    );
-  }, [editForm.firstName, editForm.lastName, storedUser]);
-
   const countryOptions = useMemo(() => {
-    return withCurrentOption(countries, editForm.country);
-  }, [countries, editForm.country]);
+    return withCurrentOption(locationCountries, editForm.country);
+  }, [locationCountries, editForm.country]);
 
   const provinceOptions = useMemo(() => {
     return withCurrentOption(states, editForm.provinceState);
@@ -233,8 +318,34 @@ export default function EditProfile() {
     return withCurrentOption(cities, editForm.city);
   }, [cities, editForm.city]);
 
+  const selectedCountryCode = useMemo(() => {
+    return (
+      dialCodeCountries.find((item) => item.dialCode === editForm.countryCode) || {
+        name: "Select",
+        flagUrl: "",
+        dialCode: editForm.countryCode || "",
+      }
+    );
+  }, [dialCodeCountries, editForm.countryCode]);
+
+  const filteredDialCodeCountries = useMemo(() => {
+    const keyword = countrySearch.trim().toLowerCase();
+    if (!keyword) return dialCodeCountries;
+
+    return dialCodeCountries.filter(
+      (item) =>
+        item.name.toLowerCase().includes(keyword) ||
+        item.dialCode.toLowerCase().includes(keyword) ||
+        item.code.toLowerCase().includes(keyword)
+    );
+  }, [dialCodeCountries, countrySearch]);
+
   function handleChange(event) {
-    const { name, value } = event.target;
+    const { name } = event.target;
+    const value =
+      name === "phone"
+        ? normalizePhoneForCountry(editForm.countryCode, event.target.value)
+        : event.target.value;
 
     setEditForm((prev) => {
       if (name === "country") {
@@ -270,14 +381,67 @@ export default function EditProfile() {
       };
     });
 
+    if (name === "phone") {
+      setPhoneError(validatePhone(editForm.countryCode, value));
+    }
+
+    if (name === "firstName") {
+      setFirstNameError(validateName(value));
+    }
+
+    if (name === "lastName") {
+      setLastNameError(validateName(value));
+    }
+
+    setPageError("");
+  }
+
+  function handleCountryCodeSelect(country) {
+    const normalizedPhone = normalizePhoneForCountry(country.dialCode, editForm.phone);
+    const nextPhoneError = normalizedPhone
+      ? validatePhone(country.dialCode, normalizedPhone)
+      : "";
+
+    setEditForm((prev) => ({
+      ...prev,
+      countryCode: country.dialCode,
+      phone: normalizedPhone,
+    }));
+    setCountryCodeError("");
+    setPhoneError(nextPhoneError);
+    setCountryOpen(false);
+    setCountrySearch("");
     setPageError("");
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
 
-    if (!editForm.firstName.trim() || !editForm.lastName.trim()) {
-      setPageError("First name and last name are required.");
+    const nextFirstNameError = validateName(editForm.firstName);
+    const nextLastNameError = validateName(editForm.lastName);
+    if (nextFirstNameError || nextLastNameError) {
+      setFirstNameError(nextFirstNameError);
+      setLastNameError(nextLastNameError);
+      setPageError(nextFirstNameError || nextLastNameError);
+      return;
+    }
+
+    if (!editForm.countryCode.trim()) {
+      setCountryCodeError("Country code is required");
+      setPageError("Country code is required");
+      return;
+    }
+
+    const nextPhoneError = validatePhone(editForm.countryCode, editForm.phone);
+    if (nextPhoneError) {
+      setCountryCodeError("");
+      setPhoneError(nextPhoneError);
+      setPageError(nextPhoneError);
+      return;
+    }
+
+    if (editForm.dob && editForm.dob > maxAllowedDob) {
+      setPageError("Date of birth must be before today.");
       return;
     }
 
@@ -285,27 +449,23 @@ export default function EditProfile() {
       setSaving(true);
       setPageError("");
 
-      const combinedAddress = [
-        editForm.addressLine1,
-        editForm.addressLine2,
-        editForm.addressLine3,
-      ]
-        .map((value) => value.trim())
-        .filter(Boolean)
-        .join(", ");
-
-      const updatedProfile = await updateMyProfile({
+      const response = await updateMyProfile({
         firstName: editForm.firstName,
         lastName: editForm.lastName,
+        countryCode: editForm.countryCode,
         phone: editForm.phone,
         gender: editForm.gender,
-        address: combinedAddress,
+        addressLine1: editForm.addressLine1,
+        addressLine2: editForm.addressLine2,
+        addressLine3: editForm.addressLine3,
         city: editForm.city,
         district: editForm.district,
         provinceState: editForm.provinceState,
         country: editForm.country,
         dob: editForm.dob,
       });
+
+      const updatedProfile = response?.user || response;
 
       if (updatedProfile && typeof setProfile === "function") {
         setProfile(updatedProfile);
@@ -325,7 +485,30 @@ export default function EditProfile() {
 
       navigate(profileBasePath);
     } catch (error) {
-      setPageError(error.message || "Failed to update profile.");
+      const backendFirstNameError = error?.fieldErrors?.firstName;
+      const backendLastNameError = error?.fieldErrors?.lastName;
+      const backendCountryCodeError = error?.fieldErrors?.countryCode;
+      const backendPhoneError = error?.fieldErrors?.phone;
+      if (backendFirstNameError) {
+        setFirstNameError(backendFirstNameError);
+      }
+      if (backendLastNameError) {
+        setLastNameError(backendLastNameError);
+      }
+      if (backendCountryCodeError) {
+        setCountryCodeError(backendCountryCodeError);
+      }
+      if (backendPhoneError) {
+        setPhoneError(backendPhoneError);
+      }
+      setPageError(
+        backendFirstNameError ||
+          backendLastNameError ||
+          backendCountryCodeError ||
+          backendPhoneError ||
+          error.message ||
+          "Failed to update profile."
+      );
     } finally {
       setSaving(false);
     }
@@ -360,10 +543,6 @@ export default function EditProfile() {
             </p>
           </div>
         </div>
-
-        <div className="rounded-xl bg-slate-50 px-4 py-2 text-sm font-medium text-slate-600">
-          {fullName}
-        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="mt-6 flex-1 space-y-6">
@@ -374,6 +553,8 @@ export default function EditProfile() {
             value={editForm.firstName}
             onChange={handleChange}
             placeholder="Enter first name"
+            maxLength={NAME_MAX_LENGTH}
+            error={firstNameError}
           />
           <InputCard
             label="Last Name"
@@ -381,16 +562,26 @@ export default function EditProfile() {
             value={editForm.lastName}
             onChange={handleChange}
             placeholder="Enter last name"
+            maxLength={NAME_MAX_LENGTH}
+            error={lastNameError}
           />
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <InputCard
-            label="Phone Number"
-            name="phone"
-            value={editForm.phone}
-            onChange={handleChange}
-            placeholder="Enter phone number"
+          <PhoneField
+            countryDropdownRef={countryDropdownRef}
+            countryOpen={countryOpen}
+            setCountryOpen={setCountryOpen}
+            countrySearch={countrySearch}
+            setCountrySearch={setCountrySearch}
+            selectedCountry={selectedCountryCode}
+            filteredCountries={filteredDialCodeCountries}
+            onCountrySelect={handleCountryCodeSelect}
+            phoneValue={editForm.phone}
+            onPhoneChange={handleChange}
+            phoneMaxLength={getPhoneMaxLengthByCountry(editForm.countryCode)}
+            countryCodeError={countryCodeError}
+            phoneError={phoneError}
           />
 
           <SelectCard
@@ -399,7 +590,7 @@ export default function EditProfile() {
             value={editForm.gender}
             onChange={handleChange}
             placeholder="Select gender"
-            options={["Male", "Female", "Other"]}
+            options={["MALE", "FEMALE", "OTHER"]}
             searchable={false}
           />
         </div>
@@ -411,6 +602,7 @@ export default function EditProfile() {
             type="date"
             value={editForm.dob}
             onChange={handleChange}
+            max={maxAllowedDob}
           />
         </div>
 
@@ -538,7 +730,7 @@ export default function EditProfile() {
 }
 
 function InputCard({
-  label,
+  label = "",
   name,
   value,
   onChange,
@@ -546,16 +738,21 @@ function InputCard({
   type = "text",
   disabled = false,
   className = "",
+  max,
+  maxLength,
+  error = "",
 }) {
   return (
     <div className={className}>
-      <p className="mb-2 text-sm font-medium text-slate-700">{label}</p>
+      {label ? <p className="mb-2 text-sm font-medium text-slate-700">{label}</p> : null}
       <div className="rounded-2xl border border-sky-200 bg-white px-5 py-4 transition focus-within:border-sky-400 focus-within:ring-4 focus-within:ring-sky-100">
         <input
           type={type}
           name={name}
           value={value}
           onChange={onChange}
+          max={max}
+          maxLength={maxLength}
           placeholder={placeholder}
           disabled={disabled}
           className={`w-full bg-transparent text-sm font-semibold outline-none ${
@@ -563,6 +760,106 @@ function InputCard({
               ? "cursor-not-allowed text-slate-400"
               : "text-slate-900 placeholder:text-slate-400"
           }`}
+        />
+      </div>
+      {error ? <p className="mt-2 text-xs text-rose-600">{error}</p> : null}
+    </div>
+  );
+}
+
+function PhoneField({
+  countryDropdownRef,
+  countryOpen,
+  setCountryOpen,
+  countrySearch,
+  setCountrySearch,
+  selectedCountry,
+  filteredCountries,
+  onCountrySelect,
+  phoneValue,
+  onPhoneChange,
+  phoneMaxLength,
+  countryCodeError,
+  phoneError,
+}) {
+  return (
+    <div>
+      <p className="mb-2 text-sm font-medium text-slate-700">Phone Number</p>
+      <div className="grid gap-3 sm:grid-cols-[170px_1fr]">
+        <div ref={countryDropdownRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setCountryOpen((prev) => !prev)}
+            className="flex w-full items-center rounded-2xl border border-sky-200 bg-white px-4 py-4 text-left text-sm font-semibold text-slate-900 outline-none transition hover:border-sky-300 focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
+          >
+            <span className="flex min-w-0 items-center gap-2">
+              <CountryFlag
+                src={selectedCountry.flagUrl}
+                alt={`${selectedCountry.name} flag`}
+              />
+              <span className="truncate">{selectedCountry.dialCode}</span>
+            </span>
+            <span className="ml-auto text-sky-500">
+              <ChevronIcon />
+            </span>
+          </button>
+
+          {countryOpen ? (
+            <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-2xl border border-sky-200 bg-white shadow-xl">
+              <div className="border-b border-sky-100 p-3">
+                <input
+                  type="text"
+                  value={countrySearch}
+                  onChange={(event) => setCountrySearch(event.target.value)}
+                  placeholder="Search country"
+                  className="w-full rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100"
+                />
+              </div>
+
+              <div className="max-h-56 overflow-y-auto p-2">
+                {filteredCountries.length ? (
+                  filteredCountries.map((country) => (
+                    <button
+                      key={`${country.code}-${country.dialCode}`}
+                      type="button"
+                      onClick={() => onCountrySelect(country)}
+                      className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left transition hover:bg-sky-50"
+                    >
+                      <span className="flex min-w-0 items-center gap-3">
+                        <CountryFlag
+                          src={country.flagUrl}
+                          alt={`${country.name} flag`}
+                        />
+                        <span className="truncate text-sm text-slate-700">
+                          {country.name}
+                        </span>
+                      </span>
+                      <span className="ml-3 text-sm font-medium text-slate-500">
+                        {country.dialCode}
+                      </span>
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-3 py-4 text-sm text-slate-500">
+                    No matching countries found.
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null}
+
+          {countryCodeError ? (
+            <p className="mt-2 text-xs text-rose-600">{countryCodeError}</p>
+          ) : null}
+        </div>
+
+        <InputCard
+          name="phone"
+          value={phoneValue}
+          onChange={onPhoneChange}
+          placeholder="Enter phone number"
+          maxLength={phoneMaxLength}
+          error={phoneError}
         />
       </div>
     </div>

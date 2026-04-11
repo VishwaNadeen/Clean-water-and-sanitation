@@ -13,17 +13,27 @@ export default function MainLayout() {
     window.scrollTo(0, 0);
   }, [location.pathname, location.search]);
 
+  const isProfileRoute =
+    location.pathname === "/profile" ||
+    location.pathname.startsWith("/profile/");
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-white">
       <Navbar />
 
       <main className="relative flex-1 overflow-x-hidden bg-sky-50">
-        <PageTransition
-          routeKey={`${location.pathname}${location.search}`}
-          className="h-full w-full bg-sky-50"
-        >
-          <Outlet />
-        </PageTransition>
+        {isProfileRoute ? (
+          <div className="h-full w-full bg-sky-50">
+            <Outlet />
+          </div>
+        ) : (
+          <PageTransition
+            routeKey={`${location.pathname}${location.search}`}
+            className="h-full w-full bg-sky-50"
+          >
+            <Outlet />
+          </PageTransition>
+        )}
       </main>
 
       <Footer />

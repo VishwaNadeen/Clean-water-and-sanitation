@@ -37,7 +37,7 @@ const userSchema = new mongoose.Schema(
 
     gender: {
       type: String,
-      enum: ["MALE", "FEMALE"],
+      enum: ["MALE", "FEMALE", "OTHER"],
       required: true,
     },
 
@@ -62,6 +62,64 @@ const userSchema = new mongoose.Schema(
       type: Date,
     },
 
+    profilePhotoUrl: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    profilePhotoPublicId: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    dob: {
+      type: Date,
+    },
+
+    address: {
+      line1: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+      line2: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+      line3: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+    },
+
+    country: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    provinceState: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    district: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    city: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
     // OTP Fields
     emailOtpHash: {
       type: String,
@@ -72,13 +130,14 @@ const userSchema = new mongoose.Schema(
       type: Date,
     },
 
-    passwordResetOtpHash: { 
-      type: String, 
-      select: false },
+    passwordResetOtpHash: {
+      type: String,
+      select: false,
+    },
 
-    passwordResetOtpExpires: { 
-      type: Date },
-      
+    passwordResetOtpExpires: {
+      type: Date,
+    },
   },
   { timestamps: true }
 );

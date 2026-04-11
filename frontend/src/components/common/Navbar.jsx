@@ -4,6 +4,7 @@ import {
   clearAuthSession,
   getStoredUser,
   isLoggedIn,
+  updateStoredUser,
 } from "../../utils/auth";
 import { logoutUser } from "../../services/authService";
 import { getMyProfile } from "../../services/profileService";
@@ -43,15 +44,17 @@ function getProfileInitials(user) {
   return parts.map((part) => part.charAt(0).toUpperCase()).join("");
 }
 
+function getUserProfileImage(user) {
+  return user?.profilePhotoUrl || user?.profileImageUrl || user?.avatarUrl || "";
+}
+
 export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const storedUser = getStoredUser();
   const [loggedIn, setLoggedIn] = useState(isLoggedIn());
   const [currentUser, setCurrentUser] = useState(storedUser);
-  const [profileImageUrl, setProfileImageUrl] = useState(
-    storedUser?.profileImageUrl || ""
-  );
+  const [profileImageUrl, setProfileImageUrl] = useState(getUserProfileImage(storedUser));
   const [scrolled, setScrolled] = useState(false);
   const [profileMenuState, setProfileMenuState] = useState("closed");
   const profileMenuRef = useRef(null);
@@ -62,7 +65,7 @@ export default function Navbar() {
       const nextUser = getStoredUser();
       setLoggedIn(isLoggedIn());
       setCurrentUser(nextUser);
-      setProfileImageUrl(nextUser?.profileImageUrl || "");
+      setProfileImageUrl(getUserProfileImage(nextUser));
     };
 
     syncAuth();
@@ -95,14 +98,16 @@ export default function Navbar() {
             "",
           email: profile?.email || getStoredUser()?.email || "",
           role: profile?.role || getStoredUser()?.role || "",
-          profileImageUrl: profile?.profileImageUrl || "",
+          profileImageUrl: getUserProfileImage(profile),
+          profilePhotoUrl: getUserProfileImage(profile),
         };
 
+        updateStoredUser(mergedUser);
         setCurrentUser(mergedUser);
-        setProfileImageUrl(profile?.profileImageUrl || "");
+        setProfileImageUrl(getUserProfileImage(profile));
       } catch {
         setCurrentUser(getStoredUser());
-        setProfileImageUrl(getStoredUser()?.profileImageUrl || "");
+        setProfileImageUrl(getUserProfileImage(getStoredUser()));
       }
     }
 
@@ -192,6 +197,7 @@ export default function Navbar() {
     String(currentUser?.role || "").toLowerCase() === "staff"
       ? "/staff/profile"
       : "/profile";
+  const complaintsPath = "/complaints";
 
   const isProfileActive =
     location.pathname === "/profile" ||
@@ -299,7 +305,7 @@ export default function Navbar() {
                     aria-expanded={profileMenuState === "open"}
                     onClick={toggleProfileMenu}
                   >
-                    <span className="grid h-[34px] w-[34px] shrink-0 place-items-center overflow-hidden rounded-full border border-white/65 bg-gradient-to-br from-white/95 via-sky-50 to-sky-100 text-[11px] font-bold tracking-[0.08em] text-sky-700 shadow-[0_6px_16px_rgba(15,23,42,0.14)]">
+                    <span className="grid h-[34px] w-[34px] shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-white/95 via-sky-50 to-sky-100 text-[11px] font-bold tracking-[0.08em] text-sky-700 shadow-[0_6px_16px_rgba(15,23,42,0.14)]">
                       {profileImageUrl ? (
                         <img src={profileImageUrl} alt="Profile" className="h-full w-full object-cover" />
                       ) : (
@@ -328,7 +334,7 @@ export default function Navbar() {
                   {/* Dropdown */}
                   {profileMenuState !== "closed" && (
                     <div
-                      className={`absolute right-0 top-[calc(100%+10px)] z-[1200] min-w-[176px] rounded-[18px] border border-sky-100 bg-white p-2 shadow-[0_18px_36px_rgba(15,23,42,0.16)] ${
+                      className={`absolute right-0 top-[calc(100%+10px)] z-[1200] w-[232px] rounded-[20px] border border-sky-100/80 bg-white/95 p-2.5 shadow-[0_20px_40px_rgba(15,23,42,0.16)] backdrop-blur-sm ${
                         profileMenuState === "closing"
                           ? "animate-[menuOut_0.18s_ease-in_both]"
                           : "animate-[menuIn_0.18s_ease-out_both]"
@@ -336,30 +342,20 @@ export default function Navbar() {
                       role="menu"
                     >
                       {/* User info card */}
-                      <div className="mb-2 rounded-[14px] bg-gradient-to-br from-sky-50 via-white to-blue-50 px-3 py-3">
-                        <div className="flex items-center gap-3">
-                          <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full border border-sky-200 bg-gradient-to-br from-sky-100 to-blue-100 text-xs font-bold tracking-[0.08em] text-sky-700">
-                            {profileImageUrl ? (
-                              <img src={profileImageUrl} alt="Profile" className="h-full w-full object-cover" />
-                            ) : (
-                              profileInitials
-                            )}
-                          </span>
-                          <div className="min-w-0">
-                            <div className="truncate text-[13px] font-semibold text-slate-900">{displayName}</div>
-                            <div className="truncate text-[11px] font-medium text-slate-500">
-                              {currentUser?.email || "Profile"}
-                            </div>
+                      <div className="mb-2.5 rounded-[16px] border border-sky-100 bg-gradient-to-br from-sky-50 via-white to-blue-50 px-3.5 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+                        <div className="min-w-0">
+                          <div className="truncate text-[12px] font-medium text-slate-500">
+                            {currentUser?.email || "Profile"}
                           </div>
                         </div>
                       </div>
 
                       {/* Profile link */}
                       <button
-                        className={`flex w-full cursor-pointer items-center gap-[10px] rounded-[12px] px-3 py-[11px] text-left text-[13px] font-semibold transition-all duration-200 hover:-translate-y-[1px] ${
+                        className={`flex w-full cursor-pointer items-center gap-3 rounded-[14px] px-3.5 py-2.5 text-left text-[14px] font-semibold transition-all duration-200 hover:-translate-y-[1px] ${
                           isProfileActive
-                            ? "bg-sky-50 text-sky-700"
-                            : "bg-transparent text-slate-900 hover:bg-sky-100 hover:text-sky-800"
+                            ? "bg-sky-50 text-sky-700 shadow-[inset_0_0_0_1px_rgba(186,230,253,0.9)]"
+                            : "bg-transparent text-slate-900 hover:bg-sky-50 hover:text-sky-800"
                         }`}
                         role="menuitem"
                         onClick={() => {
@@ -367,27 +363,59 @@ export default function Navbar() {
                           navigate(profilePath);
                         }}
                       >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                          <path d="M12 12a4.5 4.5 0 1 0-4.5-4.5A4.5 4.5 0 0 0 12 12Z" stroke="currentColor" strokeWidth="1.8" />
-                          <path d="M20 20.5c-1.6-4-5-6-8-6s-6.4 2-8 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-700">
+                          <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 12a4.5 4.5 0 1 0-4.5-4.5A4.5 4.5 0 0 0 12 12Z" stroke="currentColor" strokeWidth="1.8" />
+                            <path d="M20 20.5c-1.6-4-5-6-8-6s-6.4 2-8 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                          </svg>
+                        </span>
+                        <span className="flex-1">Profile</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                          <path d="m9 6 6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
-                        Profile
                       </button>
 
-                      <div className="mx-[6px] my-1 h-px bg-sky-100" />
+                      <button
+                        className="flex w-full cursor-pointer items-center gap-3 rounded-[14px] px-3.5 py-2.5 text-left text-[14px] font-semibold text-slate-900 transition-all duration-200 hover:-translate-y-[1px] hover:bg-sky-50 hover:text-sky-800"
+                        role="menuitem"
+                        onClick={() => {
+                          setProfileMenuState("closed");
+                          navigate(complaintsPath);
+                        }}
+                      >
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-700">
+                          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path
+                              d="M8 10h8M8 14h5m-7 6 1.2-3.2A8 8 0 1 1 20 12a8 8 0 0 1-8 8H6Z"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </span>
+                        <span className="flex-1">My Complaints</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                          <path d="m9 6 6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </button>
+
+                      <div className="mx-2 my-2.5 h-px bg-gradient-to-r from-transparent via-sky-100 to-transparent" />
 
                       {/* Logout */}
                       <button
-                        className="flex w-full cursor-pointer items-center gap-[10px] rounded-[12px] bg-transparent px-3 py-[11px] text-left text-[13px] font-semibold text-red-600 transition-all duration-200 hover:-translate-y-[1px] hover:bg-red-50 hover:text-red-700"
+                        className="flex w-full cursor-pointer items-center gap-3 rounded-[14px] bg-transparent px-3.5 py-2.5 text-left text-[14px] font-semibold text-red-600 transition-all duration-200 hover:-translate-y-[1px] hover:bg-red-50 hover:text-red-700"
                         role="menuitem"
                         onClick={handleLogout}
                       >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                          <path d="M16 17l5-5-5-5" />
-                          <path d="M21 12H9" />
-                        </svg>
-                        Logout
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600">
+                          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                            <path d="M16 17l5-5-5-5" />
+                            <path d="M21 12H9" />
+                          </svg>
+                        </span>
+                        <span className="flex-1">Logout</span>
                       </button>
                     </div>
                   )}
