@@ -5,11 +5,13 @@ import FloatingToast from "../../../components/common/FloatingToast";
 import API_BASE_URL from "../../../config/api";
 import { fetchCountries } from "../../../services/countryService";
 import {
+  combineAddressLines,
   getPhoneMaxLengthByCountry,
   normalizeAddressInput,
   normalizeEmailInput,
   normalizeNicInput,
   normalizePhoneForCountry,
+  splitAddressLines,
   sanitizePhone,
   validateAddressTyping,
   validateEmailTyping,
@@ -18,6 +20,8 @@ import {
   validatePhone,
   validateStaffForm,
 } from "../../../utils/staffFormValidation";
+
+const getTodayDateString = () => new Date().toISOString().split("T")[0];
 
 const initialForm = {
   fullName: "",
@@ -30,9 +34,10 @@ const initialForm = {
   status: "Active",
   baseProvince: "",
   baseDistrict: "",
-  address: "",
+  addressLine1: "",
+  addressLine2: "",
   dob: "",
-  joinDate: "",
+  joinDate: getTodayDateString(),
 };
 
 const roleOptions = ["Cleaner", "Supervisor", "Technician"];
@@ -100,7 +105,7 @@ const StaffRegister = () => {
   const [countryError, setCountryError] = useState("");
   const [countryOpen, setCountryOpen] = useState(false);
   const [countrySearch, setCountrySearch] = useState("");
-  const today = new Date().toISOString().split("T")[0];
+  const today = getTodayDateString();
 
   const districtOptions = provinceDistrictMap[formData.baseProvince] || [];
 
@@ -272,7 +277,7 @@ const StaffRegister = () => {
       return;
     }
 
-    if (name === "address") {
+    if (name === "addressLine1" || name === "addressLine2") {
       const normalizedAddress = normalizeAddressInput(value);
       const addressError =
         normalizedAddress !== value
@@ -280,11 +285,12 @@ const StaffRegister = () => {
           : validateAddressTyping(value);
       setFormData((prev) => ({
         ...prev,
-        address: normalizedAddress,
+        [name]: normalizedAddress,
       }));
       setErrors((prev) => ({
         ...prev,
-        address: addressError,
+        [name]: addressError,
+        address: "",
       }));
       return;
     }
@@ -314,7 +320,14 @@ const StaffRegister = () => {
   };
 
   const validateForm = () => {
-    const newErrors = validateStaffForm(formData, { requireEmail: true });
+    const combinedAddress = combineAddressLines(formData.addressLine1, formData.addressLine2);
+    const newErrors = validateStaffForm(
+      {
+        ...formData,
+        address: combinedAddress,
+      },
+      { requireEmail: true }
+    );
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -329,13 +342,27 @@ const StaffRegister = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!validateForm()) {
-      showMessage("error", "Please fix the form errors");
+    const isValid = validateForm();
+
+    if (!isValid) {
+      const validationErrors = validateStaffForm(
+        {
+          ...formData,
+          address: combineAddressLines(formData.addressLine1, formData.addressLine2),
+        },
+        { requireEmail: true }
+      );
+      showMessage("error", Object.values(validationErrors)[0] || "Please fix the form errors");
       return;
     }
 
     try {
       setLoading(true);
+
+      const combinedAddress = combineAddressLines(
+        formData.addressLine1,
+        formData.addressLine2
+      );
 
       const payload = {
         fullName: formData.fullName.trim(),
@@ -348,7 +375,7 @@ const StaffRegister = () => {
         status: formData.status,
         baseProvince: formData.baseProvince,
         baseDistrict: formData.baseDistrict,
-        address: formData.address.trim(),
+        address: combinedAddress,
         dob: formData.dob,
         joinDate: formData.joinDate || undefined,
       };
@@ -361,13 +388,17 @@ const StaffRegister = () => {
         },
       });
 
+      const successText = data?.emailSent === false
+        ? "Staff member registered successfully."
+        : data?.message || "Staff member registered successfully.";
+
       handleReset();
       navigate("/admin/staff", {
         replace: true,
         state: {
           toast: {
             type: "success",
-            text: data?.message || "Staff member registered successfully",
+            text: successText,
           },
         },
       });
@@ -633,16 +664,29 @@ const StaffRegister = () => {
             </div>
 
             <div className="md:col-span-2">
-              <label className={labelClass}>Address</label>
-              <textarea
-                name="address"
-                value={formData.address}
+              <label className={labelClass}>Address Line 1</label>
+              <input
+                type="text"
+                name="addressLine1"
+                value={formData.addressLine1}
                 onChange={handleChange}
-                rows="4"
-                placeholder="Enter full address"
+                placeholder="Enter address line 1"
                 className={inputClass}
               />
-              {errors.address && <p className={errorClass}>{errors.address}</p>}
+              {errors.addressLine1 && <p className={errorClass}>{errors.addressLine1}</p>}
+            </div>
+
+            <div className="md:col-span-2">
+              <label className={labelClass}>Address Line 2</label>
+              <input
+                type="text"
+                name="addressLine2"
+                value={formData.addressLine2}
+                onChange={handleChange}
+                placeholder="Enter address line 2"
+                className={inputClass}
+              />
+              {errors.addressLine2 && <p className={errorClass}>{errors.addressLine2}</p>}
             </div>
 
             <div>
@@ -668,12 +712,13 @@ const StaffRegister = () => {
                 name="joinDate"
                 value={formData.joinDate}
                 onChange={handleChange}
-                max={today}
+                min={today}
                 onKeyDown={(event) => event.preventDefault()}
                 onPaste={(event) => event.preventDefault()}
                 onDrop={(event) => event.preventDefault()}
                 className={inputClass}
               />
+              {errors.joinDate && <p className={errorClass}>{errors.joinDate}</p>}
             </div>
 
           </div>
