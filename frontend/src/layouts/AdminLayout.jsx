@@ -188,8 +188,8 @@ export default function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState({
-    staff: true,
-    categories: true,
+    staff: false,
+    categories: false,
   });
 
   const textTransition =

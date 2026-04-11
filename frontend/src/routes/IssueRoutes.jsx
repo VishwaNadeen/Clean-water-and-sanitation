@@ -9,6 +9,11 @@ const IssueRoutes = (
   <Route
     element={<ProtectedRoute />}
   >
+    <Route path="/complaints/report" element={<CreateIssue />} />
+    <Route path="/my-complaints" element={<ReadIssues />} />
+    <Route path="/my-complaints/:id" element={<ViewIssue />} />
+    <Route path="/my-complaints/:id/edit" element={<UpdateIssue />} />
+
     <Route path="/issues/create" element={<CreateIssue />} />
     <Route path="/issues/me" element={<ReadIssues />} />
     <Route path="/issues/me/:id" element={<ViewIssue />} />

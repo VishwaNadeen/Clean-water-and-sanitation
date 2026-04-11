@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 function CloseIcon() {
   return (
     <svg
@@ -93,29 +95,30 @@ export default function ViewComplaint({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-8 lg:left-[260px]">
-      <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-slate-200">
-        <div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-5">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.3px] text-blue-600">
-              Complaint Details
-            </p>
-            <h3 className="mt-2 text-2xl font-bold text-slate-900">
-              {issue.title}
-            </h3>
-            <p className="mt-2 text-sm text-slate-500">Issue #{issue.issueNumber}</p>
+      <div className="max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-200">
+        <div className="max-h-[90vh] overflow-y-auto p-6">
+          <div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-5">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.3px] text-blue-600">
+                Complaint Details
+              </p>
+              <h3 className="mt-2 text-2xl font-bold text-slate-900">
+                {issue.title}
+              </h3>
+              <p className="mt-2 text-sm text-slate-500">Issue #{issue.issueNumber}</p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50"
+              aria-label="Close details"
+            >
+              <CloseIcon />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50"
-            aria-label="Close details"
-          >
-            <CloseIcon />
-          </button>
-        </div>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="space-y-6">
+          <div className="mt-6 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+            <div className="space-y-6">
             <DetailGroup
               title="Complaint Information"
               rows={[
@@ -178,74 +181,93 @@ export default function ViewComplaint({
                 <p className="mt-4 text-sm text-slate-500">No uploaded photos.</p>
               )}
             </div>
-          </div>
-
-          <div className="space-y-5">
-            <div className="rounded-2xl border border-slate-200 p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.3px] text-slate-500">
-                Status
-              </p>
-              <div className="mt-4 space-y-3">
-                <StatusBadge status={issue.status} />
-                <select
-                  value={issue.status}
-                  onChange={(event) => onStatusChange(issue._id, event.target.value)}
-                  disabled={Boolean(actionLoading[issue._id])}
-                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
-                >
-                  {statusOptions.map((status) => (
-                    <option key={status} value={status}>
-                      {formatStatus(status)}
-                    </option>
-                  ))}
-                </select>
-              </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.3px] text-slate-500">
-                Resolution
-              </p>
-              <p className="mt-3 text-sm text-slate-500">
-                Resolved: {formatDate(issue.resolvedAt)}
-              </p>
-              <textarea
-                value={resolutionNote}
-                onChange={(event) => setResolutionNote(event.target.value)}
-                rows={5}
-                placeholder="Explain how this complaint was resolved"
-                className="mt-4 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-              />
-              <button
-                type="button"
-                onClick={() => onResolve(issue._id)}
-                disabled={Boolean(actionLoading[issue._id])}
-                className="mt-3 w-full rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {actionLoading[issue._id] ? "Saving..." : "Resolve Complaint"}
-              </button>
-              {issue.resolutionNote ? (
-                <div className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                  {issue.resolutionNote}
+            <div className="space-y-5">
+              <div className="rounded-2xl border border-slate-200 p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.3px] text-slate-500">
+                  Status
+                </p>
+                <div className="mt-4 space-y-3">
+                  <StatusBadge status={issue.status} />
+                  <select
+                    value={issue.status}
+                    onChange={(event) => onStatusChange(issue._id, event.target.value)}
+                    disabled={Boolean(actionLoading[issue._id])}
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                  >
+                    {statusOptions.map((status) => (
+                      <option key={status} value={status}>
+                        {formatStatus(status)}
+                      </option>
+                    ))}
+                  </select>
+                  {issue.restroomId?._id && issue.status !== "RESOLVED" && issue.status !== "CLOSED" ? (
+                    <Link
+                      to={`/admin/staff/issues?issueId=${encodeURIComponent(
+                        issue._id
+                      )}&issueNumber=${encodeURIComponent(
+                        issue.issueNumber || ""
+                      )}&title=${encodeURIComponent(
+                        issue.title || ""
+                      )}&restroomId=${encodeURIComponent(
+                        issue.restroomId._id
+                      )}&restroomLabel=${encodeURIComponent(
+                        issue.restroomId?.name || ""
+                      )}`}
+                      className="block w-full rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-center text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
+                    >
+                      Assign to Staff
+                    </Link>
+                  ) : null}
                 </div>
-              ) : null}
-            </div>
+              </div>
 
-            <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.3px] text-red-500">
-                Delete Complaint
-              </p>
-              <p className="mt-3 text-sm text-red-600">
-                Remove this complaint permanently if it was submitted by mistake or should no longer appear in the system.
-              </p>
-              <button
-                type="button"
-                onClick={() => onDelete(issue._id)}
-                disabled={Boolean(actionLoading[issue._id])}
-                className="mt-4 w-full rounded-xl border border-red-200 bg-white px-4 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {actionLoading[issue._id] ? "Processing..." : "Delete Complaint"}
-              </button>
+              <div className="rounded-2xl border border-slate-200 p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.3px] text-slate-500">
+                  Resolution
+                </p>
+                <p className="mt-3 text-sm text-slate-500">
+                  Resolved: {formatDate(issue.resolvedAt)}
+                </p>
+                <textarea
+                  value={resolutionNote}
+                  onChange={(event) => setResolutionNote(event.target.value)}
+                  rows={5}
+                  placeholder="Explain how this complaint was resolved"
+                  className="mt-4 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                />
+                <button
+                  type="button"
+                  onClick={() => onResolve(issue._id)}
+                  disabled={Boolean(actionLoading[issue._id])}
+                  className="mt-3 w-full rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {actionLoading[issue._id] ? "Saving..." : "Resolve Complaint"}
+                </button>
+                {issue.resolutionNote ? (
+                  <div className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                    {issue.resolutionNote}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.3px] text-red-500">
+                  Delete Complaint
+                </p>
+                <p className="mt-3 text-sm text-red-600">
+                  Remove this complaint permanently if it was submitted by mistake or should no longer appear in the system.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => onDelete(issue._id)}
+                  disabled={Boolean(actionLoading[issue._id])}
+                  className="mt-4 w-full rounded-xl border border-red-200 bg-white px-4 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {actionLoading[issue._id] ? "Processing..." : "Delete Complaint"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
