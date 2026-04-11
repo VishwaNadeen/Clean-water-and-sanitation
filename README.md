@@ -344,7 +344,7 @@ Authorization: Bearer <token>
 
 </details>
 
-## Test Screenshots
+## Testing Screenshots
 
 <details>
 <summary>Restroom Management — Test Results (click to expand)</summary>
