@@ -265,8 +265,8 @@ export async function changeMyPassword(payload) {
     return handleResponse(response);
   }
 
-  const response = await fetch(`${getProfileEndpointByRole(storedUser?.role)}/password`, {
-    method: "PATCH",
+  const response = await fetch(getProfileEndpointByRole(storedUser?.role), {
+    method: safeRole === "admin" ? "PATCH" : "PUT",
     headers: getAuthHeaders(),
     body: JSON.stringify(payload),
   });
