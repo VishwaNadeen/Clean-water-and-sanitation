@@ -260,37 +260,13 @@ This project includes multiple endpoint groups. The summary below gives a submis
 
 - JSON is the default request / response format for most endpoints.
 - Some endpoints support `multipart/form-data` for file uploads.
-- Protected endpoints require a bearer token in the `Authorization` header.
-
-### Example Authenticated Request
+- Protected endpoints require a bearer token in the `Authorization` header:
 
 ```http
-GET /api/users/me
-Authorization: Bearer <token>
+Authorization: Bearer <your-token>
 ```
 
-### Example JSON Request
-
-```json
-{
-  "firstName": "John",
-  "lastName": "Doe",
-  "email": "john@example.com"
-}
-```
-
-### Example JSON Response
-
-```json
-{
-  "message": "Request successful",
-  "user": {
-    "id": "sample-id",
-    "firstName": "John",
-    "lastName": "Doe"
-  }
-}
-```
+For full example requests and responses see the **API Screenshots** section below.
 
 ## API Screenshots
 
@@ -345,6 +321,7 @@ Authorization: Bearer <token>
 </details>
 
 ## Testing Screenshots
+For full test results and evidence see the **Testing Screenshots** section below.
 
 <details>
 <summary>Restroom Management — Test Results (click to expand)</summary>
