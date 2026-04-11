@@ -292,6 +292,107 @@ Authorization: Bearer <token>
 }
 ```
 
+## API Screenshots
+
+<details>
+<summary>Restroom Management — API Results (click to expand)</summary>
+
+### GET /api/restrooms — Get all restrooms
+![Get all restrooms](public/Restroom-Management/API/get%20all%20public%20toilets.png)
+
+### GET /api/restrooms/nearby — Get nearby restrooms
+![Get nearby restrooms](public/Restroom-Management/API/get%20nearby%20toilets.png)
+
+### GET /api/restrooms/nearby — Missing lat/lng (400 error)
+![Nearby validation error](public/Restroom-Management/API/get%20nearby%20toilets%20lat%20and%20lng%20are%20required.png)
+
+### GET /api/restrooms/:id — Get restroom by ID
+![Get restroom by ID](public/Restroom-Management/API/get%20toilets%20by%20ID.png)
+
+### POST /api/restrooms — Create restroom (Admin)
+![Create restroom](public/Restroom-Management/API/create%20restroom.png)
+
+### PUT /api/restrooms/:id — Update restroom (Admin)
+![Update restroom](public/Restroom-Management/API/update%20restroom.png)
+
+### DELETE /api/restrooms/:id — Delete restroom (Admin)
+![Delete restroom](public/Restroom-Management/API/delete%20restroom.png)
+
+### POST /api/restrooms/:id/rate — Submit rating
+![Restroom rating](public/Restroom-Management/API/restroom%20rating.png)
+
+</details>
+
+<details>
+<summary>User Management — API Results (click to expand)</summary>
+
+> Screenshots to be added by User Management team member.
+
+</details>
+
+<details>
+<summary>Issue Reporting — API Results (click to expand)</summary>
+
+> Screenshots to be added by Issue Reporting team member.
+
+</details>
+
+<details>
+<summary>Staff Management — API Results (click to expand)</summary>
+
+> Screenshots to be added by Staff Management team member.
+
+</details>
+
+## Test Screenshots
+
+<details>
+<summary>Restroom Management — Test Results (click to expand)</summary>
+
+### Packages installed
+![Packages installed](public/Restroom-Management/TEST/terminal%20packages%20installed%20image.png)
+
+### Performance test packages installed
+![Performance packages](public/Restroom-Management/TEST/performance%20testing%20package%20install%20image.png)
+
+### Unit tests — summary
+![Unit test summary](public/Restroom-Management/TEST/summary%20of%20unit%20testing.png)
+
+### Integration tests — summary
+![Integration test summary](public/Restroom-Management/TEST/summary%20of%20inegration%20testing.png)
+
+### All tests combined (unit + integration)
+![All tests](public/Restroom-Management/TEST/all%20test%28unit%20%2B%20integration%29%20.png)
+
+### Performance test — part 1
+![Performance test p1](public/Restroom-Management/TEST/performance%20testing%20p1.png)
+
+### Performance test — part 2
+![Performance test p2](public/Restroom-Management/TEST/performance%20testing%20p2.png)
+
+</details>
+
+<details>
+<summary>User Management — Test Results (click to expand)</summary>
+
+> Screenshots to be added by User Management team member.
+
+</details>
+
+<details>
+<summary>Issue Reporting — Test Results (click to expand)</summary>
+
+> Screenshots to be added by Issue Reporting team member.
+
+</details>
+
+<details>
+<summary>Staff Management — Test Results (click to expand)</summary>
+
+> Screenshots to be added by Staff Management team member.
+
+</details>
+
 ## Session Management
 
 - JWT-based authentication is used for protected backend routes.
