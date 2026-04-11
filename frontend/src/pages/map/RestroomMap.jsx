@@ -290,7 +290,7 @@ export default function RestroomMap() {
 
   // redirect to report complaint, requiring login
   function handleReportIssue() {
-    const url = `/report-issue?restroomId=${selectedRestroom._id}&restroomName=${encodeURIComponent(selectedRestroom.name)}`;
+    const url = `/issues/create?restroomId=${selectedRestroom._id}&restroomName=${encodeURIComponent(selectedRestroom.name)}`;
     if (!isLoggedIn()) {
       navigate("/login", {
         state: {

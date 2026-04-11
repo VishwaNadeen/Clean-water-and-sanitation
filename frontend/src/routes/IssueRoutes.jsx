@@ -6,9 +6,7 @@ import ViewIssue from "../pages/issues/ViewIssue.jsx";
 import UpdateIssue from "../pages/issues/UpdateIssue.jsx";
 
 const IssueRoutes = (
-  <Route
-    element={<ProtectedRoute />}
-  >
+  <Route element={<ProtectedRoute />}>
     <Route path="/complaints/report" element={<CreateIssue />} />
     <Route path="/my-complaints" element={<ReadIssues />} />
     <Route path="/my-complaints/:id" element={<ViewIssue />} />

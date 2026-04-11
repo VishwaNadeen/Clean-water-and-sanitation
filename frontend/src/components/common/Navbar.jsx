@@ -197,7 +197,7 @@ export default function Navbar() {
     String(currentUser?.role || "").toLowerCase() === "staff"
       ? "/staff/profile"
       : "/profile";
-  const complaintsPath = "/complaints";
+  const complaintsPath = "/my-complaints";
 
   const isProfileActive =
     location.pathname === "/profile" ||
