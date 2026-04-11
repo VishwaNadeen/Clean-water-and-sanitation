@@ -1,6 +1,31 @@
 import { useEffect, useMemo, useState } from "react";
 import API_BASE_URL from "../../config/api";
 
+function getUserDisplayName(user) {
+  const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim();
+  return fullName || user?.fullName || user?.username || "N/A";
+}
+
+function maskEmail(email) {
+  const value = String(email || "").trim();
+  if (!value || !value.includes("@")) return "N/A";
+
+  const [localPart, domain] = value.split("@");
+
+  if (!localPart || !domain) return value;
+
+  if (localPart.length <= 2) {
+    return `${localPart[0] || "*"}***@${domain}`;
+  }
+
+  const visibleStart = localPart.slice(0, Math.min(3, localPart.length));
+  return `${visibleStart}${"*".repeat(Math.max(3, localPart.length - visibleStart.length))}@${domain}`;
+}
+
+function displayLocationValue(value) {
+  return String(value || "").trim() || "N/A";
+}
+
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState("");
@@ -48,10 +73,10 @@ export default function AdminUsers() {
 
     return users.filter((user) => {
       return (
-        String(user.fullName || user.username || "").toLowerCase().includes(keyword) ||
+        getUserDisplayName(user).toLowerCase().includes(keyword) ||
         String(user.email || "").toLowerCase().includes(keyword) ||
-        String(user.role || "").toLowerCase().includes(keyword) ||
-        String(user.status || "").toLowerCase().includes(keyword)
+        String(user.country || "").toLowerCase().includes(keyword) ||
+        String(user.district || "").toLowerCase().includes(keyword)
       );
     });
   }, [users, search]);
@@ -79,11 +104,11 @@ export default function AdminUsers() {
             </div>
 
             <div className="w-full lg:w-80">
-              <input
-                type="text"
-                placeholder="Search by name, email, role..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                <input
+                  type="text"
+                  placeholder="Search by name, email, country..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
                 className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
               />
             </div>
@@ -158,10 +183,10 @@ export default function AdminUsers() {
                         Email
                       </th>
                       <th className="px-6 py-4 text-sm font-semibold text-slate-600">
-                        Role
+                        Country
                       </th>
                       <th className="px-6 py-4 text-sm font-semibold text-slate-600">
-                        Status
+                        District
                       </th>
                       <th className="px-6 py-4 text-sm font-semibold text-slate-600">
                         Created Date
@@ -177,30 +202,24 @@ export default function AdminUsers() {
                       >
                         <td className="px-6 py-4">
                           <p className="font-medium text-slate-800">
-                            {user.fullName || user.username || "N/A"}
+                            {getUserDisplayName(user)}
                           </p>
                         </td>
 
                         <td className="px-6 py-4 text-sm text-slate-600">
-                          {user.email || "N/A"}
+                          {maskEmail(user.email)}
                         </td>
 
                         <td className="px-6 py-4">
-                          <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-blue-700">
-                            {user.role || "USER"}
-                          </span>
+                          <p className="text-sm text-slate-700">
+                            {displayLocationValue(user.country)}
+                          </p>
                         </td>
 
                         <td className="px-6 py-4">
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
-                              String(user.status || "").toLowerCase() === "active"
-                                ? "bg-green-50 text-green-700"
-                                : "bg-slate-100 text-slate-600"
-                            }`}
-                          >
-                            {user.status || "N/A"}
-                          </span>
+                          <p className="text-sm text-slate-700">
+                            {displayLocationValue(user.district)}
+                          </p>
                         </td>
 
                         <td className="px-6 py-4 text-sm text-slate-600">
@@ -223,10 +242,10 @@ export default function AdminUsers() {
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <h3 className="text-base font-semibold text-slate-800">
-                          {user.fullName || user.username || "N/A"}
+                          {getUserDisplayName(user)}
                         </h3>
                         <p className="mt-1 text-sm text-slate-600">
-                          {user.email || "N/A"}
+                          {maskEmail(user.email)}
                         </p>
                       </div>
 
@@ -241,11 +260,16 @@ export default function AdminUsers() {
                       </span>
                     </div>
 
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-                        {user.role || "USER"}
-                      </span>
-                      <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-700">
+                    <div className="mt-4 grid gap-2 text-sm text-slate-700">
+                      <p>
+                        <span className="font-semibold text-slate-800">Country:</span>{" "}
+                        {displayLocationValue(user.country)}
+                      </p>
+                      <p>
+                        <span className="font-semibold text-slate-800">District:</span>{" "}
+                        {displayLocationValue(user.district)}
+                      </p>
+                      <span className="inline-flex w-fit rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-700">
                         {user.createdAt
                           ? new Date(user.createdAt).toLocaleDateString()
                           : "N/A"}
