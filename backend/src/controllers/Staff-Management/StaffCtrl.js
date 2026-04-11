@@ -5,6 +5,7 @@ import cloudinary from "../../config/cloudinary.js";
 
 import Staff from "../../models/Staff-Management/StaffModel.js";
 import Login from "../../models/user-Management/logInModel.js";
+import User from "../../models/user-management/userModel.js";
 import { sendEmail } from "../../services/sendEmail.js";
 import { uploadBufferToCloudinary } from "../../utils/staff-Management/Staffcloudinary.js";
 
@@ -230,29 +231,78 @@ export async function createStaff(req, res) {
 
   const initialPassword = staffPayload.nic.trim();
   const { firstName, lastName } = splitFullName(staffPayload.fullName);
+  const normalizedEmail = staffPayload.email.toLowerCase().trim();
 
   try {
+    const [existingStaffByEmail, existingStaffByNic, existingLoginByEmail] = await Promise.all([
+      Staff.findOne({ email: normalizedEmail }).select("_id").lean(),
+      Staff.findOne({ nic: staffPayload.nic.trim() }).select("_id").lean(),
+      Login.findOne({ email: normalizedEmail }).select("_id userId").lean(),
+    ]);
+
+    let hasValidExistingLoginEmail = Boolean(existingLoginByEmail);
+
+    // Auto-clean stale/orphan login rows so registration checks real existing accounts.
+    if (existingLoginByEmail?.userId) {
+      const [linkedStaff, linkedUser] = await Promise.all([
+        Staff.findById(existingLoginByEmail.userId).select("_id").lean(),
+        User.findById(existingLoginByEmail.userId).select("_id").lean(),
+      ]);
+
+      if (!linkedStaff && !linkedUser) {
+        await Login.deleteOne({ _id: existingLoginByEmail._id });
+        hasValidExistingLoginEmail = false;
+      }
+    }
+
+    if (existingStaffByEmail || hasValidExistingLoginEmail) {
+      return res.status(409).json({ message: "Email already exists" });
+    }
+
+    if (existingStaffByNic) {
+      return res.status(409).json({ message: "NIC already exists" });
+    }
+
     const staff = await Staff.create({
       ...staffPayload,
       phone: Number(staffPayload.phone),
-      email: staffPayload.email.toLowerCase().trim(),
+      email: normalizedEmail,
       password: initialPassword,
       mustChangePassword: true,
     });
 
-    const staffWithPw = await Staff.findById(staff._id).select("+password");
-    if (!staffWithPw?.password) {
-      return res.status(500).json({ message: "Staff created but password not found for login creation" });
+    let loginCreated = false;
+
+    try {
+      const staffWithPw = await Staff.findById(staff._id).select("+password");
+      if (!staffWithPw?.password) {
+        throw new Error("Staff password not found for login creation");
+      }
+
+      await Login.create({
+        userId: staff._id,
+        firstName,
+        lastName,
+        email: staff.email,
+        password: staffWithPw.password,
+        role: "STAFF",
+      });
+
+      loginCreated = true;
+    } catch (loginError) {
+      await Staff.findByIdAndDelete(staff._id);
+
+      if (loginError?.code === 11000) {
+        return res.status(409).json({ message: "Email already exists" });
+      }
+
+      console.error("createStaff login creation failed:", loginError);
+      return res.status(500).json({ message: "Failed to create staff login account" });
     }
 
-    await Login.create({
-      userId: staff._id,
-      firstName,
-      lastName,
-      email: staff.email,
-      password: staffWithPw.password,
-      role: "STAFF",
-    });
+    if (!loginCreated) {
+      return res.status(500).json({ message: "Failed to create staff login account" });
+    }
 
     let emailSent = false;
 

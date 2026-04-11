@@ -427,24 +427,54 @@ export default function EditProfile({
 
         <div className="mt-4">
           <label className="mb-2 block text-sm font-medium text-slate-700">
-            Full Address
+            Address Line 1
           </label>
-          <textarea
-            rows="4"
-            value={editForm.address}
+          <input
+            type="text"
+            value={editForm.addressLine1}
             onChange={(e) => {
               const normalizedAddress = normalizeAddressInput(e.target.value);
               const addressError =
                 normalizedAddress !== e.target.value
                   ? "Address contains unsupported characters"
                   : validateAddressTyping(e.target.value);
-              setEditForm((prev) => ({ ...prev, address: normalizedAddress }));
-              setEditErrors((prev) => ({ ...prev, address: addressError }));
+              setEditForm((prev) => ({ ...prev, addressLine1: normalizedAddress }));
+              setEditErrors((prev) => ({
+                ...prev,
+                addressLine1: addressError,
+                address: "",
+              }));
             }}
             className={inputClass}
           />
-          {editErrors.address ? (
-            <p className="mt-1 text-xs text-rose-600">{editErrors.address}</p>
+          {editErrors.addressLine1 ? (
+            <p className="mt-1 text-xs text-rose-600">{editErrors.addressLine1}</p>
+          ) : null}
+        </div>
+
+        <div className="mt-4">
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            Address Line 2
+          </label>
+          <input
+            type="text"
+            value={editForm.addressLine2}
+            onChange={(e) => {
+              const normalizedAddress = normalizeAddressInput(e.target.value);
+              const addressError =
+                normalizedAddress !== e.target.value
+                  ? "Address contains unsupported characters"
+                  : validateAddressTyping(e.target.value);
+              setEditForm((prev) => ({ ...prev, addressLine2: normalizedAddress }));
+              setEditErrors((prev) => ({
+                ...prev,
+                addressLine2: addressError,
+              }));
+            }}
+            className={inputClass}
+          />
+          {editErrors.addressLine2 ? (
+            <p className="mt-1 text-xs text-rose-600">{editErrors.addressLine2}</p>
           ) : null}
         </div>
       </section>

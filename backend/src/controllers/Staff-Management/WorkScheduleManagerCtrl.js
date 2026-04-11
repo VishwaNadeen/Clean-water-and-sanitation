@@ -357,22 +357,15 @@ export const cancelSchedule = async (req, res) => {
       return res.status(400).json({ message: "Invalid id" });
     }
 
-    const schedule = await WorkSchedule.findById(id);
+    const schedule = await WorkSchedule.findById(id).select("status");
     if (!schedule) return res.status(404).json({ message: "Not found" });
 
     if (schedule.status === "Verified") {
       return res.status(400).json({ message: "Cannot cancel Verified schedule" });
     }
 
-    schedule.status = "Cancelled";
-    await schedule.save({ validateBeforeSave: false });
-
-    const populated = await WorkSchedule.findById(id).populate(
-      "staffId",
-      "fullName email phone role"
-    );
-
-    return res.json(populated);
+    await WorkSchedule.findByIdAndDelete(id);
+    return res.json({ message: "Schedule removed successfully" });
   } catch (err) {
     return res.status(500).json({ message: getSafeErrorMessage(err) });
   }

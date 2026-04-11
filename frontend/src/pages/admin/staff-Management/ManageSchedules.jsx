@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
+import ConfirmDialog from "../../../components/common/ConfirmDialog";
 import FloatingToast from "../../../components/common/FloatingToast";
 import API_BASE_URL from "../../../config/api";
 import {
@@ -116,6 +117,26 @@ const formatDateTime = (value) => {
   }).format(date);
 };
 
+const toScheduleTimestamp = (item) => {
+  const dateValue = item?.date ? new Date(item.date) : null;
+  if (!dateValue || Number.isNaN(dateValue.getTime())) {
+    return 0;
+  }
+
+  const [hoursRaw, minutesRaw] = String(item?.startTime || "00:00").split(":");
+  const hours = Number.parseInt(hoursRaw, 10);
+  const minutes = Number.parseInt(minutesRaw, 10);
+
+  dateValue.setHours(
+    Number.isNaN(hours) ? 0 : hours,
+    Number.isNaN(minutes) ? 0 : minutes,
+    0,
+    0
+  );
+
+  return dateValue.getTime();
+};
+
 const getFriendlyErrorText = (error, fallback) => {
   const apiMessage = String(error?.response?.data?.message || "").trim();
   const localMessage = String(error?.message || "").trim();
@@ -156,6 +177,8 @@ export default function ManageSchedules() {
   const [rejectTargetId, setRejectTargetId] = useState("");
   const [rejectReason, setRejectReason] = useState("Cleaning not completed properly");
   const [rejectSubmitting, setRejectSubmitting] = useState(false);
+  const [cancelTargetId, setCancelTargetId] = useState("");
+  const [cancelSubmitting, setCancelSubmitting] = useState(false);
   const pageMode = searchParams.get("mode") === "reviews" ? "reviews" : "assign";
   const isReviewMode = pageMode === "reviews";
   const preselectedStaff = location.state?.preselectedStaff || null;
@@ -302,7 +325,7 @@ export default function ManageSchedules() {
   }, [editingId, isReviewMode, prefillApplied, preselectedStaff, staffMembers]);
 
   const filteredSchedules = useMemo(() => {
-    let data = schedules.filter((item) => item.status !== "Cancelled");
+    let data = [...schedules];
     const now = new Date();
     const startOfWeek = getStartOfWeek(now);
     const endOfWeek = getEndOfWeek(now);
@@ -350,9 +373,20 @@ export default function ManageSchedules() {
     }
 
     return data.sort((a, b) => {
-      const aTime = new Date(a.createdAt || a.updatedAt || a.date || 0).getTime();
-      const bTime = new Date(b.createdAt || b.updatedAt || b.date || 0).getTime();
-      return bTime - aTime;
+      const aCreatedTime = new Date(a.createdAt || a.updatedAt || 0).getTime();
+      const bCreatedTime = new Date(b.createdAt || b.updatedAt || 0).getTime();
+
+      if (timeFilter === "All" && bCreatedTime !== aCreatedTime) {
+        return bCreatedTime - aCreatedTime;
+      }
+
+      const bScheduleTime = toScheduleTimestamp(b);
+      const aScheduleTime = toScheduleTimestamp(a);
+      if (bScheduleTime !== aScheduleTime) {
+        return bScheduleTime - aScheduleTime;
+      }
+
+      return bCreatedTime - aCreatedTime;
     });
   }, [schedules, timeFilter, statusFilter, staffFilter, restroomFilter, taskTypeFilter]);
 
@@ -377,12 +411,17 @@ export default function ManageSchedules() {
       groups.get(key).items.push(item);
     });
 
-    return Array.from(groups.values()).sort((a, b) => {
+    const grouped = Array.from(groups.values());
+    if (timeFilter === "All") {
+      return grouped;
+    }
+
+    return grouped.sort((a, b) => {
       if (!a.dateValue) return 1;
       if (!b.dateValue) return -1;
       return b.dateValue.getTime() - a.dateValue.getTime();
     });
-  }, [filteredSchedules]);
+  }, [filteredSchedules, timeFilter]);
 
   const workloadStats = useMemo(() => {
     const activeSchedules = schedules.filter((item) => item.status !== "Cancelled");
@@ -473,16 +512,31 @@ export default function ManageSchedules() {
     });
   };
 
-  const handleCancel = async (id) => {
+  const handleCancel = (id) => {
+    setCancelTargetId(id);
+  };
+
+  const closeCancelDialog = () => {
+    if (cancelSubmitting) return;
+    setCancelTargetId("");
+  };
+
+  const confirmCancelSchedule = async () => {
+    if (!cancelTargetId) return;
+
     try {
-      await cancelSchedule(id);
+      setCancelSubmitting(true);
+      await cancelSchedule(cancelTargetId);
       setToast({ type: "success", text: "Schedule cancelled successfully" });
+      setCancelTargetId("");
       await loadSchedules();
     } catch (error) {
       setToast({
         type: "error",
         text: error?.response?.data?.message || "Cancel failed",
       });
+    } finally {
+      setCancelSubmitting(false);
     }
   };
 
@@ -1152,6 +1206,18 @@ export default function ManageSchedules() {
           </div>
         </div>
       ) : null}
+
+      <ConfirmDialog
+        open={Boolean(cancelTargetId)}
+        title="Cancel schedule"
+        message="Are you sure you want to cancel this schedule?"
+        confirmText={cancelSubmitting ? "Cancelling..." : "Cancel Schedule"}
+        cancelText="Keep Schedule"
+        tone="danger"
+        onCancel={closeCancelDialog}
+        onConfirm={confirmCancelSchedule}
+      />
+
     </div>
   );
 }

@@ -1,5 +1,4 @@
 import { Route } from "react-router-dom";
-import MainLayout from "../layouts/MainLayout.jsx";
 import ProtectedRoute from "../components/common/ProtectedRoute.jsx";
 import CreateIssue from "../pages/issues/CreateIssue.jsx";
 import ReadIssues from "../pages/issues/ReadIssues.jsx";
@@ -8,11 +7,7 @@ import UpdateIssue from "../pages/issues/UpdateIssue.jsx";
 
 const IssueRoutes = (
   <Route
-    element={
-      <ProtectedRoute>
-        <MainLayout />
-      </ProtectedRoute>
-    }
+    element={<ProtectedRoute />}
   >
     <Route path="/complaints/report" element={<CreateIssue />} />
     <Route path="/my-complaints" element={<ReadIssues />} />
