@@ -4,7 +4,7 @@ import { z } from "zod";
 import cloudinary from "../../config/cloudinary.js";
 
 import Staff from "../../models/Staff-Management/StaffModel.js";
-import Login from "../../models/user-Management/logInModel.js";
+import Login from "../../models/user-management/logInModel.js";
 import User from "../../models/user-management/userModel.js";
 import { sendEmail } from "../../services/sendEmail.js";
 import { uploadBufferToCloudinary } from "../../utils/staff-Management/Staffcloudinary.js";
