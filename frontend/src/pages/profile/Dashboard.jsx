@@ -1,7 +1,9 @@
+import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import ProfileLayout from "../../components/profile/ProfileLayout";
 import useProfileData from "../../hooks/useProfileData";
+import { updateMyProfile } from "../../services/profileService";
 
 function getProfileImageInitial(profile, storedUser) {
   return String(
@@ -94,6 +96,8 @@ const menuItems = [
 export default function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
+  const fileInputRef = useRef(null);
+  const [isPhotoUploading, setIsPhotoUploading] = useState(false);
 
   const {
     profile,
@@ -105,8 +109,8 @@ export default function Dashboard() {
     token,
   } = useProfileData();
 
-  const profileImageSrc = profile?.profileImageUrl || "";
   const profileImageInitial = getProfileImageInitial(profile, storedUser);
+  const profileImageSrc = profile?.profilePhotoUrl || "";
   const fullName =
     `${profile?.firstName || ""} ${profile?.lastName || ""}`.trim() ||
     storedUser?.fullName ||
@@ -126,6 +130,39 @@ export default function Dashboard() {
     : location.pathname.endsWith("/delete")
     ? "danger"
     : "profile";
+
+  async function handleProfilePhotoChange(event) {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    try {
+      setIsPhotoUploading(true);
+      setPageError("");
+
+      const response = await updateMyProfile({
+        profilePhoto: file,
+      });
+
+      const updatedProfile = response?.user || response;
+
+      if (updatedProfile && typeof setProfile === "function") {
+        setProfile(updatedProfile);
+      }
+    } catch (error) {
+      setPageError(error.message || "Failed to update profile photo.");
+    } finally {
+      setIsPhotoUploading(false);
+      if (event.target) {
+        event.target.value = "";
+      }
+    }
+  }
+
+  function handleProfilePhotoClick() {
+    if (isPhotoUploading) return;
+    fileInputRef.current?.click();
+  }
 
   if (loading) {
     return (
@@ -203,17 +240,44 @@ export default function Dashboard() {
 
           <div className="relative flex min-h-[140px] items-center justify-start px-5 py-4 sm:px-6 lg:px-8">
             <div className="flex flex-row items-center justify-start gap-5">
-              {profileImageSrc ? (
-                <img
-                  src={profileImageSrc}
-                  alt="Profile"
-                  className="h-28 w-28 rounded-[28px] border-4 border-white object-cover bg-white shadow-[0_18px_38px_rgba(59,130,246,0.18)]"
-                />
-              ) : (
-                <div className="grid h-28 w-28 place-items-center rounded-[28px] border-4 border-white bg-white text-4xl font-bold text-sky-700 shadow-[0_18px_38px_rgba(59,130,246,0.18)]">
-                  {profileImageInitial}
-                </div>
-              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleProfilePhotoChange}
+                className="hidden"
+              />
+
+              <div
+                onClick={handleProfilePhotoClick}
+                className={`relative h-28 w-28 overflow-hidden rounded-[28px] border-4 border-white bg-white shadow-[0_18px_38px_rgba(59,130,246,0.18)] ${
+                  isPhotoUploading ? "cursor-wait" : "cursor-pointer"
+                }`}
+              >
+                {profileImageSrc ? (
+                  <img
+                    src={profileImageSrc}
+                    alt="Profile"
+                    className={`h-full w-full object-cover transition-opacity duration-200 ${
+                      isPhotoUploading ? "opacity-20" : "opacity-100"
+                    }`}
+                  />
+                ) : (
+                  <div
+                    className={`grid h-full w-full place-items-center text-4xl font-bold text-sky-700 transition-opacity duration-200 ${
+                      isPhotoUploading ? "opacity-20" : "opacity-100"
+                    }`}
+                  >
+                    {profileImageInitial}
+                  </div>
+                )}
+
+                {isPhotoUploading ? (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white/60">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-sky-200 border-t-sky-600" />
+                  </div>
+                ) : null}
+              </div>
 
               <div>
                 <h2 className="whitespace-nowrap text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">

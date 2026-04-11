@@ -13,16 +13,24 @@ import {
   requirePasswordForDelete,
 } from "../../middleware/authMiddleware.js";
 
+import upload from "../../middleware/uploadMiddleware.js";
+
 const router = express.Router();
 
 // Create user profile (Register) - Public
-router.post("/", createUserProfile);
+router.post("/", upload.single("profilePhoto"), createUserProfile);
 
 // View my profile - Private
 router.get("/me", protect, checkAccountStatus, viewMyProfile);
 
 // Edit my profile (includes password change, cannot change email) - Private
-router.put("/me", protect, checkAccountStatus, editMyProfile);
+router.put(
+  "/me",
+  protect,
+  checkAccountStatus,
+  upload.single("profilePhoto"),
+  editMyProfile
+);
 
 // Delete my profile (requires password) - Private
 router.delete(
