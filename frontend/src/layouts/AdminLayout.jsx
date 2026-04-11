@@ -263,7 +263,7 @@ export default function AdminLayout() {
     },
     {
       menuKey: "categories",
-      label: "Categories",
+      label: "Complaint Categories",
       path: "/admin/categories/view",
       icon: <CategoriesIcon />,
       children: [
