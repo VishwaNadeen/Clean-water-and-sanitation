@@ -378,57 +378,60 @@ Add screenshots or proof of successful deployment here before submission:
 
 ## Testing
 
-This section should be completed and updated based on the actual test setup used in the project.
+### Unit & Integration Testing
 
-### Unit Testing
-
-Purpose:
-
-- validate individual functions and components in isolation
-
-How to run:
+Navigate to the backend folder and install dependencies:
 
 ```bash
-TBD
+cd backend
+npm install
 ```
 
-### Integration Testing
-
-Purpose:
-
-- test interactions between routes, controllers, services, and MongoDB
-- verify API responses and error handling
-
-Setup and execution:
+Install the required testing packages:
 
 ```bash
-TBD
+npm install -D jest @jest/globals supertest mongodb-memory-server cross-env
+```
+
+Run all unit and integration tests:
+
+```bash
+npm test
+```
+
+Run only unit tests:
+
+```bash
+npm run test:unit
+```
+
+Run only integration tests:
+
+```bash
+npm run test:integration
 ```
 
 ### Performance Testing
 
-Purpose:
-
-- evaluate API behavior under load
-
-Suggested tool:
-
-- Artillery.io
-
-Setup and execution:
+Performance tests use Artillery.io. Install it globally:
 
 ```bash
-TBD
+npm install -g artillery
 ```
 
-### Testing Environment Configuration Details
+Start the backend server in one terminal:
 
-Document here before submission:
+```bash
+cd backend
+npm run dev
+```
 
-- tools used
-- test database strategy
-- required environment variables for tests
-- how tests are executed locally
+In a second terminal, run the performance tests:
+
+```bash
+artillery run backend/tests/performance/restroom.yml
+artillery run backend/tests/performance/user.yml
+```
 
 ## Git Workflow
 
