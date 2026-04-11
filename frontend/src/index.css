@@ -1,6 +1,5 @@
 @import "tailwindcss";
 
-/* optional minimal base */
 html, body, #root { height: 100%; }
 body { margin: 0; }
 
@@ -12,14 +11,5 @@ html, body {
 
 html::-webkit-scrollbar,
 body::-webkit-scrollbar {
-  display: none;
-}
-
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.no-scrollbar::-webkit-scrollbar {
   display: none;
 }
