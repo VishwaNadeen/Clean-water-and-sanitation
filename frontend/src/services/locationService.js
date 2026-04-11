@@ -1,9 +1,6 @@
-/**
- * locationService.js
- *
- * Fetches Province, District, City data from our backend.
- * Used by the admin restroom form cascading dropdowns + city type-ahead.
- */
+  //Fetches Province, District, City data from our backend.
+  //Used by the admin restroom form cascading dropdowns + city type-ahead.
+ 
 
 import API_BASE_URL from "../config/api";
 

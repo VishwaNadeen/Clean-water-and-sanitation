@@ -1,12 +1,4 @@
-/**
- * ReportIssueDummy.jsx
- *
- * TEMPORARY dummy page to test the Report Issue auth flow.
- * Replace this with the real issue reporting form when ready.
- *
- * Reads ?restroomId=&restroomName= from the URL so the form
- * knows which restroom the issue is about.
- */
+
 
 import { useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
