@@ -13,9 +13,20 @@ function formatProfileDate(value) {
   }).format(date);
 }
 
+function getInitial(profile, storedUser) {
+  return String(
+    profile?.firstName ||
+      storedUser?.fullName ||
+      storedUser?.email ||
+      "U"
+  )
+    .trim()
+    .charAt(0)
+    .toUpperCase();
+}
+
 export default function Profile() {
   const navigate = useNavigate();
-
   const { profile, storedUser, profileBasePath } = useOutletContext();
 
   const fullName =
@@ -28,32 +39,33 @@ export default function Profile() {
   const lastName = profile?.lastName || "-";
   const phone = profile?.phone || "-";
   const gender = profile?.gender || "-";
-  const address = profile?.address || "-";
+  const dateOfBirth = formatProfileDate(profile?.dob);
+  const profileCreatedAt = formatProfileDate(profile?.createdAt);
+
+  const profilePhotoUrl = profile?.profilePhotoUrl || "";
+  const addressLine1 = profile?.addressLine1 || "-";
+  const addressLine2 = profile?.addressLine2 || "-";
+  const addressLine3 = profile?.addressLine3 || "-";
   const city = profile?.city || "-";
   const country = profile?.country || "-";
   const provinceState = profile?.provinceState || "-";
   const district = profile?.district || "-";
-  const dateOfBirth = formatProfileDate(profile?.dob);
-  const profileCreatedAt = formatProfileDate(profile?.createdAt);
+  const profileInitial = getInitial(profile, storedUser);
 
   return (
     <section className="flex h-full flex-col">
-      <div className="flex flex-col gap-3 border-b border-slate-200 pb-5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-start gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-100 text-sky-700">
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.9"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M15.75 6.75a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.5 19.125a7.5 7.5 0 0 1 15 0"
+      <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-4">
+          <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 text-lg font-bold text-sky-700 shadow-sm">
+            {profilePhotoUrl ? (
+              <img
+                src={profilePhotoUrl}
+                alt={fullName}
+                className="h-full w-full object-cover"
               />
-            </svg>
+            ) : (
+              profileInitial
+            )}
           </div>
 
           <div>
@@ -63,6 +75,8 @@ export default function Profile() {
             <p className="mt-1 text-sm text-slate-500">
               Review your personal information and keep it up to date.
             </p>
+            <p className="mt-2 text-sm font-medium text-slate-700">{fullName}</p>
+            <p className="text-xs text-slate-500">Joined {profileCreatedAt}</p>
           </div>
         </div>
 
@@ -104,8 +118,13 @@ export default function Profile() {
           <InfoCard label="Date of Birth" value={dateOfBirth} />
         </div>
 
+        <div className="grid gap-4 md:grid-cols-3">
+          <InfoCard label="Address Line 1" value={addressLine1} />
+          <InfoCard label="Address Line 2" value={addressLine2} />
+          <InfoCard label="Address Line 3" value={addressLine3} />
+        </div>
+
         <div className="grid gap-4 md:grid-cols-2">
-          <InfoCard label="Address" value={address} className="md:col-span-2" />
           <InfoCard label="City" value={city} />
           <InfoCard label="District" value={district} />
           <InfoCard label="Province / State" value={provinceState} />

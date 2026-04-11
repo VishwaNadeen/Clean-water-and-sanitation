@@ -21,29 +21,6 @@ function formatDateForInput(value) {
   return date.toISOString().split("T")[0];
 }
 
-function splitAddress(value) {
-  if (!value) {
-    return { addressLine1: "", addressLine2: "", addressLine3: "" };
-  }
-
-  const normalized = String(value).trim();
-  if (!normalized) {
-    return { addressLine1: "", addressLine2: "", addressLine3: "" };
-  }
-
-  const [addressLine1 = "", addressLine2 = "", addressLine3 = ""] = normalized
-    .split(/\n|,/)
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .slice(0, 3);
-
-  return {
-    addressLine1,
-    addressLine2,
-    addressLine3,
-  };
-}
-
 function withCurrentOption(options, currentValue) {
   if (!currentValue) return options;
   return options.includes(currentValue) ? options : [currentValue, ...options];
@@ -77,18 +54,14 @@ export default function EditProfile() {
   const [cities, setCities] = useState([]);
 
   useEffect(() => {
-    const { addressLine1, addressLine2, addressLine3 } = splitAddress(
-      profile?.address
-    );
-
     setEditForm({
       firstName: profile?.firstName || "",
       lastName: profile?.lastName || "",
       phone: profile?.phone || "",
       gender: profile?.gender || "",
-      addressLine1,
-      addressLine2,
-      addressLine3,
+      addressLine1: profile?.addressLine1 || "",
+      addressLine2: profile?.addressLine2 || "",
+      addressLine3: profile?.addressLine3 || "",
       city: profile?.city || "",
       district: profile?.district || "",
       provinceState: profile?.provinceState || "",
@@ -285,27 +258,22 @@ export default function EditProfile() {
       setSaving(true);
       setPageError("");
 
-      const combinedAddress = [
-        editForm.addressLine1,
-        editForm.addressLine2,
-        editForm.addressLine3,
-      ]
-        .map((value) => value.trim())
-        .filter(Boolean)
-        .join(", ");
-
-      const updatedProfile = await updateMyProfile({
+      const response = await updateMyProfile({
         firstName: editForm.firstName,
         lastName: editForm.lastName,
         phone: editForm.phone,
         gender: editForm.gender,
-        address: combinedAddress,
+        addressLine1: editForm.addressLine1,
+        addressLine2: editForm.addressLine2,
+        addressLine3: editForm.addressLine3,
         city: editForm.city,
         district: editForm.district,
         provinceState: editForm.provinceState,
         country: editForm.country,
         dob: editForm.dob,
       });
+
+      const updatedProfile = response?.user || response;
 
       if (updatedProfile && typeof setProfile === "function") {
         setProfile(updatedProfile);
@@ -399,7 +367,7 @@ export default function EditProfile() {
             value={editForm.gender}
             onChange={handleChange}
             placeholder="Select gender"
-            options={["Male", "Female", "Other"]}
+            options={["MALE", "FEMALE", "OTHER"]}
             searchable={false}
           />
         </div>

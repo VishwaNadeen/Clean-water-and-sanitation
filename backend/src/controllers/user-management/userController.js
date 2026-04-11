@@ -3,14 +3,14 @@ import Login from "../../models/user-management/logInModel.js";
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
 import { z } from "zod";
+import cloudinary from "../../config/cloudinary.js";
 
-//Zod helpers
+// Zod helpers
 const zodFieldErrors = (zodError) => {
   const out = {};
   const issues = zodError?.issues || [];
   for (const issue of issues) {
     const key = issue.path?.length ? issue.path.join(".") : "body";
-    // keep first error per field
     if (!out[key]) out[key] = issue.message;
   }
   return out;
@@ -27,9 +27,7 @@ const validate = (schema, data) => {
   return parsed.data;
 };
 
-//Common validators
-
-// email: lowercase only + normal email validation
+// Common validators
 const emailLowercaseSchema = z
   .string({ required_error: "Email is required." })
   .trim()
@@ -37,12 +35,13 @@ const emailLowercaseSchema = z
   .max(254, "Email is too long.")
   .refine(
     (v) => v === v.toLowerCase(),
-    "Email must contain only lowercase letters.")
+    "Email must contain only lowercase letters."
+  )
   .regex(
-    /^[a-z0-9]+@[a-z0-9]+\.[a-z]{2,}$/,
-    "Email must contain only lowercase letters and numbers (example: name123@gmail.com)");
+    /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/,
+    "Email must contain only lowercase letters and numbers (example: name123@gmail.com)"
+  );
 
-// phone: starts with 0, digits only, max 15
 const phoneSchema = z
   .string({ required_error: "Phone is required." })
   .trim()
@@ -50,12 +49,10 @@ const phoneSchema = z
   .max(15, "Phone number must be maximum 15 digits.")
   .min(9, "Phone number is too short.");
 
-// gender: MALE/FEMALE/OTHER only
 const genderSchema = z.enum(["MALE", "FEMALE", "OTHER"], {
   required_error: "Gender is required.",
 });
 
-// password: 6-12, upper+lower+number+special
 const passwordSchema = z
   .string({ required_error: "Password is required." })
   .min(6, "Password must be at least 6 characters.")
@@ -68,13 +65,11 @@ const passwordSchema = z
     "Password must include a special character."
   );
 
-// country code (e.g., +94) - suitable validation
 const countryCodeSchema = z
   .string({ required_error: "Country code is required." })
   .trim()
   .regex(/^\+\d{1,4}$/, "Country code must be like +94.");
 
-// names - suitable validation
 const nameSchema = z
   .string()
   .trim()
@@ -82,7 +77,24 @@ const nameSchema = z
   .max(50, "Must be at most 50 characters.")
   .regex(/^[A-Za-z\s.'-]+$/, "Only letters and basic punctuation allowed.");
 
-//Schemas per route
+const optionalTextSchema = z
+  .union([z.string(), z.undefined(), z.null()])
+  .transform((v) => (typeof v === "string" ? v.trim() : ""))
+  .refine((v) => v.length <= 100, "Must be at most 100 characters.");
+
+const optionalAddressLineSchema = z
+  .union([z.string(), z.undefined(), z.null()])
+  .transform((v) => (typeof v === "string" ? v.trim() : ""))
+  .refine((v) => v.length <= 150, "Must be at most 150 characters.");
+
+const optionalDobSchema = z
+  .union([z.string(), z.undefined(), z.null()])
+  .transform((v) => {
+    if (!v || !String(v).trim()) return undefined;
+    return String(v).trim();
+  })
+  .refine((v) => !v || !Number.isNaN(new Date(v).getTime()), "Invalid date of birth.");
+
 const createUserProfileSchema = z.object({
   firstName: nameSchema,
   lastName: nameSchema,
@@ -91,6 +103,14 @@ const createUserProfileSchema = z.object({
   phone: phoneSchema,
   gender: genderSchema,
   password: passwordSchema,
+  dob: optionalDobSchema.optional(),
+  addressLine1: optionalAddressLineSchema.optional(),
+  addressLine2: optionalAddressLineSchema.optional(),
+  addressLine3: optionalAddressLineSchema.optional(),
+  country: optionalTextSchema.optional(),
+  provinceState: optionalTextSchema.optional(),
+  district: optionalTextSchema.optional(),
+  city: optionalTextSchema.optional(),
 });
 
 const editMyProfileSchema = z
@@ -101,7 +121,15 @@ const editMyProfileSchema = z
     phone: phoneSchema.optional(),
     gender: genderSchema.optional(),
 
-    // these are not allowed to change (we still validate type if present)
+    dob: optionalDobSchema.optional(),
+    addressLine1: optionalAddressLineSchema.optional(),
+    addressLine2: optionalAddressLineSchema.optional(),
+    addressLine3: optionalAddressLineSchema.optional(),
+    country: optionalTextSchema.optional(),
+    provinceState: optionalTextSchema.optional(),
+    district: optionalTextSchema.optional(),
+    city: optionalTextSchema.optional(),
+
     email: emailLowercaseSchema.optional(),
     role: z.string().optional(),
 
@@ -110,6 +138,7 @@ const editMyProfileSchema = z
   })
   .superRefine((data, ctx) => {
     const needPassword = Boolean(data.currentPassword || data.newPassword);
+
     if (needPassword) {
       if (!data.currentPassword) {
         ctx.addIssue({
@@ -118,6 +147,7 @@ const editMyProfileSchema = z
           message: "currentPassword is required to change password.",
         });
       }
+
       if (!data.newPassword) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -129,11 +159,10 @@ const editMyProfileSchema = z
   });
 
 const deleteMyProfileSchema = z.object({
-  password: z.string({ required_error: "Password is required." }).min(1, "Password is required."),
+  password: z
+    .string({ required_error: "Password is required." })
+    .min(1, "Password is required."),
 });
-
-
-// Helper function to send OTP email
 
 const sendOtpEmail = async (email, otp) => {
   const transporter = nodemailer.createTransport({
@@ -157,30 +186,74 @@ const sendOtpEmail = async (email, otp) => {
   });
 };
 
+const uploadBufferToCloudinary = (buffer, folder = "user-management/profile-photos") =>
+  new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder,
+        resource_type: "image",
+      },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve(result);
+      }
+    );
+
+    stream.end(buffer);
+  });
+
+const buildSafeUserResponse = (user) => ({
+  id: user._id,
+  firstName: user.firstName,
+  lastName: user.lastName,
+  email: user.email,
+  countryCode: user.countryCode,
+  phone: user.phone,
+  gender: user.gender,
+  status: user.status,
+  isEmailVerified: user.isEmailVerified,
+  lastLoginAt: user.lastLoginAt,
+  profilePhotoUrl: user.profilePhotoUrl || "",
+  profilePhotoPublicId: user.profilePhotoPublicId || "",
+  dob: user.dob,
+  address: {
+    line1: user.address?.line1 || "",
+    line2: user.address?.line2 || "",
+    line3: user.address?.line3 || "",
+  },
+  country: user.country || "",
+  provinceState: user.provinceState || "",
+  district: user.district || "",
+  city: user.city || "",
+  createdAt: user.createdAt,
+  updatedAt: user.updatedAt,
+});
+
 /**
  * CREATE user profile (Register)
- * Public route (no token needed)
+ * Public route
  */
 export const createUserProfile = async (req, res, next) => {
   try {
-    // Zod validation (does not change your logic; just validates inputs)
     const body = validate(createUserProfileSchema, req.body);
 
-    const { firstName, lastName, email, countryCode, phone, gender, password } =
-      body;
-
-    if (
-      !firstName ||
-      !lastName ||
-      !email ||
-      !countryCode ||
-      !phone ||
-      !gender ||
-      !password
-    ) {
-      res.status(400);
-      throw new Error("All required fields must be provided.");
-    }
+    const {
+      firstName,
+      lastName,
+      email,
+      countryCode,
+      phone,
+      gender,
+      password,
+      dob,
+      addressLine1,
+      addressLine2,
+      addressLine3,
+      country,
+      provinceState,
+      district,
+      city,
+    } = body;
 
     const normalizedEmail = email.toLowerCase().trim();
 
@@ -190,11 +263,15 @@ export const createUserProfile = async (req, res, next) => {
       throw new Error("Email already exists.");
     }
 
-    // 🔥 Generate 6-digit OTP
+    let uploadedPhoto = null;
+
+    if (req.file) {
+      uploadedPhoto = await uploadBufferToCloudinary(req.file.buffer);
+    }
+
     const otp = String(Math.floor(100000 + Math.random() * 900000));
     const otpHash = await bcrypt.hash(otp, 10);
 
-    // Create User (password will be hashed by User model hook)
     const user = await User.create({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
@@ -206,10 +283,21 @@ export const createUserProfile = async (req, res, next) => {
       status: "ACTIVE",
       isEmailVerified: false,
       emailOtpHash: otpHash,
-      emailOtpExpires: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
+      emailOtpExpires: new Date(Date.now() + 10 * 60 * 1000),
+      profilePhotoUrl: uploadedPhoto?.secure_url || "",
+      profilePhotoPublicId: uploadedPhoto?.public_id || "",
+      dob: dob ? new Date(dob) : undefined,
+      address: {
+        line1: addressLine1 || "",
+        line2: addressLine2 || "",
+        line3: addressLine3 || "",
+      },
+      country: country || "",
+      provinceState: provinceState || "",
+      district: district || "",
+      city: city || "",
     });
 
-    // Create Login record (role must always be USER)
     await Login.create({
       userId: user._id,
       firstName: user.firstName,
@@ -219,28 +307,14 @@ export const createUserProfile = async (req, res, next) => {
       role: "USER",
     });
 
-    // Send OTP email
     await sendOtpEmail(user.email, otp);
 
     res.status(201).json({
       message:
         "User profile created successfully. OTP sent to email for verification.",
-      user: {
-        id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        countryCode: user.countryCode,
-        phone: user.phone,
-        gender: user.gender,
-        status: user.status,
-        isEmailVerified: user.isEmailVerified,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      },
+      user: buildSafeUserResponse(user),
     });
   } catch (err) {
-    // If our validator threw it, attach 400 and fieldErrors
     if (err?.statusCode === 400 && err?.fieldErrors) {
       res.status(400).json({ message: err.message, fieldErrors: err.fieldErrors });
       return;
@@ -251,7 +325,7 @@ export const createUserProfile = async (req, res, next) => {
 
 /**
  * VIEW own profile
- * Private route (token required)
+ * Private route
  */
 export const viewMyProfile = async (req, res, next) => {
   try {
@@ -262,20 +336,7 @@ export const viewMyProfile = async (req, res, next) => {
     }
 
     res.json({
-      user: {
-        id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        countryCode: user.countryCode,
-        phone: user.phone,
-        gender: user.gender,
-        status: user.status,
-        isEmailVerified: user.isEmailVerified,
-        lastLoginAt: user.lastLoginAt,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      },
+      user: buildSafeUserResponse(user),
     });
   } catch (err) {
     next(err);
@@ -284,11 +345,10 @@ export const viewMyProfile = async (req, res, next) => {
 
 /**
  * EDIT profile details + optional PASSWORD CHANGE
- * Private route (token required)
+ * Private route
  */
 export const editMyProfile = async (req, res, next) => {
   try {
-    // Zod validation
     const body = validate(editMyProfileSchema, req.body);
 
     const {
@@ -297,6 +357,14 @@ export const editMyProfile = async (req, res, next) => {
       countryCode,
       phone,
       gender,
+      dob,
+      addressLine1,
+      addressLine2,
+      addressLine3,
+      country,
+      provinceState,
+      district,
+      city,
       email,
       role,
       currentPassword,
@@ -330,14 +398,29 @@ export const editMyProfile = async (req, res, next) => {
     if (phone) user.phone = phone.trim();
     if (gender) user.gender = gender;
 
-    if (needPassword) {
-      if (!currentPassword || !newPassword) {
-        res.status(400);
-        throw new Error(
-          "To change password, provide currentPassword and newPassword."
-        );
+    if (dob !== undefined) {
+      user.dob = dob ? new Date(dob) : undefined;
+    }
+
+    if (addressLine1 !== undefined) user.address.line1 = addressLine1 || "";
+    if (addressLine2 !== undefined) user.address.line2 = addressLine2 || "";
+    if (addressLine3 !== undefined) user.address.line3 = addressLine3 || "";
+    if (country !== undefined) user.country = country || "";
+    if (provinceState !== undefined) user.provinceState = provinceState || "";
+    if (district !== undefined) user.district = district || "";
+    if (city !== undefined) user.city = city || "";
+
+    if (req.file) {
+      if (user.profilePhotoPublicId) {
+        await cloudinary.uploader.destroy(user.profilePhotoPublicId);
       }
 
+      const uploadedPhoto = await uploadBufferToCloudinary(req.file.buffer);
+      user.profilePhotoUrl = uploadedPhoto.secure_url;
+      user.profilePhotoPublicId = uploadedPhoto.public_id;
+    }
+
+    if (needPassword) {
       const isMatch = await user.comparePassword(currentPassword);
       if (!isMatch) {
         res.status(401);
@@ -364,20 +447,7 @@ export const editMyProfile = async (req, res, next) => {
 
     res.json({
       message: "Profile updated successfully.",
-      user: {
-        id: safeUser._id,
-        firstName: safeUser.firstName,
-        lastName: safeUser.lastName,
-        email: safeUser.email,
-        countryCode: safeUser.countryCode,
-        phone: safeUser.phone,
-        gender: safeUser.gender,
-        status: safeUser.status,
-        isEmailVerified: safeUser.isEmailVerified,
-        lastLoginAt: safeUser.lastLoginAt,
-        createdAt: safeUser.createdAt,
-        updatedAt: safeUser.updatedAt,
-      },
+      user: buildSafeUserResponse(safeUser),
     });
   } catch (err) {
     if (err?.statusCode === 400 && err?.fieldErrors) {
@@ -388,17 +458,13 @@ export const editMyProfile = async (req, res, next) => {
   }
 };
 
-//DELETE own profile
+/**
+ * DELETE own profile
+ */
 export const deleteMyProfile = async (req, res, next) => {
   try {
-    // Zod validation
     const body = validate(deleteMyProfileSchema, req.body);
     const { password } = body;
-
-    if (!password) {
-      res.status(400);
-      throw new Error("Password is required to delete the profile.");
-    }
 
     const user = await User.findById(req.user._id).select("+password");
     if (!user) {
@@ -410,6 +476,10 @@ export const deleteMyProfile = async (req, res, next) => {
     if (!isMatch) {
       res.status(401);
       throw new Error("Password is incorrect.");
+    }
+
+    if (user.profilePhotoPublicId) {
+      await cloudinary.uploader.destroy(user.profilePhotoPublicId);
     }
 
     await Login.deleteOne({ userId: user._id });
@@ -427,24 +497,20 @@ export const deleteMyProfile = async (req, res, next) => {
 
 /**
  * GET all users (ADMIN only)
- * Private route
  */
 export const getAllUsers = async (req, res, next) => {
   try {
-    // Only ADMIN can access this route
     if (req.user.role !== "ADMIN") {
       res.status(403);
       throw new Error("Access denied. Admin only.");
     }
 
-    // Get all login records where role = USER
     const userLogins = await Login.find({ role: "USER" }).select("userId");
-
     const userIds = userLogins.map((login) => login.userId);
 
-    // Get only those users
-    const users = await User.find({ _id: { $in: userIds } })
-      .select("-password -emailOtpHash -refreshTokenHash");
+    const users = await User.find({ _id: { $in: userIds } }).select(
+      "-password -emailOtpHash -refreshTokenHash"
+    );
 
     res.json({
       total: users.length,
