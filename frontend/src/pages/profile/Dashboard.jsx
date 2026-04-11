@@ -1,5 +1,5 @@
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import ProfileLayout from "../../components/profile/ProfileLayout";
 import useProfileData from "../../hooks/useProfileData";
 
@@ -160,7 +160,12 @@ export default function Dashboard() {
       profile={profile}
       storedUser={storedUser}
     >
-      <div className="w-full space-y-6">
+      <motion.div
+        initial={{ opacity: 0.98, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+        className="w-full space-y-6"
+      >
         {pageError ? (
           <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600 shadow-sm">
             {pageError}
@@ -296,9 +301,9 @@ export default function Dashboard() {
             <div className="min-h-[620px] overflow-hidden p-5 sm:p-6 lg:min-h-[720px]">
               <motion.div
                 key={location.pathname}
-                initial={{ opacity: 0, y: 12, filter: "blur(6px)" }}
-                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                initial={{ opacity: 0.98, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
                 className="h-full"
               >
                 <Outlet
@@ -316,7 +321,7 @@ export default function Dashboard() {
             </div>
           </div>
         </section>
-      </div>
+      </motion.div>
     </ProfileLayout>
   );
 }
