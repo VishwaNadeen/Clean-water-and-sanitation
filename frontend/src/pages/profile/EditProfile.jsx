@@ -182,14 +182,6 @@ export default function EditProfile() {
     };
   }, [editForm.country, editForm.provinceState, editForm.district]);
 
-  const fullName = useMemo(() => {
-    return (
-      `${editForm.firstName || ""} ${editForm.lastName || ""}`.trim() ||
-      storedUser?.fullName ||
-      "User"
-    );
-  }, [editForm.firstName, editForm.lastName, storedUser]);
-
   const countryOptions = useMemo(() => {
     return withCurrentOption(countries, editForm.country);
   }, [countries, editForm.country]);
@@ -327,10 +319,6 @@ export default function EditProfile() {
               Update your personal information and save the latest details.
             </p>
           </div>
-        </div>
-
-        <div className="rounded-xl bg-slate-50 px-4 py-2 text-sm font-medium text-slate-600">
-          {fullName}
         </div>
       </div>
 
