@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "nodemon --quiet src/server.js",
     "start": "node src/server.js",
-    "seed:locations": "node src/utils/seedLocationData.js"
+    "seed:locations": "node src/utils/seedLocationData.js",
+    "test": "vitest run",
+    "test:unit": "vitest run src/tests/unit",
+    "test:integration": "vitest run src/tests/integration",
+    "test:performance": "artillery run src/tests/performance/issues-reporting.yml"
   },
   "type": "module",
   "keywords": [],
@@ -26,6 +30,10 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "nodemon": "^3.1.11"
+    "artillery": "^2.0.30",
+    "mongodb-memory-server": "^11.0.1",
+    "nodemon": "^3.1.11",
+    "supertest": "^7.2.2",
+    "vitest": "^4.1.4"
   }
 }

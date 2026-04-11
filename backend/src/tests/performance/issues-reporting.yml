@@ -1,0 +1,31 @@
+config:
+  target: "{{ $env.ARTILLERY_BASE_URL }}"
+  phases:
+    - duration: 30
+      arrivalRate: 5
+      name: Warm up
+    - duration: 45
+      arrivalRate: 20
+      name: Sustained load
+    - duration: 20
+      arrivalRate: 40
+      name: Peak load
+  defaults:
+    headers:
+      Authorization: "Bearer {{ $env.ARTILLERY_ISSUE_TOKEN }}"
+
+scenarios:
+  - name: Create issue report
+    flow:
+      - post:
+          url: "/api/issues"
+          formData:
+            title: "Performance test issue"
+            description: "This issue is being created during Artillery load testing."
+            categoryId: "{{ $env.ARTILLERY_CATEGORY_ID }}"
+            subCategoryId: "{{ $env.ARTILLERY_SUBCATEGORY_ID }}"
+            provinceId: "{{ $env.ARTILLERY_PROVINCE_ID }}"
+            districtId: "{{ $env.ARTILLERY_DISTRICT_ID }}"
+            cityId: "{{ $env.ARTILLERY_CITY_ID }}"
+            restroomId: "{{ $env.ARTILLERY_RESTROOM_ID }}"
+            priority: "MEDIUM"
