@@ -1,6 +1,7 @@
 import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useLayoutEffect, useRef } from "react";
 import ConfirmDialog from "../components/common/ConfirmDialog";
+import PageTransition from "../components/common/PageTransition";
 
 function DashboardIcon() {
   return (
@@ -182,12 +183,15 @@ function ChevronDownIcon() {
 export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const contentRef = useRef(null);
+
   const [collapsed, setCollapsed] = useState(false);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState({
     staff: true,
     categories: true,
   });
+
   const textTransition =
     "overflow-hidden whitespace-nowrap transition-all duration-300 ease-out";
 
@@ -201,9 +205,18 @@ export default function AdminLayout() {
 
   const displayRole = useMemo(() => {
     const role = String(user?.role || "admin").trim().toLowerCase();
-
     return role ? `${role.charAt(0).toUpperCase()}${role.slice(1)}` : "Admin";
   }, [user]);
+
+  useLayoutEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: "auto",
+      });
+    }
+  }, [location.pathname, location.search]);
 
   const performLogout = () => {
     localStorage.removeItem("token");
@@ -267,6 +280,7 @@ export default function AdminLayout() {
   ];
 
   const isActive = (path) => location.pathname === path;
+
   const isParentActive = (item) =>
     item.children?.some((child) => location.pathname === child.path) ||
     location.pathname === item.path;
@@ -287,7 +301,6 @@ export default function AdminLayout() {
           collapsed ? "lg:grid-cols-[80px_1fr]" : "lg:grid-cols-[260px_1fr]"
         }`}
       >
-        {/* Sidebar */}
         <aside className="sticky top-0 hidden h-screen overflow-hidden bg-slate-900 text-white transition-all duration-500 ease-out lg:flex lg:flex-col">
           <div className="flex items-center justify-between border-b border-slate-800 px-4 py-5">
             <div
@@ -335,6 +348,7 @@ export default function AdminLayout() {
                             navigate(item.path);
                             return;
                           }
+
                           if (item.menuKey) {
                             toggleMenu(item.menuKey);
                           }
@@ -360,10 +374,13 @@ export default function AdminLayout() {
                             {item.label}
                           </span>
                         </span>
+
                         {!collapsed ? (
                           <span
                             className={`transition-transform duration-300 ${
-                              isMenuExpanded(item.menuKey) ? "rotate-0" : "-rotate-90"
+                              isMenuExpanded(item.menuKey)
+                                ? "rotate-0"
+                                : "-rotate-90"
                             }`}
                           >
                             <ChevronDownIcon />
@@ -470,14 +487,21 @@ export default function AdminLayout() {
           </div>
         </aside>
 
-        {/* Page content */}
         <section className="flex h-screen min-h-0 flex-col overflow-hidden">
           <header className="shrink-0 border-b border-slate-200 bg-white px-6 py-5 shadow-sm">
             <h2 className="text-2xl font-bold text-slate-800">Admin Panel</h2>
           </header>
 
-          <main className="no-scrollbar flex-1 overflow-y-auto overflow-x-hidden p-6">
-            <Outlet />
+          <main
+            ref={contentRef}
+            className="no-scrollbar flex-1 overflow-y-auto overflow-x-hidden p-6"
+          >
+            <PageTransition
+              routeKey={`${location.pathname}${location.search}`}
+              className="h-full w-full"
+            >
+              <Outlet />
+            </PageTransition>
           </main>
         </section>
       </div>
