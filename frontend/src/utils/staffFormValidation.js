@@ -10,6 +10,19 @@ function isFutureDate(value) {
   return date > now;
 }
 
+function isPastDate(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+
+  const inputDay = new Date(date);
+  inputDay.setHours(0, 0, 0, 0);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return inputDay < today;
+}
+
 export function sanitizePhone(value) {
   return String(value || "").replace(/\D/g, "");
 }
@@ -54,6 +67,38 @@ export function validateEmailTyping(rawValue) {
 
 export function normalizeAddressInput(value) {
   return String(value || "").replace(/[^A-Za-z0-9\s,./#-]/g, "");
+}
+
+export function splitAddressLines(value) {
+  const normalized = String(value || "").trim();
+
+  if (!normalized) {
+    return { addressLine1: "", addressLine2: "" };
+  }
+
+  const parts = normalized
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length >= 2) {
+    return {
+      addressLine1: parts[0],
+      addressLine2: parts.slice(1).join(", "),
+    };
+  }
+
+  return {
+    addressLine1: normalized,
+    addressLine2: "",
+  };
+}
+
+export function combineAddressLines(addressLine1, addressLine2) {
+  return [addressLine1, addressLine2]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean)
+    .join(", ");
 }
 
 export function validateAddressTyping(rawValue) {
@@ -116,7 +161,10 @@ export function validateFullName(value) {
   return "";
 }
 
-export function validateStaffForm(data, { requireEmail = true } = {}) {
+export function validateStaffForm(
+  data,
+  { requireEmail = true, validateJoinDate = true } = {}
+) {
   const errors = {};
 
   const fullNameError = validateFullName(data.fullName);
@@ -148,10 +196,12 @@ export function validateStaffForm(data, { requireEmail = true } = {}) {
   if (!String(data.baseProvince || "").trim()) errors.baseProvince = "Province is required";
   if (!String(data.baseDistrict || "").trim()) errors.baseDistrict = "District is required";
 
-  if (!String(data.address || "").trim()) {
+  if (Object.prototype.hasOwnProperty.call(data, "addressLine1")) {
+    if (!String(data.addressLine1 || "").trim()) {
+      errors.addressLine1 = "Address Line 1 is required";
+    }
+  } else if (!String(data.address || "").trim()) {
     errors.address = "Address is required";
-  } else if (String(data.address).trim().length < 3) {
-    errors.address = "Address is too short";
   }
 
   if (!String(data.dob || "").trim()) {
@@ -162,11 +212,11 @@ export function validateStaffForm(data, { requireEmail = true } = {}) {
     errors.dob = "Date of birth cannot be in the future";
   }
 
-  if (String(data.joinDate || "").trim()) {
+  if (validateJoinDate && String(data.joinDate || "").trim()) {
     if (Number.isNaN(new Date(data.joinDate).getTime())) {
       errors.joinDate = "Invalid join date";
-    } else if (isFutureDate(data.joinDate)) {
-      errors.joinDate = "Join date cannot be in the future";
+    } else if (isPastDate(data.joinDate)) {
+      errors.joinDate = "Join date cannot be in the past";
     }
   }
 
