@@ -7,11 +7,6 @@ export default function DeleteRequestProfile({
 }) {
   return (
     <form onSubmit={handleDeleteRequest} className="space-y-4">
-      <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-rose-700">
-        This does not delete your account immediately. It sends a delete request to
-        the manager for review.
-      </div>
-
       <div>
         <label className="mb-2 block text-sm font-medium text-slate-700">
           Reason

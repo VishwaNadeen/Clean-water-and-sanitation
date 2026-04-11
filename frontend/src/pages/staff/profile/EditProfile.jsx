@@ -311,11 +311,8 @@ export default function EditProfile({
             </label>
             <select
               value={editForm.role}
-              onChange={(e) => {
-                setEditForm((prev) => ({ ...prev, role: e.target.value }));
-                setEditErrors((prev) => ({ ...prev, role: "" }));
-              }}
-              className={inputClass}
+              disabled
+              className={`${inputClass} cursor-not-allowed bg-slate-100 text-slate-500`}
             >
               {roleOptions.map((role) => (
                 <option key={role} value={role}>
@@ -323,9 +320,7 @@ export default function EditProfile({
                 </option>
               ))}
             </select>
-            {editErrors.role ? (
-              <p className="mt-1 text-xs text-rose-600">{editErrors.role}</p>
-            ) : null}
+            <p className="mt-2 text-xs text-slate-500">Role cannot be changed.</p>
           </div>
 
           <div>
