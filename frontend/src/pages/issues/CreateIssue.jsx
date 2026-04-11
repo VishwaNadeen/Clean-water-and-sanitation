@@ -3,6 +3,11 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import API_BASE_URL from "../../config/api";
 import { getToken } from "../../utils/auth";
 import { fetchRestroomById } from "../../services/restroomService";
+import {
+  buildIssuePayload,
+  createInitialIssueFormData,
+  validateIssueForm,
+} from "../../utils/issueFormUtils";
 
 const PRIORITIES = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 
@@ -12,17 +17,7 @@ export default function CreateIssue() {
   const fileInputRef = useRef(null);
   const preselectedRestroomId = searchParams.get("restroomId") || "";
 
-  const [formData, setFormData] = useState({
-    categoryId: "",
-    subCategoryId: "",
-    provinceId: "",
-    districtId: "",
-    cityId: "",
-    restroomId: "",
-    title: "",
-    description: "",
-    priority: "MEDIUM",
-  });
+  const [formData, setFormData] = useState(createInitialIssueFormData);
   const [categories, setCategories] = useState([]);
   const [provinces, setProvinces] = useState([]);
   const [districts, setDistricts] = useState([]);
@@ -391,29 +386,10 @@ export default function CreateIssue() {
     setError("");
   }
 
-  function validateForm() {
-    if (!formData.categoryId) return "Please select a category.";
-    if (!formData.subCategoryId) return "Please select a subcategory.";
-    if (!formData.provinceId) return "Please select a province.";
-    if (!formData.districtId) return "Please select a district.";
-    if (!formData.cityId) return "Please select a city.";
-    if (!formData.restroomId) return "Please select a restroom.";
-    if (!formData.title.trim()) return "Issue title is required.";
-    if (formData.description.trim().length < 5) {
-      return "Description must be at least 5 characters.";
-    }
-    if (images.length > 5) return "You can upload up to 5 images only.";
-
-    const fileTooLarge = images.some((file) => file.size > 5 * 1024 * 1024);
-    if (fileTooLarge) return "Each image must be less than 5MB.";
-
-    return "";
-  }
-
   async function handleSubmit(event) {
     event.preventDefault();
 
-    const validationMessage = validateForm();
+    const validationMessage = validateIssueForm(formData, images);
     if (validationMessage) {
       setError(validationMessage);
       return;
@@ -430,20 +406,7 @@ export default function CreateIssue() {
         throw new Error("Please log in first to report an issue.");
       }
 
-      const payload = new FormData();
-      payload.append("categoryId", formData.categoryId);
-      payload.append("subCategoryId", formData.subCategoryId);
-      payload.append("provinceId", formData.provinceId);
-      payload.append("districtId", formData.districtId);
-      payload.append("cityId", formData.cityId);
-      payload.append("restroomId", formData.restroomId);
-      payload.append("title", formData.title.trim());
-      payload.append("description", formData.description.trim());
-      payload.append("priority", formData.priority);
-
-      images.forEach((file) => {
-        payload.append("images", file);
-      });
+      const payload = buildIssuePayload(formData, images);
 
       const response = await fetch(`${API_BASE_URL}/issues`, {
         method: "POST",
@@ -461,17 +424,7 @@ export default function CreateIssue() {
 
       const successText = data?.message || "Complaint submitted successfully.";
       setSuccessMessage(successText);
-      setFormData({
-        categoryId: "",
-        subCategoryId: "",
-        provinceId: "",
-        districtId: "",
-        cityId: "",
-        restroomId: "",
-        title: "",
-        description: "",
-        priority: "MEDIUM",
-      });
+      setFormData(createInitialIssueFormData());
       setDistricts([]);
       setCities([]);
       setRestrooms([]);
