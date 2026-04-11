@@ -1,0 +1,46 @@
+config:
+  target: "http://localhost:5001"
+  phases:
+    - duration: 30
+      arrivalRate: 5
+      name: "Warm up"
+    - duration: 60
+      arrivalRate: 20
+      name: "Load test"
+    - duration: 30
+      arrivalRate: 50
+      name: "Stress test"
+  defaults:
+    headers:
+      Content-Type: "application/json"
+
+scenarios:
+  - name: "Login with missing fields"
+    weight: 40
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: ""
+            password: ""
+          expect:
+            - statusCode: 400
+
+  - name: "Login with invalid credentials"
+    weight: 40
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "nonexistent@gmail.com"
+            password: "WrongPass@1"
+          expect:
+            - statusCode: 401
+
+  - name: "Access protected route without token"
+    weight: 20
+    flow:
+      - get:
+          url: "/api/users/me"
+          expect:
+            - statusCode: 401
