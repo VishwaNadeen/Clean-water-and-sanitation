@@ -9,7 +9,7 @@ import { logoutUser } from "../../services/authService";
 import { getMyProfile } from "../../services/profileService";
 
 const NAVBAR_LOGO_URL =
-  "https://api.iconify.design/material-symbols/wc-rounded.svg?color=%23000000";
+  "https://api.iconify.design/material-symbols/wc-rounded.svg?color=%230369a1";
 
 function getDisplayName(user) {
   if (!user) return "My Profile";
@@ -100,7 +100,7 @@ export default function Navbar() {
 
         setCurrentUser(mergedUser);
         setProfileImageUrl(profile?.profileImageUrl || "");
-      } catch (error) {
+      } catch {
         setCurrentUser(getStoredUser());
         setProfileImageUrl(getStoredUser()?.profileImageUrl || "");
       }
@@ -111,7 +111,6 @@ export default function Navbar() {
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
-
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
@@ -124,9 +123,7 @@ export default function Navbar() {
     };
 
     const handleKeyDown = (event) => {
-      if (event.key === "Escape") {
-        closeProfileMenu();
-      }
+      if (event.key === "Escape") closeProfileMenu();
     };
 
     window.addEventListener("mousedown", handlePointerDown);
@@ -158,11 +155,9 @@ export default function Navbar() {
     const token = localStorage.getItem("token");
 
     try {
-      if (token) {
-        await logoutUser(token);
-      }
-    } catch (error) {
-    } finally {
+      if (token) await logoutUser(token);
+    } catch {}
+    finally {
       clearAuthSession();
       setLoggedIn(false);
       setCurrentUser(null);
@@ -173,20 +168,16 @@ export default function Navbar() {
   }
 
   function closeProfileMenu() {
-    setProfileMenuState((currentState) =>
-      currentState === "open" ? "closing" : currentState
-    );
+    setProfileMenuState((s) => (s === "open" ? "closing" : s));
   }
 
   function toggleProfileMenu() {
-    setProfileMenuState((currentState) => {
+    setProfileMenuState((s) => {
       if (profileMenuTimeoutRef.current) {
         window.clearTimeout(profileMenuTimeoutRef.current);
         profileMenuTimeoutRef.current = null;
       }
-
-      if (currentState === "open") return "closing";
-      return "open";
+      return s === "open" ? "closing" : "open";
     });
   }
 
@@ -196,296 +187,225 @@ export default function Navbar() {
     { to: "/about", label: "About Us" },
     { to: "/contact", label: "Contact Us" },
   ];
+
   const profilePath =
     String(currentUser?.role || "").toLowerCase() === "staff"
       ? "/staff/profile"
       : "/profile";
+
   const isProfileActive =
     location.pathname === "/profile" ||
     location.pathname.startsWith("/profile/") ||
     location.pathname === "/staff/profile" ||
     location.pathname.startsWith("/staff/profile/");
+
   const displayName = getDisplayName(currentUser);
   const profileInitials = getProfileInitials(currentUser);
 
+  /* animation delay map for nav links */
+  const animDelays = ["[animation-delay:150ms]", "[animation-delay:220ms]", "[animation-delay:290ms]", "[animation-delay:360ms]"];
+
   return (
-    <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+    <header className="sticky top-0 isolate z-[1000]">
+      <div className="relative overflow-visible">
 
-        @keyframes nb2-fade-left {
-          from { opacity: 0; transform: translateX(-12px); }
-          to   { opacity: 1; transform: translateX(0); }
-        }
+        {/* Top shimmer line */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/85 to-transparent" />
 
-        @keyframes nb2-fade-right {
-          from { opacity: 0; transform: translateX(12px); }
-          to   { opacity: 1; transform: translateX(0); }
-        }
+        {/* Decorative blobs */}
+        <div className="pointer-events-none absolute -left-10 top-0 h-28 w-28 rounded-full bg-white/20 blur-2xl" />
+        <div className="pointer-events-none absolute -right-10 bottom-0 h-28 w-28 rounded-full bg-white/15 blur-2xl" />
 
-        @keyframes nb2-fade-down {
-          from { opacity: 0; transform: translateY(-8px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes nb2-menu-in {
-          from { opacity: 0; transform: translateY(-8px) scale(0.98); }
-          to   { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        @keyframes nb2-menu-out {
-          from { opacity: 1; transform: translateY(0) scale(1); }
-          to   { opacity: 0; transform: translateY(-8px) scale(0.98); }
-        }
-      `}</style>
-
-      <header className="sticky top-0 isolate z-[1000] font-['Poppins',sans-serif]">
+        {/* Main bar — two layers reproduce the original opaque navbar exactly:
+            bottom layer: fully solid sky gradient (no transparency) blocks all page content
+            top layer:    the semi-transparent overlay for the glass shimmer effect        */}
         <div
-          className="relative overflow-visible"
+          className={`relative z-[1] transition-all duration-300 ${
+            scrolled ? "shadow-[0_4px_24px_rgba(148,163,184,0.14),0_1px_4px_rgba(0,0,0,0.05)]" : "shadow-[0_2px_12px_rgba(148,163,184,0.1)]"
+          }`}
         >
+          {/* Solid base — fully opaque, nothing bleeds through */}
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[rgb(143,208,251)] via-[rgb(83,179,245)] to-[rgb(67,160,232)]" />
+          {/* Glass shimmer overlay on top */}
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-sky-300/30 via-sky-400/20 to-sky-500/10 backdrop-blur-[2px]" />
           <div
-            className="pointer-events-none absolute inset-x-0 top-0 h-px"
-            style={{
-              background:
-                "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.85) 50%, transparent 100%)",
-            }}
-          />
-
-          <div
-            className="pointer-events-none absolute -left-10 top-0 h-28 w-28 rounded-full"
-            style={{
-              background:
-                "radial-gradient(circle, rgba(255,255,255,0.2), transparent 72%)",
-            }}
-          />
-
-          <div
-            className="pointer-events-none absolute -right-10 bottom-0 h-28 w-28 rounded-full"
-            style={{
-              background:
-                "radial-gradient(circle, rgba(255,255,255,0.16), transparent 72%)",
-            }}
-          />
-
-          <div
-            className="relative z-[1] transition-all duration-300"
-            style={{
-              background:
-                "linear-gradient(0deg, rgba(143,208,251,0.88) 0%, rgba(83,179,245,0.94) 45%, rgba(67,160,232,0.98) 100%)",
-              boxShadow: scrolled
-                ? "0 4px 24px rgba(148,163,184,0.14), 0 1px 4px rgba(0,0,0,0.05)"
-                : "0 2px 12px rgba(148,163,184,0.1)",
-            }}
+            className={`relative z-[1] mx-auto flex max-w-[1200px] items-center justify-between gap-4 transition-all duration-300 ${
+              scrolled ? "px-6 py-[10px]" : "px-6 py-[13px]"
+            }`}
           >
-            <div
-              className={`mx-auto flex max-w-[1200px] items-center justify-between gap-4 transition-all duration-300 ${
-                scrolled ? "px-6 py-[10px]" : "px-6 py-[13px]"
-              }`}
+            {/* Logo */}
+            <NavLink
+              to="/"
+              className="flex animate-[fadeInLeft_0.45s_0.1s_both] items-center gap-[10px] no-underline"
             >
-              <NavLink
-                to="/"
-                className="flex items-center gap-[10px] no-underline"
-                style={{ animation: "nb2-fade-left 0.45s 0.1s both" }}
-              >
-                <img
-                  src={NAVBAR_LOGO_URL}
-                  alt="CWAS restroom logo"
-                  className="h-7 w-7 shrink-0"
-                />
-                <div className="text-2xl font-bold leading-[1.2] tracking-[-0.2px] text-black">
-                  CWAS
-                </div>
-              </NavLink>
+              <img
+                src={NAVBAR_LOGO_URL}
+                alt="CWAS restroom logo"
+                className="h-7 w-7 shrink-0"
+              />
+              <span className="text-2xl font-bold leading-[1.2] tracking-[-0.2px] text-sky-900">
+                CWAS
+              </span>
+            </NavLink>
 
-              <nav className="hidden items-center gap-[2px] md:flex">
-                {navLinks.map(({ to, label }, index) => (
+            {/* Nav links */}
+            <nav className="hidden items-center gap-[2px] md:flex">
+              {navLinks.map(({ to, label }, index) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  className={({ isActive }) =>
+                    `group relative overflow-hidden rounded-[8px] px-[14px] py-[7px] text-[13.5px] font-medium tracking-[0.05px] no-underline transition-all duration-200 animate-[fadeInDown_0.4s_both] ${animDelays[index]} hover:text-slate-900 ${
+                      isActive
+                        ? "bg-white/40 font-semibold text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]"
+                        : "text-gray-700"
+                    }`
+                  }
+                >
+                  <span className="relative z-[1]">{label}</span>
+                  {/* hover underline pill */}
+                  <span className="pointer-events-none absolute bottom-[4px] left-1/2 h-[3px] w-0 -translate-x-1/2 rounded-full bg-white transition-all duration-300 group-hover:w-[60%]" />
+                </NavLink>
+              ))}
+            </nav>
+
+            {/* Right side */}
+            <div className="flex animate-[fadeInRight_0.45s_0.3s_both] items-center gap-2">
+              {!loggedIn ? (
+                <>
                   <NavLink
-                    key={to}
-                    to={to}
-                    className={({ isActive }) =>
-                      `group relative overflow-hidden rounded-[8px] px-[14px] py-[7px] text-[13.5px] font-medium tracking-[0.05px] no-underline transition-all duration-200 hover:text-slate-900 ${
-                        isActive
-                          ? "bg-white/40 font-semibold text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]"
-                          : "text-gray-700"
-                      }`
-                    }
-                    style={{
-                      animation: `nb2-fade-down 0.4s ${0.15 + index * 0.07}s both`,
-                    }}
+                    to="/auth/register"
+                    className="hidden min-h-[38px] items-center justify-center rounded-full border border-white/75 bg-white/95 px-[18px] py-2 text-[13px] font-semibold text-sky-700 no-underline shadow-[0_10px_24px_rgba(15,23,42,0.12)] transition-all duration-200 hover:-translate-y-[1px] hover:scale-[1.01] hover:border-white hover:bg-slate-50 hover:text-sky-800 hover:shadow-[0_14px_28px_rgba(15,23,42,0.16)] md:inline-flex"
                   >
-                    <span className="relative z-[1]">{label}</span>
-
-                    <span className="pointer-events-none absolute bottom-[4px] left-1/2 h-[3px] w-0 -translate-x-1/2 rounded-full bg-white transition-all duration-300 group-hover:w-[60%]" />
+                    Get Started
                   </NavLink>
-                ))}
-              </nav>
 
-              <div
-                className="flex items-center gap-2"
-                style={{ animation: "nb2-fade-right 0.45s 0.3s both" }}
-              >
-                {!loggedIn ? (
-                  <>
-                    <NavLink
-                      to="/auth/register"
-                      className="hidden min-h-[38px] items-center justify-center rounded-full border border-white/75 bg-white/95 px-[18px] py-2 text-[13px] font-semibold text-sky-700 no-underline shadow-[0_10px_24px_rgba(15,23,42,0.12)] transition-all duration-200 hover:-translate-y-[1px] hover:scale-[1.01] hover:border-white hover:bg-slate-50 hover:text-sky-800 hover:shadow-[0_14px_28px_rgba(15,23,42,0.16)] md:inline-flex"
-                    >
-                      Get Started
-                    </NavLink>
+                  <button
+                    className="min-h-[38px] rounded-full bg-white/20 px-4 py-[7px] text-[13px] font-semibold tracking-[0.1px] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] transition-all duration-200 hover:-translate-y-[1px] hover:bg-white/30"
+                    onClick={() => navigate("/login")}
+                  >
+                    Login
+                  </button>
+                </>
+              ) : (
+                <div ref={profileMenuRef} className="relative z-[1100]">
+                  {/* Avatar button */}
+                  <button
+                    className={`flex min-h-[42px] cursor-pointer items-center gap-3 rounded-full pl-1.5 pr-3 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] transition-all duration-200 hover:-translate-y-[1px] hover:scale-[1.01] ${
+                      isProfileActive ? "bg-white/30" : "bg-white/[0.16] hover:bg-white/[0.26]"
+                    }`}
+                    title="Account menu"
+                    aria-haspopup="menu"
+                    aria-expanded={profileMenuState === "open"}
+                    onClick={toggleProfileMenu}
+                  >
+                    <span className="grid h-[34px] w-[34px] shrink-0 place-items-center overflow-hidden rounded-full border border-white/65 bg-gradient-to-br from-white/95 via-sky-50 to-sky-100 text-[11px] font-bold tracking-[0.08em] text-sky-700 shadow-[0_6px_16px_rgba(15,23,42,0.14)]">
+                      {profileImageUrl ? (
+                        <img src={profileImageUrl} alt="Profile" className="h-full w-full object-cover" />
+                      ) : (
+                        profileInitials
+                      )}
+                    </span>
 
-                    <button
-                      className="min-h-[38px] rounded-full border-[1.5px] border-white/65 bg-white/20 px-4 py-[7px] text-[13px] font-semibold tracking-[0.1px] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] transition-all duration-200 hover:-translate-y-[1px] hover:border-white hover:bg-white/30"
-                      onClick={() => {
-                        navigate("/login");
-                      }}
-                    >
-                      Login
-                    </button>
-                  </>
-                ) : (
-                  <div ref={profileMenuRef} className="relative z-[1100]">
-                    <button
-                      className={`flex min-h-[42px] items-center gap-3 rounded-full pl-1.5 pr-3 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] transition-all duration-200 hover:-translate-y-[1px] hover:scale-[1.01] ${
-                        isProfileActive
-                          ? "bg-white/30"
-                          : "bg-white/16 hover:bg-white/26"
+                    <span className="hidden min-w-0 text-left md:block">
+                      <span className="block max-w-[160px] truncate text-[13px] font-semibold leading-tight text-slate-900">
+                        {displayName}
+                      </span>
+                    </span>
+
+                    <svg
+                      className={`hidden h-4 w-4 shrink-0 text-white/95 transition-transform duration-200 md:block ${
+                        profileMenuState === "open" ? "rotate-180" : ""
                       }`}
-                      title="Account menu"
-                      aria-haspopup="menu"
-                      aria-expanded={profileMenuState === "open"}
-                      onClick={toggleProfileMenu}
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      aria-hidden="true"
                     >
-                      <span className="grid h-[34px] w-[34px] shrink-0 place-items-center overflow-hidden rounded-full border border-white/65 bg-gradient-to-br from-white/95 via-sky-50 to-sky-100 text-[11px] font-bold tracking-[0.08em] text-sky-700 shadow-[0_6px_16px_rgba(15,23,42,0.14)]">
-                        {profileImageUrl ? (
-                          <img
-                            src={profileImageUrl}
-                            alt="Profile"
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          profileInitials
-                        )}
-                      </span>
+                      <path d="m5 7.5 5 5 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
 
-                      <span className="hidden min-w-0 text-left md:block">
-                        <span className="block max-w-[160px] truncate text-[13px] font-semibold leading-tight text-slate-900">
-                          {displayName}
-                        </span>
-                      </span>
-
-                      <svg
-                        className={`hidden h-4 w-4 shrink-0 text-white/95 transition md:block ${
-                          profileMenuState === "open" ? "rotate-180" : ""
-                        }`}
-                        viewBox="0 0 20 20"
-                        fill="none"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="m5 7.5 5 5 5-5"
-                          stroke="currentColor"
-                          strokeWidth="1.8"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </button>
-
-                    {profileMenuState !== "closed" ? (
-                      <div
-                        className="absolute right-0 top-[calc(100%+10px)] z-[1200] min-w-[176px] rounded-[18px] border border-sky-100 bg-white p-2 shadow-[0_18px_36px_rgba(15,23,42,0.16)]"
-                        style={{
-                          animation:
-                            profileMenuState === "closing"
-                              ? "nb2-menu-out 0.18s ease-in both"
-                              : "nb2-menu-in 0.18s ease-out both",
-                        }}
-                        role="menu"
-                      >
-                        <div className="mb-2 rounded-[14px] bg-gradient-to-br from-sky-50 via-white to-blue-50 px-3 py-3">
-                          <div className="flex items-center gap-3">
-                            <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full border border-sky-200 bg-gradient-to-br from-sky-100 to-blue-100 text-xs font-bold tracking-[0.08em] text-sky-700">
-                              {profileImageUrl ? (
-                                <img
-                                  src={profileImageUrl}
-                                  alt="Profile"
-                                  className="h-full w-full object-cover"
-                                />
-                              ) : (
-                                profileInitials
-                              )}
-                            </span>
-                            <div className="min-w-0">
-                              <div className="truncate text-[13px] font-semibold text-slate-900">
-                                {displayName}
-                              </div>
-                              <div className="truncate text-[11px] font-medium text-slate-500">
-                                {currentUser?.email || "Profile"}
-                              </div>
+                  {/* Dropdown */}
+                  {profileMenuState !== "closed" && (
+                    <div
+                      className={`absolute right-0 top-[calc(100%+10px)] z-[1200] min-w-[176px] rounded-[18px] border border-sky-100 bg-white p-2 shadow-[0_18px_36px_rgba(15,23,42,0.16)] ${
+                        profileMenuState === "closing"
+                          ? "animate-[menuOut_0.18s_ease-in_both]"
+                          : "animate-[menuIn_0.18s_ease-out_both]"
+                      }`}
+                      role="menu"
+                    >
+                      {/* User info card */}
+                      <div className="mb-2 rounded-[14px] bg-gradient-to-br from-sky-50 via-white to-blue-50 px-3 py-3">
+                        <div className="flex items-center gap-3">
+                          <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full border border-sky-200 bg-gradient-to-br from-sky-100 to-blue-100 text-xs font-bold tracking-[0.08em] text-sky-700">
+                            {profileImageUrl ? (
+                              <img src={profileImageUrl} alt="Profile" className="h-full w-full object-cover" />
+                            ) : (
+                              profileInitials
+                            )}
+                          </span>
+                          <div className="min-w-0">
+                            <div className="truncate text-[13px] font-semibold text-slate-900">{displayName}</div>
+                            <div className="truncate text-[11px] font-medium text-slate-500">
+                              {currentUser?.email || "Profile"}
                             </div>
                           </div>
                         </div>
-
-                        <button
-                          className={`flex w-full items-center gap-[10px] rounded-[12px] px-3 py-[11px] text-left text-[13px] font-semibold transition-all duration-200 hover:-translate-y-[1px] ${
-                            isProfileActive
-                              ? "bg-sky-50 text-sky-700"
-                              : "bg-transparent text-slate-900 hover:bg-slate-50"
-                          }`}
-                          role="menuitem"
-                          onClick={() => {
-                            setProfileMenuState("closed");
-                            navigate(profilePath);
-                          }}
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                            <path
-                              d="M12 12a4.5 4.5 0 1 0-4.5-4.5A4.5 4.5 0 0 0 12 12Z"
-                              stroke="currentColor"
-                              strokeWidth="1.8"
-                            />
-                            <path
-                              d="M20 20.5c-1.6-4-5-6-8-6s-6.4 2-8 6"
-                              stroke="currentColor"
-                              strokeWidth="1.8"
-                              strokeLinecap="round"
-                            />
-                          </svg>
-                          Profile
-                        </button>
-
-                        <div className="mx-[6px] my-1 h-px bg-black/30" />
-
-                        <button
-                          className="flex w-full items-center gap-[10px] rounded-[12px] bg-transparent px-3 py-[11px] text-left text-[13px] font-semibold text-red-600 transition-all duration-200 hover:-translate-y-[1px] hover:bg-white/35"
-                          role="menuitem"
-                          onClick={handleLogout}
-                        >
-                          <svg
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.8"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                            <path d="M16 17l5-5-5-5" />
-                            <path d="M21 12H9" />
-                          </svg>
-                          Logout
-                        </button>
                       </div>
-                    ) : null}
-                  </div>
-                )}
-              </div>
+
+                      {/* Profile link */}
+                      <button
+                        className={`flex w-full cursor-pointer items-center gap-[10px] rounded-[12px] px-3 py-[11px] text-left text-[13px] font-semibold transition-all duration-200 hover:-translate-y-[1px] ${
+                          isProfileActive
+                            ? "bg-sky-50 text-sky-700"
+                            : "bg-transparent text-slate-900 hover:bg-sky-100 hover:text-sky-800"
+                        }`}
+                        role="menuitem"
+                        onClick={() => {
+                          setProfileMenuState("closed");
+                          navigate(profilePath);
+                        }}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                          <path d="M12 12a4.5 4.5 0 1 0-4.5-4.5A4.5 4.5 0 0 0 12 12Z" stroke="currentColor" strokeWidth="1.8" />
+                          <path d="M20 20.5c-1.6-4-5-6-8-6s-6.4 2-8 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                        </svg>
+                        Profile
+                      </button>
+
+                      <div className="mx-[6px] my-1 h-px bg-sky-100" />
+
+                      {/* Logout */}
+                      <button
+                        className="flex w-full cursor-pointer items-center gap-[10px] rounded-[12px] bg-transparent px-3 py-[11px] text-left text-[13px] font-semibold text-red-600 transition-all duration-200 hover:-translate-y-[1px] hover:bg-red-50 hover:text-red-700"
+                        role="menuitem"
+                        onClick={handleLogout}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                          <path d="M16 17l5-5-5-5" />
+                          <path d="M21 12H9" />
+                        </svg>
+                        Logout
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
-      </header>
-    </>
+      </div>
+
+      {/* Keyframe definitions via Tailwind @layer if using JIT — fallback style tag kept minimal */}
+      <style>{`
+        @keyframes fadeInLeft  { from { opacity:0; transform:translateX(-12px); } to { opacity:1; transform:translateX(0); } }
+        @keyframes fadeInRight { from { opacity:0; transform:translateX(12px);  } to { opacity:1; transform:translateX(0); } }
+        @keyframes fadeInDown  { from { opacity:0; transform:translateY(-8px);  } to { opacity:1; transform:translateY(0); } }
+        @keyframes menuIn  { from { opacity:0; transform:translateY(-8px) scale(0.98); } to { opacity:1; transform:translateY(0) scale(1); } }
+        @keyframes menuOut { from { opacity:1; transform:translateY(0) scale(1); } to { opacity:0; transform:translateY(-8px) scale(0.98); } }
+      `}</style>
+    </header>
   );
 }
