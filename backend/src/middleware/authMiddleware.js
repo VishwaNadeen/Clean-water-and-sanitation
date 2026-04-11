@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 
-import Login from "../models/user-Management/logInModel.js";
+import Login from "../models/user-management/logInModel.js";
 import User from "../models/user-management/userModel.js";
 import Staff from "../models/Staff-Management/StaffModel.js";
 
