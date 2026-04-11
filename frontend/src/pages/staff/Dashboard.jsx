@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import FloatingToast from "../../components/common/FloatingToast";
 import useMySchedules from "../../hooks/staffManagement/useMySchedules";
+import { getMyProfile } from "../../services/profileService";
 import { getStoredUser } from "../../utils/auth";
 import EmptyState from "../../components/staffManagement/staff/EmptyState";
 import SchedulePreviewCard from "../../components/staffManagement/staff/SchedulePreviewCard";
@@ -21,17 +22,45 @@ const StaffDashboard = () => {
     loadSchedules,
   } =
     useMySchedules();
-  const [dismissedFeedbackIds, setDismissedFeedbackIds] = useState([]);
+  const [dismissedFeedbackIds, setDismissedFeedbackIds] = useState(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(DISMISSED_FEEDBACK_KEY) || "[]");
+      return Array.isArray(stored) ? stored : [];
+    } catch {
+      return [];
+    }
+  });
+  const [deleteRequestAlert, setDeleteRequestAlert] = useState(null);
   const storedUser = getStoredUser();
   const mustChangePassword = Boolean(storedUser?.mustChangePassword);
 
   useEffect(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem(DISMISSED_FEEDBACK_KEY) || "[]");
-      setDismissedFeedbackIds(Array.isArray(stored) ? stored : []);
-    } catch {
-      setDismissedFeedbackIds([]);
+    let mounted = true;
+
+    async function loadDeleteRequestAlert() {
+      try {
+        const profile = await getMyProfile();
+        const deleteRequest = profile?.originalData?.deleteRequest || {};
+
+        if (
+          mounted &&
+          deleteRequest.status === "rejected" &&
+          String(deleteRequest.adminResponse || "").trim()
+        ) {
+          setDeleteRequestAlert(deleteRequest);
+        }
+      } catch {
+        if (mounted) {
+          setDeleteRequestAlert(null);
+        }
+      }
     }
+
+    loadDeleteRequestAlert();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const visibleReviewedSchedules = useMemo(() => {
@@ -105,6 +134,23 @@ const StaffDashboard = () => {
                 Change Password
               </Link>
             </div>
+          </div>
+        ) : null}
+
+        {deleteRequestAlert ? (
+          <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
+            <p className="text-sm font-semibold text-amber-800">
+              Your profile deletion request was rejected
+            </p>
+            <p className="mt-1 text-sm text-amber-700">
+              {deleteRequestAlert.adminResponse}
+            </p>
+            <Link
+              to="/staff/profile"
+              className="mt-3 inline-flex rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-600"
+            >
+              View Profile Details
+            </Link>
           </div>
         ) : null}
 

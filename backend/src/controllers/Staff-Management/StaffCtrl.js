@@ -209,6 +209,29 @@ async function sendDeleteApprovalEmail({ email, fullName }) {
   return true;
 }
 
+async function sendDeleteRejectionEmail({ email, fullName, adminResponse }) {
+  const safeResponse =
+    String(adminResponse || "").trim() ||
+    "Your profile deletion request was reviewed and rejected by admin.";
+
+  await sendEmail({
+    to: email,
+    subject: "Your Profile Deletion Request Was Rejected",
+    text: `Hello ${fullName}, your profile deletion request was reviewed and rejected by the staff manager/admin. Response: ${safeResponse}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; color: #1e293b; line-height: 1.6;">
+        <h2 style="margin-bottom: 12px;">Profile Deletion Request Rejected</h2>
+        <p>Hello ${fullName},</p>
+        <p>Your profile deletion request was reviewed and rejected by the staff manager/admin.</p>
+        <p><strong>Response:</strong> ${safeResponse}</p>
+        <p>Your account remains active. You can review the update from your staff dashboard or profile.</p>
+      </div>
+    `,
+  });
+
+  return true;
+}
+
 /* ===================== CREATE STAFF ===================== */
 export async function createStaff(req, res) {
   const parsed = staffCreateSchema.safeParse(req.body);
@@ -642,7 +665,7 @@ export async function requestMyDeleteProfile(req, res) {
     await staff.save();
 
     return res.status(200).json({
-      message: "Delete request submitted. Admin will review your request.",
+      message: "Delete request submitted. manager will review your request.",
       deleteRequest: staff.deleteRequest,
     });
   } catch (err) {
@@ -705,21 +728,35 @@ export async function rejectDeleteRequest(req, res) {
       return res.status(400).json({ message: "No pending delete request found for this staff member" });
     }
 
+    const adminResponse = "Your profile deletion request was reviewed and rejected by admin.";
+
     staff.deleteRequest = {
       requested: false,
       status: "rejected",
       reason: staff.deleteRequest?.reason || "",
       requestedAt: staff.deleteRequest?.requestedAt,
       requestedBy: staff.deleteRequest?.requestedBy,
-      adminResponse: "Your profile deletion request was reviewed and rejected by admin.",
+      adminResponse,
       reviewedAt: new Date(),
       reviewedBy: req.auth?._id,
     };
 
     await staff.save();
 
+    if (staff.email) {
+      try {
+        await sendDeleteRejectionEmail({
+          email: staff.email,
+          fullName: staff.fullName || "Staff member",
+          adminResponse,
+        });
+      } catch (emailError) {
+        console.error("Delete rejection email failed:", emailError.message);
+      }
+    }
+
     return res.status(200).json({
-      message: "Delete request rejected successfully",
+      message: "Delete request rejected successfully and staff member notified",
       staff,
     });
   } catch (err) {

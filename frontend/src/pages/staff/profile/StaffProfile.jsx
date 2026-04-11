@@ -463,7 +463,6 @@ export default function StaffProfile() {
         nic: editForm.nic.trim(),
         countryCode: editForm.countryCode.trim(),
         phone: editForm.phone.trim(),
-        role: editForm.role,
         gender: editForm.gender,
         status: editForm.status,
         baseProvince: editForm.baseProvince.trim(),
