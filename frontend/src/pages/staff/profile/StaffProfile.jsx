@@ -11,7 +11,11 @@ import {
   uploadMyProfileImage,
 } from "../../../services/profileService";
 import { updateStoredUser } from "../../../utils/auth";
-import { validateStaffForm } from "../../../utils/staffFormValidation";
+import {
+  combineAddressLines,
+  splitAddressLines,
+  validateStaffForm,
+} from "../../../utils/staffFormValidation";
 
 import EditProfile from "./EditProfile";
 import PasswordProfile from "./PasswordProfile";
@@ -175,7 +179,8 @@ export default function StaffProfile() {
     status: "Active",
     baseProvince: "",
     baseDistrict: "",
-    address: "",
+    addressLine1: "",
+    addressLine2: "",
     dob: "",
     joinDate: "",
   });
@@ -271,6 +276,8 @@ export default function StaffProfile() {
   };
 
   useEffect(() => {
+    const { addressLine1, addressLine2 } = splitAddressLines(staff.address);
+
     setEditForm({
       fullName: staff.fullName || displayName || "",
       nic: staff.nic || "",
@@ -282,7 +289,8 @@ export default function StaffProfile() {
       status: staff.status || "Active",
       baseProvince: staff.baseProvince || "",
       baseDistrict: staff.baseDistrict || "",
-      address: staff.address || "",
+      addressLine1,
+      addressLine2,
       dob: staff.dob ? String(staff.dob).split("T")[0] : "",
       joinDate: staff.joinDate ? String(staff.joinDate).split("T")[0] : "",
     });
@@ -429,10 +437,21 @@ export default function StaffProfile() {
 
   async function handleEditSave(event) {
     event.preventDefault();
-    const errors = validateStaffForm(editForm, { requireEmail: false });
+    const combinedAddress = combineAddressLines(
+      editForm.addressLine1,
+      editForm.addressLine2
+    );
+    const errors = validateStaffForm(
+      {
+        ...editForm,
+        address: combinedAddress,
+      },
+      { requireEmail: false, validateJoinDate: false }
+    );
+
     setEditErrors(errors);
     if (Object.keys(errors).length > 0) {
-      showToast("error", "Please fix the form errors.");
+      showToast("error", Object.values(errors)[0] || "Please fix the form errors.");
       return;
     }
 
@@ -449,7 +468,7 @@ export default function StaffProfile() {
         status: editForm.status,
         baseProvince: editForm.baseProvince.trim(),
         baseDistrict: editForm.baseDistrict.trim(),
-        address: editForm.address.trim(),
+        address: combinedAddress,
       });
 
       setProfile(updatedProfile);

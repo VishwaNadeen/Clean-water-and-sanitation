@@ -12,10 +12,44 @@ import {
 const ACTIVE_STATUSES = ["Assigned", "InProgress"];
 const TOAST_DURATION_MS = 5000;
 
-const getScheduleDateTime = (schedule) => {
-  const date = new Date(schedule?.date);
+const getScheduleList = (data) => {
+  if (Array.isArray(data)) {
+    return data;
+  }
 
-  if (Number.isNaN(date.getTime())) {
+  if (Array.isArray(data?.schedules)) {
+    return data.schedules;
+  }
+
+  return [];
+};
+
+const parseScheduleDate = (value) => {
+  if (!value) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : new Date(value);
+  }
+
+  if (typeof value === "string") {
+    const dateOnlyMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+    if (dateOnlyMatch) {
+      const [, year, month, day] = dateOnlyMatch;
+      return new Date(Number(year), Number(month) - 1, Number(day));
+    }
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const getScheduleDateTime = (schedule) => {
+  const date = parseScheduleDate(schedule?.date);
+
+  if (!date) {
     return null;
   }
 
@@ -125,7 +159,7 @@ const useMySchedules = () => {
     try {
       setLoading(true);
       const data = await getMySchedules();
-      const scheduleList = Array.isArray(data) ? data : [];
+      const scheduleList = getScheduleList(data);
       setSchedules(scheduleList);
 
       const initialForm = {};
@@ -162,8 +196,8 @@ const useMySchedules = () => {
 
     if (timeFilter !== "All") {
       list = list.filter((item) => {
-        const scheduleDate = new Date(item.date);
-        if (Number.isNaN(scheduleDate.getTime())) {
+        const scheduleDate = parseScheduleDate(item.date);
+        if (!scheduleDate) {
           return false;
         }
 
@@ -214,10 +248,8 @@ const useMySchedules = () => {
     const endOfWeek = getEndOfWeek(now);
 
     const weeklySchedules = schedules.filter((schedule) => {
-      const scheduleDate = new Date(schedule.date);
-      return !Number.isNaN(scheduleDate.getTime()) &&
-        scheduleDate >= startOfWeek &&
-        scheduleDate <= endOfWeek;
+      const scheduleDate = parseScheduleDate(schedule.date);
+      return scheduleDate && scheduleDate >= startOfWeek && scheduleDate <= endOfWeek;
     });
 
     return {
@@ -236,10 +268,10 @@ const useMySchedules = () => {
 
     return schedules
       .filter((item) => {
-        const scheduleDate = new Date(item.date);
+        const scheduleDate = parseScheduleDate(item.date);
         return (
           ACTIVE_STATUSES.includes(item.status) &&
-          !Number.isNaN(scheduleDate.getTime()) &&
+          scheduleDate &&
           scheduleDate.toDateString() === now.toDateString()
         );
       })
