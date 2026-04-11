@@ -31,6 +31,31 @@ function validateName(value) {
   return "";
 }
 
+function formatPhoneForDisplay(countryCode, value) {
+  const digits = String(value || "").replace(/\D/g, "");
+
+  if (!digits) return "";
+
+  if (countryCode === "+94") {
+    return digits.match(/.{1,3}/g)?.join(" ") || digits;
+  }
+
+  if (digits.length <= 6) {
+    return digits.match(/.{1,3}/g)?.join(" ") || digits;
+  }
+
+  const groups = [];
+  let cursor = 0;
+
+  while (digits.length - cursor > 4) {
+    groups.push(digits.slice(cursor, cursor + 3));
+    cursor += 3;
+  }
+
+  groups.push(digits.slice(cursor));
+  return groups.filter(Boolean).join(" ");
+}
+
 function formatDateForInput(value) {
   if (!value) return "";
 
@@ -92,6 +117,324 @@ function ChevronIcon() {
   );
 }
 
+function UserIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M10 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+      <path d="M4.5 17a5.5 5.5 0 0 1 11 0" />
+    </svg>
+  );
+}
+
+function PhoneIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M6.3 3.8h2.1l1 3-1.5 1.5a11 11 0 0 0 3.8 3.8l1.5-1.5 3 1v2.1a1.6 1.6 0 0 1-1.8 1.6A12.9 12.9 0 0 1 4.7 5.6a1.6 1.6 0 0 1 1.6-1.8Z" />
+    </svg>
+  );
+}
+
+function GenderIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="10" cy="7" r="3.5" />
+      <path d="M10 10.5v6M7.5 14h5" />
+    </svg>
+  );
+}
+
+function LocationIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M10 17s5-4.4 5-9a5 5 0 1 0-10 0c0 4.6 5 9 5 9Z" />
+      <circle cx="10" cy="8" r="1.8" />
+    </svg>
+  );
+}
+
+function HomeIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3.5 8.5 10 3l6.5 5.5V16a1 1 0 0 1-1 1h-3.5v-4h-4v4H4.5a1 1 0 0 1-1-1V8.5Z" />
+    </svg>
+  );
+}
+
+const WEEKDAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+function formatDobDisplay(value) {
+  if (!value) return "mm/dd/yyyy";
+
+  const [year, month, day] = String(value).split("-").map(Number);
+  if (!year || !month || !day) return "mm/dd/yyyy";
+
+  return `${String(month).padStart(2, "0")}/${String(day).padStart(
+    2,
+    "0"
+  )}/${year}`;
+}
+
+function createDobValue(year, monthIndex, day) {
+  return `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(
+    day
+  ).padStart(2, "0")}`;
+}
+
+function isSameMonth(left, right) {
+  return (
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth()
+  );
+}
+
+function isSameDay(left, right) {
+  return (
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate()
+  );
+}
+
+function buildCalendarDays(viewDate) {
+  const firstDay = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
+  const firstGridDay = new Date(firstDay);
+  firstGridDay.setDate(firstDay.getDate() - firstDay.getDay());
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(firstGridDay);
+    date.setDate(firstGridDay.getDate() + index);
+    return date;
+  });
+}
+
+function CalendarIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3.5" y="4.5" width="13" height="12" rx="2" />
+      <path d="M6.5 2.75v3.5M13.5 2.75v3.5M3.5 8.25h13" />
+    </svg>
+  );
+}
+
+function DobCalendar({
+  value,
+  isOpen,
+  onToggle,
+  onSelect,
+  onPrevMonth,
+  onNextMonth,
+  viewDate,
+  maxDate,
+}) {
+  const calendarDays = useMemo(() => buildCalendarDays(viewDate), [viewDate]);
+  const selectedDate = useMemo(() => {
+    if (!value) return null;
+    const [year, month, day] = String(value).split("-").map(Number);
+    if (!year || !month || !day) return null;
+    return new Date(year, month - 1, day);
+  }, [value]);
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`flex w-full items-center rounded-2xl border bg-white px-5 py-4 pr-12 text-left text-sm font-semibold text-slate-900 outline-none transition ${
+          isOpen
+            ? "border-sky-400 ring-4 ring-sky-100"
+            : "border-sky-200 hover:border-sky-300"
+        }`}
+      >
+        <span className={value ? "text-slate-900" : "text-slate-400"}>
+          {formatDobDisplay(value)}
+        </span>
+      </button>
+
+      <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-sky-100/80 text-sky-500">
+          <CalendarIcon />
+        </span>
+      </div>
+
+      {isOpen ? (
+        <div className="absolute z-30 mt-2 w-full overflow-hidden rounded-2xl border border-sky-200 bg-white p-4 shadow-xl shadow-sky-100/40">
+          <div className="mb-4 flex items-center justify-between">
+            <p className="text-base font-semibold text-slate-900">
+              {viewDate.toLocaleString("en-US", {
+                month: "long",
+                year: "numeric",
+              })}
+            </p>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onPrevMonth}
+                className="grid h-9 w-9 place-items-center rounded-full border border-sky-200 bg-sky-50 text-sky-600 transition hover:border-sky-300 hover:bg-sky-100"
+                aria-label="Previous month"
+              >
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 20 20"
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="m12.5 5-5 5 5 5" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={onNextMonth}
+                disabled={
+                  viewDate.getFullYear() === maxDate.getFullYear() &&
+                  viewDate.getMonth() === maxDate.getMonth()
+                }
+                className="grid h-9 w-9 place-items-center rounded-full border border-sky-200 bg-sky-50 text-sky-600 transition hover:border-sky-300 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Next month"
+              >
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 20 20"
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="m7.5 5 5 5-5 5" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold uppercase tracking-wide text-sky-500">
+            {WEEKDAY_LABELS.map((label) => (
+              <span key={label} className="py-1">
+                {label}
+              </span>
+            ))}
+          </div>
+
+          <div className="mt-2 grid grid-cols-7 gap-1">
+            {calendarDays.map((day) => {
+              const inMonth = isSameMonth(day, viewDate);
+              const isSelected = selectedDate ? isSameDay(day, selectedDate) : false;
+              const isDisabled = day > maxDate;
+
+              return (
+                <button
+                  key={day.toISOString()}
+                  type="button"
+                  onClick={() =>
+                    !isDisabled &&
+                    onSelect(
+                      createDobValue(day.getFullYear(), day.getMonth(), day.getDate())
+                    )
+                  }
+                  disabled={isDisabled}
+                  className={`grid h-10 w-full place-items-center rounded-xl text-sm transition ${
+                    isSelected
+                      ? "bg-sky-600 font-semibold text-white shadow-sm"
+                      : inMonth
+                        ? "text-slate-900 hover:bg-sky-50"
+                        : "text-slate-300 hover:bg-sky-50"
+                  } ${isDisabled ? "cursor-not-allowed text-slate-300 hover:bg-transparent" : ""}`}
+                >
+                  {day.getDate()}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => onSelect("")}
+              className="text-sm font-medium text-sky-600 transition hover:text-sky-800"
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                onSelect(
+                  createDobValue(
+                    maxDate.getFullYear(),
+                    maxDate.getMonth(),
+                    maxDate.getDate()
+                  )
+                )
+              }
+              className="text-sm font-medium text-sky-600 transition hover:text-sky-800"
+            >
+              Yesterday
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function EditProfile() {
   const navigate = useNavigate();
 
@@ -126,8 +469,15 @@ export default function EditProfile() {
   const [phoneError, setPhoneError] = useState("");
   const [countryOpen, setCountryOpen] = useState(false);
   const [countrySearch, setCountrySearch] = useState("");
+  const [dobOpen, setDobOpen] = useState(false);
   const maxAllowedDob = useMemo(() => getMaxAllowedDob(), []);
+  const maxAllowedDobDate = useMemo(() => {
+    const [year, month, day] = maxAllowedDob.split("-").map(Number);
+    return new Date(year, month - 1, day);
+  }, [maxAllowedDob]);
+  const [dobViewDate, setDobViewDate] = useState(maxAllowedDobDate);
   const countryDropdownRef = useRef(null);
+  const dobDropdownRef = useRef(null);
 
   useEffect(() => {
     setEditForm({
@@ -150,6 +500,18 @@ export default function EditProfile() {
     setCountryCodeError("");
     setPhoneError("");
   }, [profile]);
+
+  useEffect(() => {
+    if (!editForm.dob) {
+      setDobViewDate(maxAllowedDobDate);
+      return;
+    }
+
+    const [year, month, day] = String(editForm.dob).split("-").map(Number);
+    if (!year || !month || !day) return;
+
+    setDobViewDate(new Date(year, month - 1, day));
+  }, [editForm.dob, maxAllowedDobDate]);
 
   useEffect(() => {
     let mounted = true;
@@ -198,11 +560,15 @@ export default function EditProfile() {
   }, []);
 
   useEffect(() => {
-    if (!countryOpen) return undefined;
+    if (!countryOpen && !dobOpen) return undefined;
 
     function handleClickOutside(event) {
       if (!countryDropdownRef.current?.contains(event.target)) {
         setCountryOpen(false);
+      }
+
+      if (!dobDropdownRef.current?.contains(event.target)) {
+        setDobOpen(false);
       }
     }
 
@@ -211,7 +577,7 @@ export default function EditProfile() {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [countryOpen]);
+  }, [countryOpen, dobOpen]);
 
   useEffect(() => {
     let mounted = true;
@@ -414,6 +780,15 @@ export default function EditProfile() {
     setPageError("");
   }
 
+  function handleDobSelect(value) {
+    setEditForm((prev) => ({
+      ...prev,
+      dob: value,
+    }));
+    setDobOpen(false);
+    setPageError("");
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
 
@@ -555,6 +930,7 @@ export default function EditProfile() {
             placeholder="Enter first name"
             maxLength={NAME_MAX_LENGTH}
             error={firstNameError}
+            icon={<UserIcon />}
           />
           <InputCard
             label="Last Name"
@@ -564,6 +940,7 @@ export default function EditProfile() {
             placeholder="Enter last name"
             maxLength={NAME_MAX_LENGTH}
             error={lastNameError}
+            icon={<UserIcon />}
           />
         </div>
 
@@ -577,11 +954,12 @@ export default function EditProfile() {
             selectedCountry={selectedCountryCode}
             filteredCountries={filteredDialCodeCountries}
             onCountrySelect={handleCountryCodeSelect}
-            phoneValue={editForm.phone}
+            phoneValue={formatPhoneForDisplay(editForm.countryCode, editForm.phone)}
             onPhoneChange={handleChange}
             phoneMaxLength={getPhoneMaxLengthByCountry(editForm.countryCode)}
             countryCodeError={countryCodeError}
             phoneError={phoneError}
+            phoneIcon={<PhoneIcon />}
           />
 
           <SelectCard
@@ -592,18 +970,38 @@ export default function EditProfile() {
             placeholder="Select gender"
             options={["MALE", "FEMALE", "OTHER"]}
             searchable={false}
+            icon={<GenderIcon />}
           />
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <InputCard
-            label="Date of Birth"
-            name="dob"
-            type="date"
-            value={editForm.dob}
-            onChange={handleChange}
-            max={maxAllowedDob}
-          />
+          <div ref={dobDropdownRef}>
+            <p className="mb-2 text-sm font-medium text-slate-700">Date of Birth</p>
+            <DobCalendar
+              value={editForm.dob}
+              isOpen={dobOpen}
+              onToggle={() => setDobOpen((prev) => !prev)}
+              onSelect={handleDobSelect}
+              onPrevMonth={() =>
+                setDobViewDate(
+                  (prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1)
+                )
+              }
+              onNextMonth={() =>
+                setDobViewDate((prev) => {
+                  const next = new Date(prev.getFullYear(), prev.getMonth() + 1, 1);
+                  const limit = new Date(
+                    maxAllowedDobDate.getFullYear(),
+                    maxAllowedDobDate.getMonth(),
+                    1
+                  );
+                  return next > limit ? prev : next;
+                })
+              }
+              viewDate={dobViewDate}
+              maxDate={maxAllowedDobDate}
+            />
+          </div>
         </div>
 
         <div className="grid gap-4">
@@ -614,6 +1012,7 @@ export default function EditProfile() {
             onChange={handleChange}
             placeholder="Enter address line 1"
             className="md:col-span-2"
+            icon={<HomeIcon />}
           />
         </div>
 
@@ -624,6 +1023,7 @@ export default function EditProfile() {
             value={editForm.addressLine2}
             onChange={handleChange}
             placeholder="Enter address line 2"
+            icon={<HomeIcon />}
           />
           <InputCard
             label="Address Line 3"
@@ -631,6 +1031,7 @@ export default function EditProfile() {
             value={editForm.addressLine3}
             onChange={handleChange}
             placeholder="Enter address line 3"
+            icon={<HomeIcon />}
           />
         </div>
 
@@ -643,6 +1044,7 @@ export default function EditProfile() {
             options={countryOptions}
             placeholder="Select country"
             preferOpenUpward
+            icon={<LocationIcon />}
           />
 
           <SelectCard
@@ -654,6 +1056,7 @@ export default function EditProfile() {
             placeholder="Select province or state"
             disabled={!editForm.country}
             preferOpenUpward
+            icon={<LocationIcon />}
           />
         </div>
 
@@ -668,6 +1071,7 @@ export default function EditProfile() {
               placeholder="Select district"
               disabled={!editForm.provinceState}
               preferOpenUpward
+              icon={<LocationIcon />}
             />
           ) : (
             <InputCard
@@ -676,6 +1080,7 @@ export default function EditProfile() {
               value={editForm.district}
               onChange={handleChange}
               placeholder="Enter district"
+              icon={<LocationIcon />}
             />
           )}
 
@@ -691,6 +1096,7 @@ export default function EditProfile() {
               (editForm.country === SRI_LANKA_NAME && !editForm.district)
             }
             preferOpenUpward
+            icon={<LocationIcon />}
           />
         </div>
 
@@ -741,11 +1147,12 @@ function InputCard({
   max,
   maxLength,
   error = "",
+  icon = null,
 }) {
   return (
     <div className={className}>
       {label ? <p className="mb-2 text-sm font-medium text-slate-700">{label}</p> : null}
-      <div className="rounded-2xl border border-sky-200 bg-white px-5 py-4 transition focus-within:border-sky-400 focus-within:ring-4 focus-within:ring-sky-100">
+      <div className="relative rounded-2xl border border-sky-200 bg-white px-5 py-4 transition focus-within:border-sky-400 focus-within:ring-4 focus-within:ring-sky-100">
         <input
           type={type}
           name={name}
@@ -759,8 +1166,15 @@ function InputCard({
             disabled
               ? "cursor-not-allowed text-slate-400"
               : "text-slate-900 placeholder:text-slate-400"
-          }`}
+          } ${icon ? "pr-10" : ""}`}
         />
+        {icon ? (
+          <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-sky-100/80 text-sky-500">
+              {icon}
+            </span>
+          </div>
+        ) : null}
       </div>
       {error ? <p className="mt-2 text-xs text-rose-600">{error}</p> : null}
     </div>
@@ -781,6 +1195,7 @@ function PhoneField({
   phoneMaxLength,
   countryCodeError,
   phoneError,
+  phoneIcon,
 }) {
   return (
     <div>
@@ -857,9 +1272,10 @@ function PhoneField({
           name="phone"
           value={phoneValue}
           onChange={onPhoneChange}
-          placeholder="Enter phone number"
+          placeholder="768 448 517"
           maxLength={phoneMaxLength}
           error={phoneError}
+          icon={phoneIcon}
         />
       </div>
     </div>
@@ -876,6 +1292,7 @@ function SelectCard({
   disabled = false,
   preferOpenUpward = false,
   searchable = true,
+  icon = null,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [opensUpward, setOpensUpward] = useState(false);
@@ -991,26 +1408,33 @@ function SelectCard({
         <span className={value ? "text-slate-900" : "text-slate-400"}>
           {value || placeholder}
         </span>
-        <svg
-          className={`h-4 w-4 shrink-0 transition ${
-            disabled
-              ? "text-slate-300"
-              : isOpen
-                ? "rotate-180 text-sky-500"
-                : "text-sky-500"
-          }`}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="m6 9 6 6 6-6"
-          />
-        </svg>
+        <span className="ml-3 flex shrink-0 items-center gap-2">
+          {icon ? (
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-sky-100/80 text-sky-500">
+              {icon}
+            </span>
+          ) : null}
+          <svg
+            className={`h-4 w-4 transition ${
+              disabled
+                ? "text-slate-300"
+                : isOpen
+                  ? "rotate-180 text-sky-500"
+                  : "text-sky-500"
+            }`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="m6 9 6 6 6-6"
+            />
+          </svg>
+        </span>
       </button>
 
       {!disabled && isOpen ? (

@@ -13,6 +13,37 @@ function formatProfileDate(value) {
   }).format(date);
 }
 
+function formatPhoneNumber(countryCode, phone) {
+  const digits = String(phone || "").replace(/\D/g, "");
+  if (!digits) return "-";
+
+  const safeCountryCode = String(countryCode || "").trim();
+
+  if (safeCountryCode === "+94") {
+    return `${safeCountryCode} ${digits.match(/.{1,3}/g)?.join(" ") || digits}`;
+  }
+
+  if (!safeCountryCode) {
+    return digits;
+  }
+
+  if (digits.length <= 6) {
+    return `${safeCountryCode} ${digits.match(/.{1,3}/g)?.join(" ") || digits}`;
+  }
+
+  const groups = [];
+  let cursor = 0;
+
+  while (digits.length - cursor > 4) {
+    groups.push(digits.slice(cursor, cursor + 3));
+    cursor += 3;
+  }
+
+  groups.push(digits.slice(cursor));
+
+  return `${safeCountryCode} ${groups.filter(Boolean).join(" ")}`;
+}
+
 export default function Profile() {
   const navigate = useNavigate();
   const { profile, storedUser, profileBasePath } = useOutletContext();
@@ -20,7 +51,7 @@ export default function Profile() {
   const email = profile?.email || storedUser?.email || "-";
   const firstName = profile?.firstName || "-";
   const lastName = profile?.lastName || "-";
-  const phone = profile?.phone || "-";
+  const phone = formatPhoneNumber(profile?.countryCode, profile?.phone);
   const gender = profile?.gender || "-";
   const dateOfBirth = formatProfileDate(profile?.dob);
   const addressLine1 = profile?.addressLine1 || "-";
