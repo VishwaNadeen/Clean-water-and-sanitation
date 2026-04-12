@@ -479,7 +479,7 @@ $env:ARTILLERY_RESTROOM_ID="<RESTROOM_ID>"
 npm run test:performance
 ```
 
-### Frontend test results
+## Frontend test results
 
 ### Frontend performance test
 ![Frontend performance test](public/Issue-Reporting/TEST/frontend-performance-test.png)
@@ -488,7 +488,7 @@ npm run test:performance
 ![Frontend npm test](public/Issue-Reporting/TEST/frontend-npm-test.png)
 
 
-### Backend test results
+## Backend test results
 
 ### Backend unit tests
 ![Backend unit tests](public/Issue-Reporting/TEST/backend-unit-test.png)
