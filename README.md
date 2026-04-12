@@ -355,7 +355,7 @@ For full example requests and responses see the **API Screenshots** section belo
 ### GET /api/categories/admin — Get all categories (Admin)
 ![Get categories admin](public/Issue-Reporting/API/get-categories-admin.png)
 
-### PUT /api/categories/:id — Update category (Admin, not found case)
+### PUT /api/categories/:id — Update category (Admin)
 ![Update category not found](public/Issue-Reporting/API/put-category-admin-not-found.png)
 
 ### DELETE /api/categories/:id — Delete category (Admin)
