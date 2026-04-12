@@ -302,7 +302,44 @@ For full example requests and responses see the **API Screenshots** section belo
 <details>
 <summary>User Management — API Results (click to expand)</summary>
 
-> Screenshots to be added by User Management team member.
+### POST /api/users - Create user account
+![Create user account](public/User-Management/API/Create%20User%20Account.png)
+
+### POST /api/auth/login - User login
+![User login](public/User-Management/API/LogIn.png)
+
+### POST /api/auth/login - Admin login
+![Admin login](public/User-Management/API/Amin%20LogIn.png)
+
+### POST /api/auth/verify-otp - Verify email OTP
+![Verify OTP](public/User-Management/API/Verify%20OTP.png)
+
+### POST /api/auth/forgot-password - Request password reset OTP
+![Forgot password](public/User-Management/API/Fogot%20Password.png)
+
+### POST /api/auth/forgot-password/verify-otp - Verify password reset OTP
+![Forgot password verify OTP](public/User-Management/API/Fogot%20Password%20Verify%20OTP.png)
+
+### POST /api/auth/forgot-password/reset - Reset password
+![Password reset](public/User-Management/API/Fogot%20Password%20Password%20Reset.png)
+
+### GET /api/users/me - Display profile details
+![Display profile details](public/User-Management/API/Display%20Profile%20Details.png)
+
+### PUT /api/users/me - Update profile details
+![Update profile details](public/User-Management/API/Update%20Profile%20Details.png)
+
+### PUT /api/users/me - Password update
+![Password update](public/User-Management/API/Password%20Update.png)
+
+### DELETE /api/users/me - Delete profile
+![Delete profile](public/User-Management/API/Delete%20Profile.png)
+
+### POST /api/auth/logout - Logout
+![Logout](public/User-Management/API/LogOut.png)
+
+### GET /api/users - Get all users
+![Get all users](public/User-Management/API/Get%20All%20Users.png)
 
 </details>
 
