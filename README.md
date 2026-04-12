@@ -352,7 +352,23 @@ For full test results and evidence see the **Testing Screenshots** section below
 <details>
 <summary>User Management — Test Results (click to expand)</summary>
 
-> Screenshots to be added by User Management team member.
+### Packages installed
+![Packages installed](public/User-Management/TEST/install%20packages.png)
+
+### Performance test packages installed
+![Performance packages](public/User-Management/TEST/performance%20testing%20package%20install%20image.png)
+
+### Unit tests - summary
+![Unit test summary](public/User-Management/TEST/unit%20%2B%20integration%20summary%20.png)
+
+### Integration tests
+![Integration test result](public/User-Management/TEST/integration%20ss.png)
+
+### Unit tests
+![Unit test result](public/User-Management/TEST/unit%20testing%20ss.png)
+
+### Performance test
+![Performance test](public/User-Management/TEST/performance%20test.png)
 
 </details>
 
@@ -559,3 +575,4 @@ Update before submission:
 - The frontend and backend are maintained as separate applications inside the same repository.
 - Some features depend on external services such as MongoDB, email delivery, and Cloudinary.
 - A valid backend API and environment configuration are required for most protected features.
+
