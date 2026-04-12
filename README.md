@@ -349,40 +349,40 @@ For full example requests and responses see the **API Screenshots** section belo
 ### Postman collection setup (base URL and tokens)
 ![Issue Reporting Postman setup](public/Issue-Reporting/API/postman-collection-variables.png)
 
-### POST /api/categories — Create category (Admin)
+### POST /api/categories - Create category (Admin)
 ![Create category admin](public/Issue-Reporting/API/create-category-admin.png)
 
-### GET /api/categories/admin — Get all categories (Admin)
+### GET /api/categories/admin - Get all categories (Admin)
 ![Get categories admin](public/Issue-Reporting/API/get-categories-admin.png)
 
-### PUT /api/categories/:id — Update category (Admin)
+### PUT /api/categories/:id - Update category (Admin)
 ![Update category not found](public/Issue-Reporting/API/put-category-admin-not-found.png)
 
-### DELETE /api/categories/:id — Delete category (Admin)
+### DELETE /api/categories/:id - Delete category (Admin)
 ![Delete category admin](public/Issue-Reporting/API/delete-category-admin.png)
 
-### GET /api/categories/dropdown — Get categories dropdown (Public)
+### GET /api/categories/dropdown - Get categories dropdown (Public)
 ![Get categories dropdown public](public/Issue-Reporting/API/get-categories-dropdown-public.png)
 
-### POST /api/issues — Create issue (User)
+### POST /api/issues - Create issue (User)
 ![Create issue user](public/Issue-Reporting/API/create-issue-user.png)
 
-### GET /api/issues/user — View own issues (User)
+### GET /api/issues/user - View own issues (User)
 ![Get issues user](public/Issue-Reporting/API/get-issues-user.png)
 
-### GET /api/issues/admin — View all issues (Admin)
+### GET /api/issues/admin - View all issues (Admin)
 ![Get issues admin](public/Issue-Reporting/API/get-issues-admin.png)
 
-### PUT /api/issues/:id — Update own issue (User)
+### PUT /api/issues/:id - Update own issue (User)
 ![Put issue user](public/Issue-Reporting/API/put-issue-user.png)
 
-### PATCH /api/issues/:id/status — Change issue status (Admin)
+### PATCH /api/issues/:id/status - Change issue status (Admin)
 ![Patch issue status admin](public/Issue-Reporting/API/patch-issue-status-admin.png)
 
-### PATCH /api/issues/:id/resolve — Resolve issue with evidence (Admin)
+### PATCH /api/issues/:id/resolve - Resolve issue with evidence (Admin)
 ![Patch issue resolve admin](public/Issue-Reporting/API/patch-issue-resolve-admin.png)
 
-### DELETE /api/issues/:id — Remove issue (Admin)
+### DELETE /api/issues/:id - Remove issue (Admin)
 ![Delete issue admin](public/Issue-Reporting/API/delete-issue-admin.png)
 
 </details>
@@ -519,19 +519,19 @@ npm run test:performance
 ![Backend npm test](public/Issue-Reporting/TEST/backend-npm-test.png)
 
 
-### Backend performance test — run output 1 (Phase: Sustained load)
+### Backend performance test - run output 1 (Phase: Sustained load)
 ![Backend performance test 1](public/Issue-Reporting/TEST/backend-performance-test-1.png)
 
-### Backend performance test — run output 2 (Phase :Sustained load)
+### Backend performance test - run output 2 (Phase :Sustained load)
 ![Backend performance test 2](public/Issue-Reporting/TEST/backend-performance-test-2.png)
 
-### Backend performance test — run output 3 (Phase: Sustained load)
+### Backend performance test - run output 3 (Phase: Sustained load)
 ![Backend performance test 3](public/Issue-Reporting/TEST/backend-performance-test-3.png)
 
-### Backend performance test — run output 4 (Phase: Peak load)
+### Backend performance test - run output 4 (Phase: Peak load)
 ![Backend performance test 4](public/Issue-Reporting/TEST/backend-performance-test-4.png)
 
-### Backend performance test — run output 5 (Summary report)
+### Backend performance test - run output 5 (Summary report)
 ![Backend performance test 5](public/Issue-Reporting/TEST/backend-performance-test-5.png)
 
 </details>
