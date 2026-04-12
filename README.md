@@ -390,7 +390,26 @@ For full example requests and responses see the **API Screenshots** section belo
 <details>
 <summary>Staff Management — API Results (click to expand)</summary>
 
-> Screenshots to be added by Staff Management team member.
+### POST /api/manager/work-schedules - Assign work schedule
+![Assign work schedule](public/Staff-Management/API/assign%20work%20schedule.png)
+
+### GET /api/manager/work-schedules - Get all assigned work schedules
+![Get all assigned work schedules](public/Staff-Management/API/get%20all%20assigned%20work%20schedule%20.png)
+
+### GET /api/staff - Get all staff members
+![Get all staff members](public/Staff-Management/API/get%20all%20staff%20member.png)
+
+### GET /api/staff/work-schedules/me - Get my work schedules
+![Get my work schedules](public/Staff-Management/API/get%20My%20Work%20Schedules.png)
+
+### POST /api/staff/me/delete-request - Send delete request
+![Send delete request](public/Staff-Management/API/send%20delete%20request.png)
+
+### PUT /api/manager/work-schedules/:id - Update work schedule
+![Update work schedule](public/Staff-Management/API/update%20work%20schedule.png)
+
+### POST /api/staff/work-schedules/:id/proof - Upload proof image
+![Upload proof image](public/Staff-Management/API/upload%20proof%20img.png)
 
 </details>
 
@@ -520,7 +539,20 @@ npm run test:performance
 <details>
 <summary>Staff Management — Test Results (click to expand)</summary>
 
-> Screenshots to be added by Staff Management team member.
+### Integration test packages installed
+![Integration testing install](public/Staff-Management/TEST/Integration%20testing%20install.png)
+
+### Supertest installed
+![Supertest install](public/Staff-Management/TEST/supertest%20install.png)
+
+### Unit tests - summary
+![Unit testing summary](public/Staff-Management/TEST/summery%20of%20unit%20testing.png)
+
+### Integration tests - summary
+![Integration testing summary](public/Staff-Management/TEST/summery%20of%20Integration%20testing%20.png)
+
+### Performance tests - summary
+![Performance testing summary](public/Staff-Management/TEST/summery%20of%20Performance%20testing.png)
 
 </details>
 
@@ -713,4 +745,5 @@ Update before submission:
 - The frontend and backend are maintained as separate applications inside the same repository.
 - Some features depend on external services such as MongoDB, email delivery, and Cloudinary.
 - A valid backend API and environment configuration are required for most protected features.
+
 
