@@ -86,8 +86,15 @@ function createValidRequest() {
 }
 
 describe("createIssue unit", () => {
+  let consoleErrorSpy;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
   });
 
   it("returns 400 when the title is missing", async () => {
@@ -158,6 +165,7 @@ describe("createIssue unit", () => {
     await createIssue(req, res);
 
     expect(uploadToCloudinaryMock).toHaveBeenCalledTimes(1);
+    expect(consoleErrorSpy).toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
