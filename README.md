@@ -479,6 +479,17 @@ $env:ARTILLERY_RESTROOM_ID="<RESTROOM_ID>"
 npm run test:performance
 ```
 
+### Frontend test results
+
+### Frontend performance test
+![Frontend performance test](public/Issue-Reporting/TEST/frontend-performance-test.png)
+
+### Frontend test suite (all tests)
+![Frontend npm test](public/Issue-Reporting/TEST/frontend-npm-test.png)
+
+
+### Backend test results
+
 ### Backend unit tests
 ![Backend unit tests](public/Issue-Reporting/TEST/backend-unit-test.png)
 
@@ -488,25 +499,20 @@ npm run test:performance
 ### Backend test suite (all tests)
 ![Backend npm test](public/Issue-Reporting/TEST/backend-npm-test.png)
 
-### Frontend test suite (all tests)
-![Frontend npm test](public/Issue-Reporting/TEST/frontend-npm-test.png)
 
-### Frontend performance test
-![Frontend performance test](public/Issue-Reporting/TEST/frontend-performance-test.png)
-
-### Backend performance test — run output 1
+### Backend performance test — run output 1 (Phase: Sustained load)
 ![Backend performance test 1](public/Issue-Reporting/TEST/backend-performance-test-1.png)
 
-### Backend performance test — run output 2
+### Backend performance test — run output 2 (Phase :Sustained load)
 ![Backend performance test 2](public/Issue-Reporting/TEST/backend-performance-test-2.png)
 
-### Backend performance test — run output 3
+### Backend performance test — run output 3 (Phase: Sustained load)
 ![Backend performance test 3](public/Issue-Reporting/TEST/backend-performance-test-3.png)
 
-### Backend performance test — run output 4
+### Backend performance test — run output 4 (Phase: Peak load)
 ![Backend performance test 4](public/Issue-Reporting/TEST/backend-performance-test-4.png)
 
-### Backend performance test — run output 5
+### Backend performance test — run output 5 (Summary report)
 ![Backend performance test 5](public/Issue-Reporting/TEST/backend-performance-test-5.png)
 
 </details>
