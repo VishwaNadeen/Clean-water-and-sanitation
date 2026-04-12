@@ -309,7 +309,44 @@ For full example requests and responses see the **API Screenshots** section belo
 <details>
 <summary>Issue Reporting — API Results (click to expand)</summary>
 
-> Screenshots to be added by Issue Reporting team member.
+### Postman collection setup (base URL and tokens)
+![Issue Reporting Postman setup](public/Issue-Reporting/API/postman-collection-variables.png)
+
+### POST /api/categories — Create category (Admin)
+![Create category admin](public/Issue-Reporting/API/create-category-admin.png)
+
+### GET /api/categories/admin — Get all categories (Admin)
+![Get categories admin](public/Issue-Reporting/API/get-categories-admin.png)
+
+### PUT /api/categories/:id — Update category (Admin, not found case)
+![Update category not found](public/Issue-Reporting/API/put-category-admin-not-found.png)
+
+### DELETE /api/categories/:id — Delete category (Admin)
+![Delete category admin](public/Issue-Reporting/API/delete-category-admin.png)
+
+### GET /api/categories/dropdown — Get categories dropdown (Public)
+![Get categories dropdown public](public/Issue-Reporting/API/get-categories-dropdown-public.png)
+
+### POST /api/issues — Create issue (User)
+![Create issue user](public/Issue-Reporting/API/create-issue-user.png)
+
+### GET /api/issues/user — View own issues (User)
+![Get issues user](public/Issue-Reporting/API/get-issues-user.png)
+
+### GET /api/issues/admin — View all issues (Admin)
+![Get issues admin](public/Issue-Reporting/API/get-issues-admin.png)
+
+### PUT /api/issues/:id — Update own issue (User)
+![Put issue user](public/Issue-Reporting/API/put-issue-user.png)
+
+### PATCH /api/issues/:id/status — Change issue status (Admin)
+![Patch issue status admin](public/Issue-Reporting/API/patch-issue-status-admin.png)
+
+### PATCH /api/issues/:id/resolve — Resolve issue with evidence (Admin)
+![Patch issue resolve admin](public/Issue-Reporting/API/patch-issue-resolve-admin.png)
+
+### DELETE /api/issues/:id — Remove issue (Admin)
+![Delete issue admin](public/Issue-Reporting/API/delete-issue-admin.png)
 
 </details>
 
@@ -375,7 +412,65 @@ For full test results and evidence see the **Testing Screenshots** section below
 <details>
 <summary>Issue Reporting — Test Results (click to expand)</summary>
 
-> Screenshots to be added by Issue Reporting team member.
+### Commands used for frontend test screenshots
+```bash
+cd frontend
+npm test
+npm run test:performance
+```
+
+### Commands used for backend test screenshots
+```bash
+cd backend
+npm run test:unit
+npm run test:integration
+npm test
+npm run test:performance
+```
+
+### Backend Artillery setup (PowerShell, placeholder values)
+```powershell
+cd "<BACKEND_FOLDER_PATH>"
+$env:ARTILLERY_BASE_URL="<BASE_URL>"
+$env:ARTILLERY_ISSUE_TOKEN="<JWT_TOKEN>"
+$env:ARTILLERY_CATEGORY_ID="<CATEGORY_ID>"
+$env:ARTILLERY_SUBCATEGORY_ID="<SUBCATEGORY_ID>"
+$env:ARTILLERY_PROVINCE_ID="<PROVINCE_ID>"
+$env:ARTILLERY_DISTRICT_ID="<DISTRICT_ID>"
+$env:ARTILLERY_CITY_ID="<CITY_ID>"
+$env:ARTILLERY_RESTROOM_ID="<RESTROOM_ID>"
+npm run test:performance
+```
+
+### Backend unit tests
+![Backend unit tests](public/Issue-Reporting/TEST/backend-unit-test.png)
+
+### Backend integration tests
+![Backend integration tests](public/Issue-Reporting/TEST/backend-integration-test.png)
+
+### Backend test suite (all tests)
+![Backend npm test](public/Issue-Reporting/TEST/backend-npm-test.png)
+
+### Frontend test suite (all tests)
+![Frontend npm test](public/Issue-Reporting/TEST/frontend-npm-test.png)
+
+### Frontend performance test
+![Frontend performance test](public/Issue-Reporting/TEST/frontend-performance-test.png)
+
+### Backend performance test — run output 1
+![Backend performance test 1](public/Issue-Reporting/TEST/backend-performance-test-1.png)
+
+### Backend performance test — run output 2
+![Backend performance test 2](public/Issue-Reporting/TEST/backend-performance-test-2.png)
+
+### Backend performance test — run output 3
+![Backend performance test 3](public/Issue-Reporting/TEST/backend-performance-test-3.png)
+
+### Backend performance test — run output 4
+![Backend performance test 4](public/Issue-Reporting/TEST/backend-performance-test-4.png)
+
+### Backend performance test — run output 5
+![Backend performance test 5](public/Issue-Reporting/TEST/backend-performance-test-5.png)
 
 </details>
 
