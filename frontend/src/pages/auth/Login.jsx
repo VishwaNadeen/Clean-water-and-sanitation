@@ -1,6 +1,10 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate, useLocation, Link } from "react-router-dom";
-import { loginUser } from "../../services/authService";
+import {
+  loginUser,
+  loginWithGoogle,
+  loginWithFacebook,
+} from "../../services/authService";
 import { setAuthSession, isLoggedIn, getStoredUser } from "../../utils/auth";
 
 function EyeIcon() {
@@ -53,26 +57,80 @@ function RestroomIcon() {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      {/* Male figure */}
       <circle cx="14" cy="8" r="3.5" fill="#0369a1" stroke="none" />
       <path d="M14 13v9M14 22l-4 7M14 22l4 7" />
       <path d="M10 16h8" />
 
-      {/* Female figure */}
       <circle cx="34" cy="8" r="3.5" fill="#0369a1" stroke="none" />
       <path d="M34 13v5" />
       <path d="M28 18h12l-2 11h-8l-2-11Z" fill="rgba(3,105,161,0.15)" />
       <path d="M34 29v6" />
 
-      {/* Divider */}
-      <line x1="24" y1="4" x2="24" y2="38" strokeWidth="1.2" strokeDasharray="2 2" />
+      <line
+        x1="24"
+        y1="4"
+        x2="24"
+        y2="38"
+        strokeWidth="1.2"
+        strokeDasharray="2 2"
+      />
     </svg>
   );
+}
+
+function GoogleMark() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+      <path
+        fill="#EA4335"
+        d="M12 10.2v3.9h5.5c-.2 1.2-.9 2.2-1.9 2.9l3 2.3c1.8-1.6 2.8-4 2.8-6.8 0-.6-.1-1.2-.2-1.7H12Z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 21c2.5 0 4.5-.8 6-2.2l-3-2.3c-.8.6-1.8 1-3 1-2.3 0-4.3-1.6-5-3.7H3.9v2.4A9 9 0 0 0 12 21Z"
+      />
+      <path
+        fill="#4A90E2"
+        d="M7 13.8c-.2-.6-.3-1.2-.3-1.8s.1-1.2.3-1.8V7.8H3.9A9 9 0 0 0 3 12c0 1.5.4 2.9.9 4.2L7 13.8Z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M12 6.5c1.3 0 2.5.5 3.5 1.4l2.6-2.6C16.5 3.8 14.5 3 12 3a9 9 0 0 0-8.1 5l3.1 2.4c.7-2.1 2.7-3.9 5-3.9Z"
+      />
+    </svg>
+  );
+}
+
+function FacebookMark() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+      <path
+        fill="#1877F2"
+        d="M24 12a12 12 0 1 0-13.9 11.9v-8.4H7.1V12h3V9.4c0-3 1.8-4.7 4.5-4.7 1.3 0 2.7.2 2.7.2v3h-1.5c-1.5 0-2 .9-2 1.9V12h3.4l-.5 3.5h-2.9v8.4A12 12 0 0 0 24 12Z"
+      />
+    </svg>
+  );
+}
+
+function buildSafeUser(data, fallbackEmail = "") {
+  const role = String(data?.role || "user").toLowerCase();
+
+  return {
+    id: data?.id || data?._id || data?.profileId || "",
+    username: data?.username || data?.fullName || "User",
+    fullName: data?.fullName || data?.username || "User",
+    email: data?.email || fallbackEmail,
+    role,
+    authProvider: data?.authProvider || "local",
+    mustChangePassword: Boolean(data?.mustChangePassword),
+  };
 }
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
+  const googleBtnRef = useRef(null);
+
   const { message: loginMessage, redirect: redirectAfterLogin } =
     location.state || {};
 
@@ -80,15 +138,47 @@ export default function Login() {
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [socialLoading, setSocialLoading] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   const storedUser = getStoredUser?.();
   const storedRole = String(storedUser?.role || "").toLowerCase();
 
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  const facebookAppId = import.meta.env.VITE_FACEBOOK_APP_ID;
+
   if (isLoggedIn()) {
-    if (storedRole === "admin") return <Navigate to="/admin/dashboard" replace />;
-    if (storedRole === "staff") return <Navigate to="/staff/dashboard" replace />;
+    if (storedRole === "admin") {
+      return <Navigate to="/admin/dashboard" replace />;
+    }
+
+    if (storedRole === "staff") {
+      return <Navigate to="/staff/dashboard" replace />;
+    }
+
     return <Navigate to={redirectAfterLogin || "/"} replace />;
+  }
+
+  function redirectByRole(role) {
+    const lowerRole = String(role || "user").toLowerCase();
+
+    if (lowerRole === "admin") {
+      navigate("/admin/dashboard", { replace: true });
+      return;
+    }
+
+    if (lowerRole === "staff") {
+      navigate("/staff/dashboard", { replace: true });
+      return;
+    }
+
+    navigate(redirectAfterLogin || "/", { replace: true });
+  }
+
+  async function completeSocialLogin(data, fallbackEmail = "") {
+    const safeUser = buildSafeUser(data, fallbackEmail);
+    setAuthSession({ token: data?.token, user: safeUser });
+    redirectByRole(safeUser.role);
   }
 
   function handleChange(e) {
@@ -100,38 +190,40 @@ export default function Login() {
 
   function validate() {
     const errs = {};
-    if (!formData.email.trim()) errs.email = "Email is required.";
-    if (!formData.password.trim()) errs.password = "Password is required.";
+
+    if (!formData.email.trim()) {
+      errs.email = "Email is required.";
+    }
+
+    if (!formData.password.trim()) {
+      errs.password = "Password is required.";
+    }
+
     return errs;
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
+
     const validationErrors = validate();
+
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
     }
+
     try {
       setLoading(true);
       setSubmitError("");
+
       const data = await loginUser({
         email: formData.email.trim(),
         password: formData.password,
       });
-      const userRole = String(data?.role || "user").toLowerCase();
-      const safeUser = {
-        id: data?.id || data?._id || "",
-        username: data?.username || data?.fullName || "User",
-        fullName: data?.fullName || data?.username || "User",
-        email: data?.email || formData.email.trim().toLowerCase(),
-        role: userRole,
-        mustChangePassword: Boolean(data?.mustChangePassword),
-      };
+
+      const safeUser = buildSafeUser(data, formData.email.trim().toLowerCase());
       setAuthSession({ token: data?.token, user: safeUser });
-      if (userRole === "admin") navigate("/admin/dashboard", { replace: true });
-      else if (userRole === "staff") navigate("/staff/dashboard", { replace: true });
-      else navigate(redirectAfterLogin || "/", { replace: true });
+      redirectByRole(safeUser.role);
     } catch (error) {
       setSubmitError(error.message || "Login failed.");
     } finally {
@@ -139,11 +231,198 @@ export default function Login() {
     }
   }
 
+  useEffect(() => {
+    if (!googleClientId) return;
+
+    let isCancelled = false;
+    let intervalId;
+
+    const loadGoogleScript = () =>
+      new Promise((resolve, reject) => {
+        if (window.google?.accounts?.id) {
+          resolve();
+          return;
+        }
+
+        const existing = document.querySelector(
+          'script[src="https://accounts.google.com/gsi/client"]'
+        );
+
+        if (existing) {
+          existing.addEventListener("load", resolve, { once: true });
+          existing.addEventListener(
+            "error",
+            () => reject(new Error("Failed to load Google SDK.")),
+            { once: true }
+          );
+          return;
+        }
+
+        const script = document.createElement("script");
+        script.src = "https://accounts.google.com/gsi/client";
+        script.async = true;
+        script.defer = true;
+        script.onload = resolve;
+        script.onerror = () => reject(new Error("Failed to load Google SDK."));
+        document.body.appendChild(script);
+      });
+
+    loadGoogleScript()
+      .then(() => {
+        if (isCancelled) return;
+
+        intervalId = window.setInterval(() => {
+          if (!window.google?.accounts?.id || !googleBtnRef.current) return;
+
+          window.clearInterval(intervalId);
+          googleBtnRef.current.innerHTML = "";
+
+          window.google.accounts.id.initialize({
+            client_id: googleClientId,
+            callback: async (response) => {
+              try {
+                setSubmitError("");
+                setSocialLoading("google");
+                const data = await loginWithGoogle(response.credential);
+                await completeSocialLogin(data);
+              } catch (error) {
+                setSubmitError(error.message || "Google login failed.");
+              } finally {
+                setSocialLoading("");
+              }
+            },
+          });
+
+          window.google.accounts.id.renderButton(googleBtnRef.current, {
+            theme: "outline",
+            size: "large",
+            shape: "rectangular",
+            text: "continue_with",
+            logo_alignment: "center",
+            width: googleBtnRef.current.offsetWidth || 320,
+          });
+
+          window.setTimeout(() => {
+            const googleIframe = googleBtnRef.current?.querySelector("iframe");
+
+            if (googleIframe) {
+              googleIframe.style.borderRadius = "0.75rem";
+            }
+          }, 0);
+        }, 200);
+      })
+      .catch((error) => {
+        if (!isCancelled) {
+          setSubmitError(error.message || "Google login setup failed.");
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+      if (intervalId) {
+        window.clearInterval(intervalId);
+      }
+    };
+  }, [googleClientId]);
+
+  useEffect(() => {
+    if (!facebookAppId) return;
+
+    let isCancelled = false;
+
+    const loadFacebookScript = () =>
+      new Promise((resolve, reject) => {
+        if (window.FB) {
+          resolve();
+          return;
+        }
+
+        const existing = document.querySelector(
+          'script[src="https://connect.facebook.net/en_US/sdk.js"]'
+        );
+
+        if (existing) {
+          existing.addEventListener("load", resolve, { once: true });
+          existing.addEventListener(
+            "error",
+            () => reject(new Error("Failed to load Facebook SDK.")),
+            { once: true }
+          );
+          return;
+        }
+
+        const script = document.createElement("script");
+        script.src = "https://connect.facebook.net/en_US/sdk.js";
+        script.async = true;
+        script.defer = true;
+        script.crossOrigin = "anonymous";
+        script.onload = resolve;
+        script.onerror = () => reject(new Error("Failed to load Facebook SDK."));
+        document.body.appendChild(script);
+      });
+
+    loadFacebookScript()
+      .then(() => {
+        if (isCancelled || !window.FB) return;
+
+        window.FB.init({
+          appId: facebookAppId,
+          cookie: true,
+          xfbml: false,
+          version: "v19.0",
+        });
+      })
+      .catch((error) => {
+        if (!isCancelled) {
+          setSubmitError(error.message || "Facebook login setup failed.");
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [facebookAppId]);
+
+  function handleFacebookLogin() {
+    try {
+      if (!window.FB) {
+        throw new Error("Facebook SDK is not ready yet.");
+      }
+
+      setSubmitError("");
+      setSocialLoading("facebook");
+
+      window.FB.login(
+        (response) => {
+          (async () => {
+            try {
+              if (!response?.authResponse?.accessToken) {
+                throw new Error("Facebook login was cancelled or failed.");
+              }
+
+              const data = await loginWithFacebook(
+                response.authResponse.accessToken
+              );
+
+              await completeSocialLogin(data);
+            } catch (error) {
+              setSubmitError(error.message || "Facebook login failed.");
+            } finally {
+              setSocialLoading("");
+            }
+          })();
+        },
+        { scope: "public_profile,email" }
+      );
+    } catch (error) {
+      setSocialLoading("");
+      setSubmitError(error.message || "Facebook login failed.");
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-50 via-sky-100 to-blue-200 flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
-
-        {/* ── Left hero panel ── */}
         <div className="hidden md:flex flex-col">
           <div className="flex items-center justify-center w-20 h-20 rounded-2xl bg-sky-100/70 border border-sky-200 mb-6">
             <RestroomIcon />
@@ -161,8 +440,17 @@ export default function Login() {
             {[
               {
                 icon: (
-                  <svg className="h-5 w-5 text-sky-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                  <svg
+                    className="h-5 w-5 text-sky-600"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M9 11l3 3L22 4" />
+                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
                   </svg>
                 ),
                 title: "Submit & track reports",
@@ -170,8 +458,17 @@ export default function Login() {
               },
               {
                 icon: (
-                  <svg className="h-5 w-5 text-sky-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                  <svg
+                    className="h-5 w-5 text-sky-600"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                   </svg>
                 ),
                 title: "Get instant notifications",
@@ -179,8 +476,17 @@ export default function Login() {
               },
               {
                 icon: (
-                  <svg className="h-5 w-5 text-sky-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  <svg
+                    className="h-5 w-5 text-sky-600"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                   </svg>
                 ),
                 title: "Secure &amp; private",
@@ -200,10 +506,7 @@ export default function Login() {
           </div>
         </div>
 
-        {/* ── Right card ── */}
         <div className="w-full max-w-md mx-auto bg-white/75 backdrop-blur-xl border border-sky-200/70 rounded-3xl shadow-xl shadow-sky-100/40 p-8">
-
-          {/* Card header */}
           <div className="flex flex-col items-center text-center mb-7">
             <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-sky-100/80 border border-sky-200 mb-4 md:hidden">
               <RestroomIcon />
@@ -211,6 +514,7 @@ export default function Login() {
             <div className="hidden md:flex items-center justify-center w-14 h-14 rounded-2xl bg-sky-100/80 border border-sky-200 mb-4">
               <RestroomIcon />
             </div>
+
             <h2 className="text-2xl font-bold text-sky-900">Welcome back</h2>
             <p className="mt-1 text-sm text-sky-500">Sign in to your account</p>
 
@@ -223,8 +527,6 @@ export default function Login() {
           </div>
 
           <form onSubmit={handleSubmit} noValidate className="space-y-5">
-
-            {/* Email */}
             <div>
               <label className="block mb-1.5 text-xs font-semibold text-sky-800 tracking-wide uppercase">
                 Email address
@@ -239,11 +541,12 @@ export default function Login() {
                 className="w-full rounded-xl border border-sky-200 bg-sky-50/70 px-4 py-3 text-sm text-sky-900 placeholder:text-sky-300 outline-none transition focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100"
               />
               {errors.email && (
-                <p className="mt-1.5 text-xs font-medium text-red-500">{errors.email}</p>
+                <p className="mt-1.5 text-xs font-medium text-red-500">
+                  {errors.email}
+                </p>
               )}
             </div>
 
-            {/* Password */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-xs font-semibold text-sky-800 tracking-wide uppercase">
@@ -256,6 +559,7 @@ export default function Login() {
                   Forgot password?
                 </Link>
               </div>
+
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
@@ -277,27 +581,34 @@ export default function Login() {
                   </span>
                 </button>
               </div>
+
               {errors.password && (
-                <p className="mt-1.5 text-xs font-medium text-red-500">{errors.password}</p>
+                <p className="mt-1.5 text-xs font-medium text-red-500">
+                  {errors.password}
+                </p>
               )}
             </div>
 
-            {/* Submit error */}
             {submitError && (
               <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
                 {submitError}
               </div>
             )}
 
-            {/* Submit button */}
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || Boolean(socialLoading)}
               className="w-full rounded-xl bg-gradient-to-r from-sky-400 to-blue-500 px-4 py-3 text-sm font-semibold text-white shadow-md shadow-sky-200 transition hover:-translate-y-0.5 hover:shadow-sky-300 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
-                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <svg
+                    className="h-4 w-4 animate-spin"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
                     <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
                   </svg>
                   Logging in…
@@ -308,41 +619,80 @@ export default function Login() {
             </button>
           </form>
 
-          {/* Divider */}
           <div className="flex items-center gap-3 my-5">
             <div className="flex-1 h-px bg-sky-100" />
-            <span className="text-xs text-sky-300">or</span>
+            <span className="text-xs text-sky-300">or continue with</span>
             <div className="flex-1 h-px bg-sky-100" />
           </div>
 
-          {/* Create profile link */}
-          <div className="flex items-center justify-center gap-1.5 text-sm text-sky-600">
+          <div className="space-y-3">
+            <div
+              ref={googleBtnRef}
+              className={`flex min-h-[44px] w-full items-center justify-center overflow-hidden rounded-xl ${
+                !googleClientId ? "hidden" : ""
+              }`}
+            />
+
+            {!googleClientId && (
+              <button
+                type="button"
+                disabled
+                className="hidden w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-medium text-slate-400"
+              >
+                <GoogleMark />
+                Google is not configured
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={handleFacebookLogin}
+              disabled={!facebookAppId || socialLoading === "facebook" || loading}
+              className="flex w-full items-center justify-center gap-3 rounded-xl border border-sky-200 bg-white px-4 py-3 text-sm font-semibold text-sky-900 transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {socialLoading === "facebook" ? (
+                <>
+                  <svg
+                    className="h-4 w-4 animate-spin"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                  >
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                  </svg>
+                  Connecting Facebook…
+                </>
+              ) : (
+                <>
+                  <FacebookMark />
+                  Continue with Facebook
+                </>
+              )}
+            </button>
+          </div>
+
+          <div className="mt-6 flex items-center justify-center gap-1.5 text-sm text-sky-600">
             <span>Don't have an account?</span>
             <Link
               to="/register"
               className="inline-flex items-center gap-1 font-semibold text-sky-700 hover:text-sky-900 underline underline-offset-2 decoration-sky-300 hover:decoration-sky-500 transition"
             >
               Create a profile
-              <svg className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                className="h-3.5 w-3.5"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M3 8h10M9 4l4 4-4 4" />
               </svg>
             </Link>
           </div>
-
-          {/* Terms */}
-          <p className="mt-5 text-center text-[11px] text-sky-400 leading-relaxed">
-            By signing in you agree to our{" "}
-            <Link to="/terms" className="underline underline-offset-2 hover:text-sky-600 transition">
-              Terms of Service
-            </Link>{" "}
-            and{" "}
-            <Link to="/privacy" className="underline underline-offset-2 hover:text-sky-600 transition">
-              Privacy Policy
-            </Link>
-            .
-          </p>
         </div>
-
       </div>
     </div>
   );

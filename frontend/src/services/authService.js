@@ -18,6 +18,42 @@ export async function loginUser({ email, password }) {
   return data;
 }
 
+export async function loginWithGoogle(credential) {
+  const response = await fetch(`${API_BASE_URL}/auth/google`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ credential }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || "Google login failed.");
+  }
+
+  return data;
+}
+
+export async function loginWithFacebook(accessToken) {
+  const response = await fetch(`${API_BASE_URL}/auth/facebook`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ accessToken }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || "Facebook login failed.");
+  }
+
+  return data;
+}
+
 export async function logoutUser(token) {
   const response = await fetch(`${API_BASE_URL}/auth/logout`, {
     method: "POST",
@@ -55,13 +91,16 @@ export async function requestPasswordResetOtp(email) {
 }
 
 export async function verifyPasswordResetOtp({ email, otp }) {
-  const response = await fetch(`${API_BASE_URL}/auth/forgot-password/verify-otp`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ email, otp }),
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/auth/forgot-password/verify-otp`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email, otp }),
+    }
+  );
 
   const data = await response.json();
 
