@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import PageLoader from "../../components/common/PageLoader";
 import ProfileLayout from "../../components/profile/ProfileLayout";
 import useProfileData from "../../hooks/useProfileData";
 import { updateMyProfile } from "../../services/profileService";
@@ -165,6 +166,10 @@ export default function Dashboard() {
   }
 
   if (loading) {
+    if (profileBasePath === "/profile") {
+      return <PageLoader />;
+    }
+
     return (
       <div className="min-h-[calc(100vh-160px)] py-2 sm:py-3">
         <div className="w-full">
