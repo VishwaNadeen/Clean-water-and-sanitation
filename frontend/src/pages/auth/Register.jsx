@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Navigate, useNavigate, Link } from "react-router-dom";
 import { fetchCountries } from "../../services/countryService";
 import {
   fetchWorldCitiesByDistrict,
@@ -10,9 +10,14 @@ import {
 } from "../../services/worldLocationService";
 import API_BASE_URL from "../../config/api";
 import {
+  loginWithGoogle,
+  loginWithFacebook,
+} from "../../services/authService";
+import {
   getPhoneMaxLengthByCountry,
   normalizePhoneForCountry,
 } from "../../utils/staffFormValidation";
+import { getStoredUser, isLoggedIn, setAuthSession } from "../../utils/auth";
 
 /* ── Icons ────────────────────────────────────────────────────────── */
 
@@ -195,6 +200,40 @@ function RestroomIcon() {
   );
 }
 
+function GoogleMark() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+      <path
+        fill="#4285F4"
+        d="M23.49 12.27c0-.79-.07-1.55-.2-2.27H12v4.3h6.46a5.52 5.52 0 0 1-2.4 3.62v3h3.88c2.27-2.09 3.55-5.17 3.55-8.65Z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 24c3.24 0 5.95-1.07 7.94-2.91l-3.88-3c-1.07.72-2.43 1.15-4.06 1.15-3.12 0-5.76-2.1-6.7-4.93H1.3v3.09A12 12 0 0 0 12 24Z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.3 14.31A7.2 7.2 0 0 1 4.93 12c0-.8.14-1.57.37-2.31V6.6H1.3A12 12 0 0 0 0 12c0 1.93.46 3.75 1.3 5.4l4-3.09Z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 4.77c1.76 0 3.34.61 4.58 1.8l3.43-3.43C17.94 1.2 15.24 0 12 0A12 12 0 0 0 1.3 6.6l4 3.09c.94-2.83 3.58-4.92 6.7-4.92Z"
+      />
+    </svg>
+  );
+}
+
+function FacebookMark() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+      <path
+        fill="#1877F2"
+        d="M24 12a12 12 0 1 0-13.9 11.9v-8.4H7.1V12h3V9.4c0-3 1.8-4.7 4.5-4.7 1.3 0 2.7.2 2.7.2v3h-1.5c-1.5 0-2 .9-2 1.9V12h3.4l-.5 3.5h-2.9v8.4A12 12 0 0 0 24 12Z"
+      />
+    </svg>
+  );
+}
+
 function PhotoIcon() {
   return (
     <svg
@@ -362,6 +401,20 @@ function isPasswordValidationMessage(message) {
     "Password must include uppercase, lowercase, number, and special character.",
     "Passwords do not match.",
   ].includes(message);
+}
+
+function buildSafeUser(data, fallbackEmail = "") {
+  const role = String(data?.role || "user").toLowerCase();
+
+  return {
+    id: data?.id || data?._id || data?.profileId || "",
+    username: data?.username || data?.fullName || "User",
+    fullName: data?.fullName || data?.username || "User",
+    email: data?.email || fallbackEmail,
+    role,
+    authProvider: data?.authProvider || "local",
+    mustChangePassword: Boolean(data?.mustChangePassword),
+  };
 }
 
 /* ── Searchable dropdown list ──────────────────────────────────────── */
@@ -582,6 +635,7 @@ export default function Register() {
   const navigate = useNavigate();
 
   const photoInputRef = useRef(null);
+  const googleBtnRef = useRef(null);
   const countryDropdownRef = useRef(null);
   const genderDropdownRef = useRef(null);
   const dobDropdownRef = useRef(null);
@@ -632,6 +686,7 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [socialLoading, setSocialLoading] = useState("");
 
   /* world location */
   const [worldCountries, setWorldCountries] = useState([]);
@@ -654,12 +709,191 @@ export default function Register() {
   const passwordRule =
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{6,12}$/;
   const maxDobDate = useMemo(() => getMaxDobDate(), []);
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  const facebookAppId = import.meta.env.VITE_FACEBOOK_APP_ID;
+  const storedUser = getStoredUser?.();
+  const storedRole = String(storedUser?.role || "").toLowerCase();
+
+  if (isLoggedIn()) {
+    if (storedRole === "admin") {
+      return <Navigate to="/admin/dashboard" replace />;
+    }
+
+    if (storedRole === "staff") {
+      return <Navigate to="/staff/dashboard" replace />;
+    }
+
+    return <Navigate to="/" replace />;
+  }
 
   useEffect(() => {
     return () => {
       if (photoPreview) URL.revokeObjectURL(photoPreview);
     };
   }, [photoPreview]);
+
+  useEffect(() => {
+    if (!googleClientId) return;
+
+    let isCancelled = false;
+    let intervalId;
+
+    const loadGoogleScript = () =>
+      new Promise((resolve, reject) => {
+        if (window.google?.accounts?.id) {
+          resolve();
+          return;
+        }
+
+        const existing = document.querySelector(
+          'script[src="https://accounts.google.com/gsi/client"]'
+        );
+
+        if (existing) {
+          existing.addEventListener("load", resolve, { once: true });
+          existing.addEventListener(
+            "error",
+            () => reject(new Error("Failed to load Google SDK.")),
+            { once: true }
+          );
+          return;
+        }
+
+        const script = document.createElement("script");
+        script.src = "https://accounts.google.com/gsi/client";
+        script.async = true;
+        script.defer = true;
+        script.onload = resolve;
+        script.onerror = () => reject(new Error("Failed to load Google SDK."));
+        document.body.appendChild(script);
+      });
+
+    loadGoogleScript()
+      .then(() => {
+        if (isCancelled) return;
+
+        intervalId = window.setInterval(() => {
+          if (!window.google?.accounts?.id || !googleBtnRef.current) return;
+
+          window.clearInterval(intervalId);
+          googleBtnRef.current.innerHTML = "";
+
+          window.google.accounts.id.initialize({
+            client_id: googleClientId,
+            callback: async (response) => {
+              try {
+                setError("");
+                setPasswordError("");
+                setSocialLoading("google");
+
+                const data = await loginWithGoogle(response.credential);
+                const safeUser = buildSafeUser(data);
+                setAuthSession({ token: data?.token, user: safeUser });
+
+                if (safeUser.role === "admin") {
+                  navigate("/admin/dashboard", { replace: true });
+                } else if (safeUser.role === "staff") {
+                  navigate("/staff/dashboard", { replace: true });
+                } else {
+                  navigate("/", { replace: true });
+                }
+              } catch (socialError) {
+                setError(socialError.message || "Google signup failed.");
+              } finally {
+                setSocialLoading("");
+              }
+            },
+          });
+
+          window.google.accounts.id.renderButton(googleBtnRef.current, {
+            theme: "outline",
+            size: "large",
+            shape: "rectangular",
+            text: "continue_with",
+            logo_alignment: "center",
+            width: googleBtnRef.current.offsetWidth || 320,
+          });
+
+          window.setTimeout(() => {
+            const googleIframe = googleBtnRef.current?.querySelector("iframe");
+
+            if (googleIframe) {
+              googleIframe.style.borderRadius = "0.75rem";
+            }
+          }, 0);
+        }, 200);
+      })
+      .catch((sdkError) => {
+        if (!isCancelled) {
+          setError(sdkError.message || "Google signup setup failed.");
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+      if (intervalId) {
+        window.clearInterval(intervalId);
+      }
+    };
+  }, [googleClientId, navigate]);
+
+  useEffect(() => {
+    if (!facebookAppId) return;
+
+    let isCancelled = false;
+
+    const loadFacebookScript = () =>
+      new Promise((resolve, reject) => {
+        if (window.FB) {
+          resolve();
+          return;
+        }
+
+        const existing = document.querySelector(
+          'script[src="https://connect.facebook.net/en_US/sdk.js"]'
+        );
+
+        if (existing) {
+          existing.addEventListener("load", resolve, { once: true });
+          existing.addEventListener(
+            "error",
+            () => reject(new Error("Failed to load Facebook SDK.")),
+            { once: true }
+          );
+          return;
+        }
+
+        const script = document.createElement("script");
+        script.src = "https://connect.facebook.net/en_US/sdk.js";
+        script.async = true;
+        script.defer = true;
+        script.crossOrigin = "anonymous";
+        script.onload = resolve;
+        script.onerror = () => reject(new Error("Failed to load Facebook SDK."));
+        document.body.appendChild(script);
+      });
+
+    loadFacebookScript()
+      .then(() => {
+        if (isCancelled || !window.FB) return;
+
+        window.FB.init({
+          appId: facebookAppId,
+          cookie: true,
+          xfbml: false,
+          version: "v19.0",
+        });
+      })
+      .catch((sdkError) => {
+        if (!isCancelled) {
+          setError(sdkError.message || "Facebook signup setup failed.");
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [facebookAppId]);
 
   /* Load dial-code countries */
   useEffect(() => {
@@ -1037,6 +1271,52 @@ export default function Register() {
       profilePhoto: file,
     }));
     setPhotoPreview(previewUrl);
+  };
+
+  const handleFacebookSignup = () => {
+    try {
+      if (!window.FB) {
+        throw new Error("Facebook SDK is not ready yet.");
+      }
+
+      setError("");
+      setPasswordError("");
+      setSocialLoading("facebook");
+
+      window.FB.login(
+        (response) => {
+          (async () => {
+            try {
+              if (!response?.authResponse?.accessToken) {
+                throw new Error("Facebook signup was cancelled or failed.");
+              }
+
+              const data = await loginWithFacebook(
+                response.authResponse.accessToken
+              );
+              const safeUser = buildSafeUser(data);
+              setAuthSession({ token: data?.token, user: safeUser });
+
+              if (safeUser.role === "admin") {
+                navigate("/admin/dashboard", { replace: true });
+              } else if (safeUser.role === "staff") {
+                navigate("/staff/dashboard", { replace: true });
+              } else {
+                navigate("/", { replace: true });
+              }
+            } catch (socialError) {
+              setError(socialError.message || "Facebook signup failed.");
+            } finally {
+              setSocialLoading("");
+            }
+          })();
+        },
+        { scope: "public_profile,email" }
+      );
+    } catch (socialError) {
+      setSocialLoading("");
+      setError(socialError.message || "Facebook signup failed.");
+    }
   };
 
   const handleRemovePhoto = () => {
@@ -1873,7 +2153,7 @@ export default function Register() {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || Boolean(socialLoading)}
                 className="mt-6 w-full rounded-xl bg-gradient-to-r from-sky-400 to-blue-500 px-4 py-3.5 text-sm font-semibold text-white shadow-md shadow-sky-200 transition hover:-translate-y-0.5 hover:shadow-sky-300 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading ? (
@@ -1898,6 +2178,61 @@ export default function Register() {
                 <div className="h-px flex-1 bg-sky-100" />
                 <span className="text-xs text-sky-300">or</span>
                 <div className="h-px flex-1 bg-sky-100" />
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <div
+                  className={`relative ${
+                    !googleClientId ? "hidden" : ""
+                  }`}
+                >
+                  <div className="pointer-events-none flex w-full items-center justify-center gap-3 rounded-xl border border-sky-200 bg-white px-4 py-3 text-sm font-semibold text-sky-900">
+                    <GoogleMark />
+                    Continue with Google
+                  </div>
+                  <div
+                    ref={googleBtnRef}
+                    className="absolute inset-0 overflow-hidden rounded-xl opacity-0 [&>div]:!h-full [&>div]:!w-full [&_iframe]:!h-full [&_iframe]:!w-full"
+                  />
+                </div>
+
+                {!googleClientId && (
+                  <button
+                  type="button"
+                  disabled
+                  className="hidden w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-medium text-slate-400"
+                >
+                  <GoogleMark />
+                  Google is not configured
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleFacebookSignup}
+                  disabled={!facebookAppId || socialLoading === "facebook" || loading}
+                  className="flex w-full items-center justify-center gap-3 rounded-xl border border-sky-200 bg-white px-4 py-3 text-sm font-semibold text-sky-900 transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {socialLoading === "facebook" ? (
+                    <>
+                      <svg
+                        className="h-4 w-4 animate-spin"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.2"
+                      >
+                        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                      </svg>
+                      Connecting Facebook...
+                    </>
+                  ) : (
+                    <>
+                      <FacebookMark />
+                      Continue with Facebook
+                    </>
+                  )}
+                </button>
               </div>
 
               <div className="mt-4 flex items-center justify-center gap-1.5 text-sm text-sky-600">

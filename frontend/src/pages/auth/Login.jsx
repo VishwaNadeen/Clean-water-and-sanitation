@@ -82,20 +82,20 @@ function GoogleMark() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
       <path
-        fill="#EA4335"
-        d="M12 10.2v3.9h5.5c-.2 1.2-.9 2.2-1.9 2.9l3 2.3c1.8-1.6 2.8-4 2.8-6.8 0-.6-.1-1.2-.2-1.7H12Z"
+        fill="#4285F4"
+        d="M23.49 12.27c0-.79-.07-1.55-.2-2.27H12v4.3h6.46a5.52 5.52 0 0 1-2.4 3.62v3h3.88c2.27-2.09 3.55-5.17 3.55-8.65Z"
       />
       <path
         fill="#34A853"
-        d="M12 21c2.5 0 4.5-.8 6-2.2l-3-2.3c-.8.6-1.8 1-3 1-2.3 0-4.3-1.6-5-3.7H3.9v2.4A9 9 0 0 0 12 21Z"
-      />
-      <path
-        fill="#4A90E2"
-        d="M7 13.8c-.2-.6-.3-1.2-.3-1.8s.1-1.2.3-1.8V7.8H3.9A9 9 0 0 0 3 12c0 1.5.4 2.9.9 4.2L7 13.8Z"
+        d="M12 24c3.24 0 5.95-1.07 7.94-2.91l-3.88-3c-1.07.72-2.43 1.15-4.06 1.15-3.12 0-5.76-2.1-6.7-4.93H1.3v3.09A12 12 0 0 0 12 24Z"
       />
       <path
         fill="#FBBC05"
-        d="M12 6.5c1.3 0 2.5.5 3.5 1.4l2.6-2.6C16.5 3.8 14.5 3 12 3a9 9 0 0 0-8.1 5l3.1 2.4c.7-2.1 2.7-3.9 5-3.9Z"
+        d="M5.3 14.31A7.2 7.2 0 0 1 4.93 12c0-.8.14-1.57.37-2.31V6.6H1.3A12 12 0 0 0 0 12c0 1.93.46 3.75 1.3 5.4l4-3.09Z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 4.77c1.76 0 3.34.61 4.58 1.8l3.43-3.43C17.94 1.2 15.24 0 12 0A12 12 0 0 0 1.3 6.6l4 3.09c.94-2.83 3.58-4.92 6.7-4.92Z"
       />
     </svg>
   );
@@ -627,11 +627,19 @@ export default function Login() {
 
           <div className="space-y-3">
             <div
-              ref={googleBtnRef}
-              className={`flex min-h-[44px] w-full items-center justify-center overflow-hidden rounded-xl ${
+              className={`relative ${
                 !googleClientId ? "hidden" : ""
               }`}
-            />
+            >
+              <div className="pointer-events-none flex w-full items-center justify-center gap-3 rounded-xl border border-sky-200 bg-white px-4 py-3 text-sm font-semibold text-sky-900">
+                <GoogleMark />
+                Continue with Google
+              </div>
+              <div
+                ref={googleBtnRef}
+                className="absolute inset-0 overflow-hidden rounded-xl opacity-0 [&>div]:!h-full [&>div]:!w-full [&_iframe]:!h-full [&_iframe]:!w-full"
+              />
+            </div>
 
             {!googleClientId && (
               <button
