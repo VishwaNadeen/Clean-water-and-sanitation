@@ -376,7 +376,7 @@ export default function RestroomMap() {
 
   if (loadingOurs) {
     return (
-      <div className="flex min-h-[calc(100vh-88px)] w-full items-center justify-center bg-transparent px-4 py-10">
+      <div className="flex min-h-[calc(100vh-72px)] w-full items-center justify-center bg-transparent px-4 py-10">
         <div className="w-40 sm:w-52 md:w-64">
           <Lottie animationData={loadingAnimation} loop />
         </div>
