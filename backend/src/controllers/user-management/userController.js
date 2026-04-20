@@ -2,8 +2,12 @@ import User from "../../models/user-management/userModel.js";
 import Login from "../../models/user-management/logInModel.js";
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
+import crypto from "crypto";
 import { z } from "zod";
 import cloudinary from "../../config/cloudinary.js";
+import { OAuth2Client } from "google-auth-library";
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Zod helpers
 const zodFieldErrors = (zodError) => {
@@ -159,9 +163,9 @@ const editMyProfileSchema = z
   });
 
 const deleteMyProfileSchema = z.object({
-  password: z
-    .string({ required_error: "Password is required." })
-    .min(1, "Password is required."),
+  password: z.string().optional(),
+  googleCredential: z.string().optional(),
+  facebookAccessToken: z.string().optional(),
 });
 
 const sendOtpEmail = async (email, otp) => {
@@ -201,6 +205,13 @@ const uploadBufferToCloudinary = (buffer, folder = "user-management/profile-phot
 
     stream.end(buffer);
   });
+
+const createFacebookAppSecretProof = (accessToken) => {
+  return crypto
+    .createHmac("sha256", process.env.FACEBOOK_APP_SECRET)
+    .update(accessToken)
+    .digest("hex");
+};
 
 const buildSafeUserResponse = (user) => ({
   id: user._id,
@@ -464,7 +475,7 @@ export const editMyProfile = async (req, res, next) => {
 export const deleteMyProfile = async (req, res, next) => {
   try {
     const body = validate(deleteMyProfileSchema, req.body);
-    const { password } = body;
+    const { password, googleCredential, facebookAccessToken } = body;
 
     const user = await User.findById(req.user._id).select("+password");
     if (!user) {
@@ -472,10 +483,92 @@ export const deleteMyProfile = async (req, res, next) => {
       throw new Error("User not found.");
     }
 
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      res.status(401);
-      throw new Error("Password is incorrect.");
+    const login = await Login.findOne({ userId: user._id });
+    if (!login) {
+      res.status(404);
+      throw new Error("Login account not found.");
+    }
+
+    const authProvider = String(login.authProvider || "local").toLowerCase();
+
+    if (authProvider === "google") {
+      if (!googleCredential) {
+        res.status(400);
+        throw new Error("Google re-authentication is required.");
+      }
+
+      const ticket = await googleClient.verifyIdToken({
+        idToken: googleCredential,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+
+      const payload = ticket.getPayload();
+      const googleEmail = String(payload?.email || "").toLowerCase().trim();
+
+      if (
+        !googleEmail ||
+        googleEmail !== String(user.email).toLowerCase().trim()
+      ) {
+        res.status(401);
+        throw new Error("Google account verification failed.");
+      }
+    } else if (authProvider === "facebook") {
+      if (!facebookAccessToken) {
+        res.status(400);
+        throw new Error("Facebook re-authentication is required.");
+      }
+
+      if (!process.env.FACEBOOK_APP_SECRET) {
+        res.status(500);
+        throw new Error("Facebook delete verification is not configured.");
+      }
+
+      const appsecret_proof = createFacebookAppSecretProof(facebookAccessToken);
+
+      const profileResponse = await fetch(
+        `https://graph.facebook.com/v19.0/me?fields=id,email&access_token=${encodeURIComponent(
+          facebookAccessToken
+        )}&appsecret_proof=${encodeURIComponent(appsecret_proof)}`
+      );
+
+      const profileData = await profileResponse.json();
+
+      if (!profileResponse.ok || profileData?.error) {
+        res.status(401);
+        throw new Error(
+          profileData?.error?.message || "Facebook account verification failed."
+        );
+      }
+
+      const facebookEmail = String(profileData?.email || "")
+        .toLowerCase()
+        .trim();
+
+      const facebookUserId = String(profileData?.id || "").trim();
+
+      if (!facebookUserId) {
+        res.status(401);
+        throw new Error("Facebook account verification failed.");
+      }
+
+      if (
+        !facebookEmail ||
+        facebookEmail !== String(user.email).toLowerCase().trim()
+      ) {
+        res.status(401);
+        throw new Error("Facebook account verification failed.");
+      }
+    } else {
+      if (!password) {
+        res.status(400);
+        throw new Error("Password is required.");
+      }
+
+      const isMatch = await user.comparePassword(password);
+      if (!isMatch) {
+        res.status(401);
+        throw new Error("Password is incorrect.");
+      }
     }
 
     if (user.profilePhotoPublicId) {

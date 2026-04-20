@@ -56,6 +56,10 @@ function formatPhoneForDisplay(countryCode, value) {
   return groups.filter(Boolean).join(" ");
 }
 
+function getPhoneInputMaxLength(countryCode) {
+  return countryCode === "+94" ? 11 : getPhoneMaxLengthByCountry(countryCode);
+}
+
 function formatDateForInput(value) {
   if (!value) return "";
 
@@ -219,6 +223,44 @@ function formatDobDisplay(value) {
   )}/${year}`;
 }
 
+function formatDobTyping(value) {
+  const digits = String(value || "")
+    .replace(/\D/g, "")
+    .slice(0, 8);
+
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+}
+
+function parseDobDisplay(value) {
+  const trimmed = formatDobTyping(value).trim();
+  if (!trimmed) return "";
+
+  const match = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!match) return null;
+
+  const [, monthText, dayText, yearText] = match;
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const year = Number(yearText);
+
+  if (!month || month > 12 || !day || day > 31 || !year) return null;
+
+  const normalized = `${year}-${String(month).padStart(2, "0")}-${String(
+    day
+  ).padStart(2, "0")}`;
+  const parsedDate = new Date(normalized);
+
+  if (Number.isNaN(parsedDate.getTime())) return null;
+  if (parsedDate.getFullYear() !== year) return null;
+  if (parsedDate.getMonth() + 1 !== month) return null;
+  if (parsedDate.getDate() !== day) return null;
+
+  return normalized;
+}
+
 function createDobValue(year, monthIndex, day) {
   return `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(
     day
@@ -281,6 +323,8 @@ function DobCalendar({
   maxDate,
 }) {
   const calendarDays = useMemo(() => buildCalendarDays(viewDate), [viewDate]);
+  const [inputValue, setInputValue] = useState(() => formatDobDisplay(value));
+
   const selectedDate = useMemo(() => {
     if (!value) return null;
     const [year, month, day] = String(value).split("-").map(Number);
@@ -288,27 +332,68 @@ function DobCalendar({
     return new Date(year, month - 1, day);
   }, [value]);
 
+  useEffect(() => {
+    setInputValue(formatDobDisplay(value));
+  }, [value]);
+
+  function handleInputChange(event) {
+    const nextValue = formatDobTyping(event.target.value);
+    setInputValue(nextValue);
+
+    const parsedValue = parseDobDisplay(nextValue);
+    if (parsedValue) {
+      onSelect(parsedValue, { keepOpen: true });
+    }
+  }
+
+  function handleInputBlur() {
+    const parsedValue = parseDobDisplay(inputValue);
+
+    if (!inputValue.trim()) {
+      onSelect("", { keepOpen: true });
+      return;
+    }
+
+    if (parsedValue) {
+      onSelect(parsedValue, { keepOpen: true });
+      return;
+    }
+
+    setInputValue(formatDobDisplay(value));
+  }
+
   return (
     <div className="relative">
-      <button
-        type="button"
-        onClick={onToggle}
+      <div
         className={`flex w-full items-center rounded-2xl border bg-white px-5 py-4 pr-12 text-left text-sm font-semibold text-slate-900 outline-none transition ${
           isOpen
             ? "border-sky-400 ring-4 ring-sky-100"
             : "border-sky-200 hover:border-sky-300"
         }`}
       >
-        <span className={value ? "text-slate-900" : "text-slate-400"}>
-          {formatDobDisplay(value)}
-        </span>
-      </button>
+        <input
+          type="text"
+          inputMode="numeric"
+          value={inputValue === "mm/dd/yyyy" ? "" : inputValue}
+          onChange={handleInputChange}
+          onBlur={handleInputBlur}
+          onFocus={() => setInputValue(value ? formatDobDisplay(value) : "")}
+          placeholder="mm/dd/yyyy"
+          className="w-full bg-transparent outline-none placeholder:text-slate-400"
+          aria-label="Date of birth"
+        />
+      </div>
 
-      <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="absolute inset-y-0 right-3 flex items-center"
+        aria-label={isOpen ? "Close calendar" : "Open calendar"}
+      >
         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-sky-100/80 text-sky-500">
           <CalendarIcon />
         </span>
-      </div>
+      </button>
 
       {isOpen ? (
         <div className="absolute z-30 mt-2 w-full overflow-hidden rounded-2xl border border-sky-200 bg-white p-4 shadow-xl shadow-sky-100/40">
@@ -780,12 +865,14 @@ export default function EditProfile() {
     setPageError("");
   }
 
-  function handleDobSelect(value) {
+  function handleDobSelect(value, options = {}) {
     setEditForm((prev) => ({
       ...prev,
       dob: value,
     }));
-    setDobOpen(false);
+    if (!options.keepOpen) {
+      setDobOpen(false);
+    }
     setPageError("");
   }
 
@@ -956,7 +1043,7 @@ export default function EditProfile() {
             onCountrySelect={handleCountryCodeSelect}
             phoneValue={formatPhoneForDisplay(editForm.countryCode, editForm.phone)}
             onPhoneChange={handleChange}
-            phoneMaxLength={getPhoneMaxLengthByCountry(editForm.countryCode)}
+            phoneMaxLength={getPhoneInputMaxLength(editForm.countryCode)}
             countryCodeError={countryCodeError}
             phoneError={phoneError}
             phoneIcon={<PhoneIcon />}
