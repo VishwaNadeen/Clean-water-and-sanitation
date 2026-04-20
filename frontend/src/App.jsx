@@ -1,6 +1,7 @@
-import { useLayoutEffect } from "react";
+import { Suspense, useLayoutEffect } from "react";
 import { useLocation } from "react-router-dom";
 import AppRoutes from "./routes";
+import PageLoader from "./components/common/PageLoader";
 
 function ScrollToTop() {
   const location = useLocation();
@@ -22,7 +23,9 @@ export default function App() {
   return (
     <>
       <ScrollToTop />
-      <AppRoutes />
+      <Suspense fallback={<PageLoader />}>
+        <AppRoutes />
+      </Suspense>
     </>
   );
 }

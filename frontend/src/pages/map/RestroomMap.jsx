@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import PageLoader from "../../components/common/PageLoader";
 import { isLoggedIn } from "../../utils/auth";
 import {
   MapContainer,
@@ -372,6 +373,10 @@ export default function RestroomMap() {
     }
   }
 
+  if (loadingOurs) {
+    return <PageLoader />;
+  }
+
   return (
     <div className="flex" style={{ height: "calc(100vh - 72px)" }}>
 
@@ -384,7 +389,7 @@ export default function RestroomMap() {
 
             <button
               onClick={() => { setSelectedRestroom(null); clearRoute(); }}
-              className="flex items-center gap-2 mx-4 my-4 px-4 py-2.5 text-sm text-blue-600 hover:text-blue-700 font-semibold rounded-xl hover:bg-blue-50 border border-blue-100 transition-colors"
+              className="inline-flex items-center gap-2 mx-4 my-4 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
             >
               <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="m13 16-6-6 6-6"/>
@@ -690,12 +695,6 @@ export default function RestroomMap() {
 
       {/* map */}
       <div className="flex-1 relative">
-        {loadingOurs && (
-          <div className="absolute inset-0 z-[2000] flex items-center justify-center bg-white/60">
-            <div className="w-10 h-10 border-4 border-blue-400 border-t-transparent rounded-full animate-spin" />
-          </div>
-        )}
-
         {/* locate me button */}
         <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-2">
           <button

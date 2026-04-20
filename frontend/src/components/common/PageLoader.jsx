@@ -1,25 +1,12 @@
 import Lottie from "lottie-react";
-import loadingAnimation from "../../assets/lottie/page-loading.json";
+import loadingAnimation from "../../assets/animations/loading.json";
 
-export default function PageLoader({
-  text = "Loading...",
-  fullScreen = true,
-}) {
+export default function PageLoader() {
   return (
-    <div
-      className={
-        fullScreen
-          ? "fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white"
-          : "flex min-h-[300px] flex-col items-center justify-center bg-white"
-      }
-    >
-      <div className="w-40 sm:w-48 md:w-56">
-        <Lottie animationData={loadingAnimation} loop={true} />
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white">
+      <div className="w-40 sm:w-52 md:w-64">
+        <Lottie animationData={loadingAnimation} loop />
       </div>
-
-      <p className="mt-3 text-sm font-medium tracking-wide text-slate-600">
-        {text}
-      </p>
     </div>
   );
 }
