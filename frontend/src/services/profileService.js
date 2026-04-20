@@ -274,7 +274,7 @@ export async function changeMyPassword(payload) {
   return handleResponse(response);
 }
 
-export async function deleteMyProfile(password) {
+export async function deleteMyProfile(payload) {
   const storedUser = getStoredUser();
   const token = getToken();
 
@@ -285,7 +285,7 @@ export async function deleteMyProfile(password) {
   const response = await fetch(getProfileEndpointByRole(storedUser?.role), {
     method: "DELETE",
     headers: getAuthHeaders(),
-    body: JSON.stringify({ password }),
+    body: JSON.stringify(payload || {}),
   });
 
   return handleResponse(response);

@@ -30,8 +30,31 @@ const loginSchema = new mongoose.Schema(
 
     password: {
       type: String,
-      required: true,
+      required: function () {
+        return !this.googleId && !this.facebookId;
+      },
       select: false,
+    },
+
+    authProvider: {
+      type: String,
+      enum: ["local", "google", "facebook"],
+      default: "local",
+      required: true,
+    },
+
+    googleId: {
+      type: String,
+      trim: true,
+      default: "",
+      index: true,
+    },
+
+    facebookId: {
+      type: String,
+      trim: true,
+      default: "",
+      index: true,
     },
 
     role: {
@@ -46,7 +69,7 @@ const loginSchema = new mongoose.Schema(
   }
 );
 
-//  Prevent OverwriteModelError (important for nodemon / hot reload)
+// Prevent OverwriteModelError (important for nodemon / hot reload)
 const Login = mongoose.models.Login || mongoose.model("Login", loginSchema);
 
 export default Login;

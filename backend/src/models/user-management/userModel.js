@@ -25,26 +25,48 @@ const userSchema = new mongoose.Schema(
 
     countryCode: {
       type: String,
-      required: true,
       trim: true,
+      default: "",
     },
 
     phone: {
       type: String,
-      required: true,
       trim: true,
+      default: "",
     },
 
     gender: {
       type: String,
       enum: ["MALE", "FEMALE", "OTHER"],
-      required: true,
+      default: "OTHER",
     },
 
     password: {
       type: String,
-      required: true,
+      required: function () {
+        return !this.googleId && !this.facebookId;
+      },
       select: false,
+    },
+
+    authProvider: {
+      type: String,
+      enum: ["local", "google", "facebook"],
+      default: "local",
+    },
+
+    googleId: {
+      type: String,
+      trim: true,
+      default: "",
+      index: true,
+    },
+
+    facebookId: {
+      type: String,
+      trim: true,
+      default: "",
+      index: true,
     },
 
     status: {
@@ -144,14 +166,16 @@ const userSchema = new mongoose.Schema(
 
 // Hash password
 userSchema.pre("save", async function () {
-  if (!this.isModified("password")) return;
+  if (!this.isModified("password") || !this.password) return;
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
 });
 
 userSchema.methods.comparePassword = async function (enteredPassword) {
+  if (!this.password) return false;
   return bcrypt.compare(enteredPassword, this.password);
 };
 
-const User = mongoose.model("User", userSchema);
+const User = mongoose.models.User || mongoose.model("User", userSchema);
+
 export default User;

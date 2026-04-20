@@ -10,7 +10,6 @@ import {
 import {
   protect,
   checkAccountStatus,
-  requirePasswordForDelete,
 } from "../../middleware/authMiddleware.js";
 
 import upload from "../../middleware/uploadMiddleware.js";
@@ -32,12 +31,11 @@ router.put(
   editMyProfile
 );
 
-// Delete my profile (requires password) - Private
+// Delete my profile - Private
 router.delete(
   "/me",
   protect,
   checkAccountStatus,
-  requirePasswordForDelete,
   deleteMyProfile
 );
 
