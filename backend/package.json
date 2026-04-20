@@ -4,8 +4,8 @@
   "description": "",
   "main": "src/server.js",
   "scripts": {
-    "dev": "nodemon --quiet src/server.js",
-    "start": "node src/server.js",
+    "dev": "node init && nodemon --quiet src/server.js",
+    "start": "node init && node src/server.js",
     "seed:locations": "node src/utils/seedLocationData.js"
   },
   "type": "module",
